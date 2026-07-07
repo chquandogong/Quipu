@@ -36,6 +36,8 @@ The second valuable question is:
 | Done | Design spec | `docs/superpowers/specs/2026-07-07-team-health-investigator-design.md` |
 | Done | Implementation plan | `docs/superpowers/plans/2026-07-07-team-ingest-vertical-slice.md` |
 | Done | First vertical slice execution | Server ingest, SQLite, fixtures, fleet overview UI |
+| Done | Problem-solving UX redefinition | `docs/superpowers/specs/2026-07-07-problem-solving-flow-ux-design.md` |
+| Pending | Investigation-first UI implementation | Queue, incident detail, hypotheses, action, verification, report |
 | Pending | Remote push | User said later; no remote configured yet |
 
 ## Open Decisions

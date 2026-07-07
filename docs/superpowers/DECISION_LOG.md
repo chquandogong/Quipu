@@ -41,3 +41,32 @@ Mitigation:
 - Use read-only agents.
 - Store only normalized events and minimal log excerpts by default.
 - Keep AI output explainable and evidence-linked.
+
+## 2026-07-07: Redefine UX Around Problem-Solving Flow
+
+Decision: Quipu's primary UX will be an investigation workflow, not a generic
+fleet dashboard.
+
+Context: The first vertical slice proved ingest, storage, rule-based analysis,
+and fleet rendering. However, the visible UI still reads as a status dashboard.
+The user identified that the product should make the problem-solving process and
+flow feel excellent.
+
+Reasoning:
+
+- A generic dashboard competes with stronger monitoring tools.
+- Quipu's strongest differentiation is guiding teams from signal to evidence,
+  action, verification, and report.
+- The DTIHAVR flow gives the UI a product-specific structure:
+  Detect -> Triage -> Investigate -> Hypothesize -> Act -> Verify -> Report.
+
+Consequences:
+
+- The first screen should become an Investigation Queue.
+- Fleet status becomes supporting context, not the main product promise.
+- Findings must expose supporting and contradicting evidence.
+- Intervention tracking and before/after verification move up in priority.
+
+Reference:
+
+- `docs/superpowers/specs/2026-07-07-problem-solving-flow-ux-design.md`

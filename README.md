@@ -1,134 +1,136 @@
 # Quipu
 
-Team-first workstation health investigator for Linux laptops and developer
-workstations.
+<p align="center">
+  <img alt="CI" src="https://github.com/chquandogong/Quipu/actions/workflows/ci.yml/badge.svg">
+  <img alt="Version" src="https://img.shields.io/badge/version-v0.2.1-2f6f7e">
+  <img alt="Status" src="https://img.shields.io/badge/status-local--first%20prototype-5b6b73">
+  <img alt="License" src="https://img.shields.io/badge/license-not%20selected-lightgrey">
+</p>
 
-Quipu is not just a system monitor. It is a problem-solving workflow for teams
-that need to detect workstation instability, narrow likely causes, act on
-evidence, and verify whether the fix worked.
+<p align="center">
+  <strong>팀용 Linux 워크스테이션 건강 조사 플랫폼</strong><br>
+  시스템 모니터가 아니라, 문제 해결 과정을 제품화한 로컬 우선 조사 도구입니다.
+</p>
+
+<p align="center">
+  한국어 | <a href="README.en.md">English</a> | <a href="README.zh-CN.md">简体中文</a>
+</p>
+
+---
+
+## 한눈에
+
+Quipu는 여러 대의 Linux 노트북과 개발 워크스테이션에서 발생하는
+발열, 재부팅, 그래픽 세션 오류, 저장장치 경고, Wi-Fi 불안정, 물리적
+환경 변화를 한곳에 모아 팀이 함께 조사하도록 돕습니다.
+
+핵심은 차트를 많이 보여주는 것이 아니라, 다음 질문에 빨리 답하는
+것입니다.
+
+- 지금 어떤 장비를 먼저 봐야 하는가?
+- 왜 위험한가?
+- 어떤 원인이 가장 그럴듯한가?
+- 근거와 반대 근거는 무엇인가?
+- 사람이 다음에 무엇을 확인하거나 조치해야 하는가?
+- 조치 후 실제로 상태가 좋아졌는가?
+- 같은 문제가 다른 장비에서도 반복되는가?
 
 ```text
 Detect -> Triage -> Investigate -> Hypothesize -> Act -> Verify -> Report
 ```
 
-## Status
+## 왜 Quipu인가
 
-Quipu is an early local-first prototype.
+개발 장비의 장애는 단일 지표로 설명하기 어렵습니다. CPU 온도, 커널
+로그, GPU 드라이버 경고, SSD 상태, Wi-Fi 품질, 업데이트, 부팅 이력,
+책상 위 물리적 배치가 동시에 영향을 줄 수 있습니다.
 
-Implemented:
+Quipu는 센서 값과 시스템 이벤트, 사람이 시도한 개입을 조사 기록으로
+묶습니다.
 
-- FastAPI ingest API.
-- SQLite persistence.
-- Rule-based fleet overview.
-- Deterministic three-device sample data.
-- Investigation queue and detail API.
-- Read-only one-shot Linux collector.
-- Persistent intervention records for investigation items.
-- Vite React investigation-first UI with queue, timeline, hypotheses, actions,
-- recorded interventions, verification, and report sections.
-- GitHub Actions CI for server, collector, and web checks.
+- 현재 상태
+- 사건 타임라인
+- 원인 가설
+- 지지 근거와 반대 근거
+- 다음 확인 항목
+- 사람이 수행한 조치
+- 전후 비교
+- 팀 공유용 보고서
 
-Next product direction:
+## 차별성
 
-- Add before/after comparison windows for recorded interventions.
-- Expand the collector into a supervised local agent.
-- Add team pattern exploration across models, kernels, drivers, storage, Wi-Fi,
-  workloads, and physical setups.
-- Add role-aware team workflows, redaction controls, and retention policy.
+1. **조사 우선, 지표는 그다음**
+   Quipu는 기계, 사건, 팀 문제에서 출발한 뒤 설명에 필요한 지표만
+   꺼냅니다.
 
-## Why Quipu Exists
+2. **근거가 연결된 결론**
+   모든 판단은 지지 근거, 반대 근거, 신뢰도, 원본 출처를 함께 보여줘야
+   합니다.
 
-Developer machines fail in ways that are hard to diagnose from one metric:
-thermal pressure, graphics/session errors, storage warnings, Wi-Fi instability,
-updates, reboots, and physical setup changes can all overlap.
+3. **팀 단위 패턴 기억**
+   모델, 커널, GPU 드라이버, SSD, Wi-Fi 장치, 워크로드, 물리적 배치별
+   반복 문제를 찾는 방향으로 설계합니다.
 
-Quipu turns sensor readings, system logs, and user interventions from multiple
-machines into investigation records:
+4. **개입 검증**
+   노트북을 살짝 들어 올리기, 전원 프로파일 변경, 드라이버 업데이트 같은
+   조치를 기록하고 전후 건강 상태를 비교합니다.
 
-- Current state.
-- Incident timeline.
-- Likely causes.
-- Supporting and contradicting evidence.
-- Suggested next checks.
-- Actions taken.
-- Before/after verification.
-- Team-readable report.
+5. **읽기 전용, 로컬 우선 신뢰성**
+   첫 제품은 팀 장비에서 안전하게 돌 수 있어야 합니다. 에이전트는 읽기
+   전용이고, 저장소는 자체 호스팅이며, 원격 수리 명령은 없습니다.
 
-## Core Product Principle
+## 현재 상태
 
-Quipu optimizes for the problem-solving process, not for metric density.
+Quipu는 초기 로컬 우선 프로토타입입니다.
 
-The product should answer:
+구현됨:
 
-- Which machine or incident should the team inspect first?
-- Why is it risky right now?
-- What are the top cause hypotheses?
-- What evidence supports or weakens each hypothesis?
-- What should a human check next?
-- What intervention was tried?
-- Did the intervention improve the situation?
-- Is the same pattern recurring across other machines?
+- FastAPI ingest API
+- SQLite WAL 기반 저장소
+- 규칙 기반 fleet overview
+- 결정적 샘플 장비 데이터
+- Investigation queue/detail API
+- 읽기 전용 one-shot Linux collector
+- 조사 항목별 intervention 기록
+- Vite React 조사 중심 UI
+- 서버, 컬렉터, 웹 테스트 및 빌드용 GitHub Actions CI
 
-## Differentiation
+다음 방향:
 
-Quipu should compete on investigation quality rather than chart quantity.
+- 기록된 intervention의 전후 비교 창
+- supervised local agent 형태의 collector
+- 모델, 커널, 드라이버, 저장장치, Wi-Fi, 워크로드, 물리적 환경별 팀 패턴 탐색
+- 역할 기반 팀 워크플로, redaction, retention policy
 
-1. **Investigation first, metrics second.**
-   Quipu starts from a machine, incident, or team problem, then exposes the
-   metrics needed to explain it.
+## 빠른 시작
 
-2. **Evidence-linked conclusions.**
-   Every finding should show supporting evidence, contradicting evidence,
-   confidence level, and raw source reference.
+샘플 데이터가 포함된 API 서버를 실행합니다.
 
-3. **Team-level pattern memory.**
-   Quipu should identify repeated issues across models, kernels, GPU drivers,
-   SSDs, Wi-Fi devices, workloads, and physical setups.
+```bash
+scripts/dev-server.sh
+```
 
-4. **Intervention verification.**
-   Quipu should track actions like lifting a laptop, changing power profiles, or
-   updating drivers, then compare before/after health windows.
+다른 터미널에서 웹 UI를 실행합니다.
 
-5. **Read-only, local-first trust.**
-   The first product should be safe to run on team machines: read-only agents,
-   self-hosted storage, minimal log excerpts, and no remote repair actions.
+```bash
+cd apps/web
+npm install
+npm run dev
+```
 
-## DTIHAVR Workflow
+브라우저에서 엽니다.
 
-The primary UI/UX flow is DTIHAVR:
+```text
+http://127.0.0.1:5173
+```
 
-| Stage | Purpose |
-| --- | --- |
-| Detect | Identify machines, incidents, and patterns that need attention. |
-| Triage | Rank urgency and route the issue to the right investigation. |
-| Investigate | Inspect timeline, sensors, logs, updates, and user notes. |
-| Hypothesize | List likely causes with evidence and counter-evidence. |
-| Act | Record a human-approved intervention or next check. |
-| Verify | Compare before/after windows to decide whether the action helped. |
-| Report | Produce a concise, evidence-linked summary for the team. |
+## Collector
 
-## Investigation Queue
+collector는 root 권한 없이 Linux 신호를 한 번 읽어 Quipu observation
+batch로 출력합니다. 수리 명령을 실행하지 않고, raw log 전체를 업로드하지
+않습니다.
 
-The first screen is now an investigation queue, not a generic dashboard.
-
-Example queue items:
-
-| Priority | Item | Why now | Next step |
-| --- | --- | --- | --- |
-| High | `build-xps` thermal risk | CPU package at 86.4C with thermal warning during compile workload | Compare cooling and workload windows |
-| Medium | `dev-p1` unclean shutdown | Previous boot ended without clean shutdown marker | Inspect pre-reboot graphics, thermal, and storage evidence |
-| Medium | `ops-framework` graphics warning | Kernel graphics warning before visible stutter | Check i915/session timeline and repeated signatures |
-
-Each queue item opens into an incident detail view with timeline, evidence,
-hypotheses, suggested actions, recorded interventions, verification, and report
-sections.
-
-## Read-Only Collector
-
-The collector is a one-shot Linux signal reader. It does not require root, does
-not execute repair commands, and does not upload raw logs.
-
-Print a local observation batch:
+로컬 출력:
 
 ```bash
 cd apps/collector
@@ -138,104 +140,104 @@ pip install -e .
 quipu-collector
 ```
 
-Send one batch to a local Quipu server:
+로컬 Quipu 서버로 전송:
 
 ```bash
 quipu-collector --server-url http://127.0.0.1:8000 --token dev-local-token
 ```
 
-## Architecture
+## 아키텍처
 
 ```text
-Quipu Agent/Future Collector
-        |
-        v
+Linux collector
+      |
+      v
 FastAPI ingest API
-        |
-        v
+      |
+      v
 SQLite WAL store
-        |
-        v
+      |
+      v
 Rule-based analysis engine
-        |
-        v
+      |
+      v
 React investigation UI
 ```
 
-MVP boundaries:
+MVP 경계:
 
-- Self-hosted by default.
-- Read-only collection.
-- No remote command execution.
-- No automatic repair.
-- No cloud dependency.
-- No full raw-log warehouse.
+- 자체 호스팅 기본값
+- 읽기 전용 수집
+- 원격 명령 실행 없음
+- 자동 수리 없음
+- 클라우드 의존 없음
+- full raw-log warehouse 지양
 
-## Local Development
+## 검증
 
-Run the server:
-
-```bash
-scripts/dev-server.sh
-```
-
-In another terminal, run the web UI:
-
-```bash
-cd apps/web
-npm install
-npm run dev
-```
-
-Open:
-
-```text
-http://127.0.0.1:5173
-```
-
-Useful checks:
+서버:
 
 ```bash
 cd apps/server
 . .venv/bin/activate
 pytest -v
+```
 
-cd ../collector
+컬렉터:
+
+```bash
+cd apps/collector
 python -m venv .venv
 . .venv/bin/activate
 pip install -e ".[test]"
 pytest -v
+```
 
-cd ../web
+웹:
+
+```bash
+cd apps/web
 npm test
 npm run build
 ```
 
-## Repository Layout
+## 저장소 구조
 
 ```text
 apps/
-  collector/     Read-only one-shot Linux observation collector
+  collector/     읽기 전용 one-shot Linux observation collector
   server/        FastAPI API, SQLite persistence, rule-based analysis
   web/           Vite React UI
 docs/
-  superpowers/   Product decisions, specs, plans, dashboard
+  superpowers/   제품 결정, 설계, 계획, 대시보드
 fixtures/
-  ingest/        Deterministic sample health batches
+  ingest/        결정적 샘플 health batch
 scripts/
-  dev-server.sh  Local seeded API server
+  dev-server.sh  로컬 seeded API server
 ```
 
-## Key Documents
+## 주요 문서
 
 - [Project dashboard](docs/superpowers/DASHBOARD.md)
 - [Decision log](docs/superpowers/DECISION_LOG.md)
-- [Team health investigator design](docs/superpowers/specs/2026-07-07-team-health-investigator-design.md)
-- [Problem-solving flow UX design](docs/superpowers/specs/2026-07-07-problem-solving-flow-ux-design.md)
-- [First implementation plan](docs/superpowers/plans/2026-07-07-team-ingest-vertical-slice.md)
 - [Roadmap](docs/superpowers/ROADMAP.md)
+- [Ship checklist](docs/superpowers/SHIP_CHECKLIST.md)
+- [Changelog](CHANGELOG.md)
+- [Contributing](CONTRIBUTING.md)
+- [Security policy](SECURITY.md)
 
-## License
+## 안전 경계
 
-No license has been selected yet. Do not assume redistribution rights until a
-license is explicitly added.
+현재와 가까운 미래의 기본값:
+
+- 읽기 전용 데이터 수집
+- 자체 호스팅 저장소
+- 최소 로그 발췌
+- 원격 명령 실행 없음
+- 자동 수리 없음
+- AI 결론은 근거 링크 없이는 권위가 없음
+
+## 라이선스
+
+아직 라이선스가 선택되지 않았습니다. 명시적 라이선스가 추가되기 전까지
+재배포 권한을 가정하지 마세요.

@@ -2,6 +2,30 @@
 
 All notable changes to Quipu are documented in this file.
 
+## v0.2.1 - 2026-07-07
+
+Patch release for CI runtime hygiene after `v0.2.0`.
+
+### Changed
+
+- Reworked the default README into Korean and added English and Simplified
+  Chinese README editions.
+- Polished repository presentation with badges, clearer quick-start sections,
+  multilingual documentation links, PR checklist coverage, and release note
+  categorization.
+- Updated GitHub Actions workflow actions to current major versions:
+  `actions/checkout@v7`, `actions/setup-python@v6`, and
+  `actions/setup-node@v6`.
+- Updated the web CI runtime from Node 20 to Node 24.
+
+### Verified
+
+- Server test suite passed.
+- Collector test suite passed.
+- Web test suite passed.
+- Web production build succeeded.
+- Remote GitHub Actions CI is the release gate after push.
+
 ## v0.2.0 - 2026-07-07
 
 Foundation release for real local collection and human action tracking.

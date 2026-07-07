@@ -3,7 +3,7 @@
 > Status: release candidate approved for private GitHub release
 > Date: 2026-07-07
 > Owner: chquan
-> Release: v0.2.0
+> Release: v0.2.1
 
 ## Scope
 
@@ -15,7 +15,9 @@ Included:
 - Rule-based fleet and investigation projections.
 - Investigation queue and detail API.
 - React investigation-first UI.
+- Korean default README, English README, and Simplified Chinese README.
 - GitHub Actions CI.
+- GitHub Actions runtime version patch.
 - Read-only one-shot Linux collector.
 - Persistent intervention records.
 - Intervention recording UI.
@@ -69,7 +71,7 @@ Unapproved risks:
 Rollback method:
 
 - Delete or supersede the private GitHub release if the release note is wrong.
-- Move forward with a patch tag such as `v0.2.1` for code or documentation fixes.
+- Move forward with a patch tag such as `v0.2.2` for code or documentation fixes.
 - Avoid force-push and history rewrite.
 
 Rollback owner:
@@ -88,20 +90,20 @@ Check after release:
 
 - GitHub repository URL resolves.
 - `main` branch is pushed.
-- `v0.2.0` tag exists locally and remotely.
-- GitHub release exists for `v0.2.0`.
+- `v0.2.1` tag exists locally and remotely.
+- GitHub release exists for `v0.2.1`.
 
 ## Documents
 
 - README: current.
 - Dashboard: current release state recorded.
 - Roadmap: collector and intervention foundations recorded.
-- Changelog: `v0.2.0` prepared.
+- Changelog: `v0.2.1` prepared.
 - Security policy: present.
 
 ## Final Judgment
 
-Private GitHub release is allowed for `v0.2.0`.
+Private GitHub release is allowed for `v0.2.1`.
 
 Public release, package publishing, production deployment, and destructive git
 operations remain outside this approval.

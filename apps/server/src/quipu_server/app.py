@@ -35,7 +35,7 @@ def create_app(
         finally:
             app.state.conn.close()
 
-    app = FastAPI(title="Quipu Server", version="0.2.0", lifespan=lifespan)
+    app = FastAPI(title="Quipu Server", version="0.2.1", lifespan=lifespan)
     app.state.conn = conn
     app.state.dev_agent_token = token
 

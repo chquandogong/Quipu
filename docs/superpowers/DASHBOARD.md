@@ -1,6 +1,6 @@
 # Quipu Project Dashboard
 
-> Status: v0.2.0 release candidate
+> Status: v0.2.1 private release track
 > Date: 2026-07-07
 > Owner: chquan
 
@@ -39,7 +39,9 @@ The second valuable question is:
 | Done | Problem-solving UX redefinition | `docs/superpowers/specs/2026-07-07-problem-solving-flow-ux-design.md` |
 | Done | Investigation-first UI implementation | Queue, incident detail, hypotheses, action, verification, report |
 | Done | Release prep | `CHANGELOG.md`, `docs/superpowers/SHIP_CHECKLIST.md`, `docs/superpowers/RETRO.md` |
+| Done | Repository presentation | Korean default README plus English and Chinese editions |
 | Done | CI workflow | Server, collector, web tests/build |
+| Done | CI runtime patch | GitHub Actions major versions updated for v0.2.1 |
 | Done | Read-only collector foundation | `apps/collector` one-shot Linux observation batch |
 | Done | Intervention records | API, SQLite persistence, investigation detail, React UI |
 | Approved | Private remote push and release | User requested commit, tag, push, and release on 2026-07-07 |

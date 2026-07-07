@@ -21,6 +21,14 @@ cd apps/server
 pytest -v
 ```
 
+Collector:
+
+```bash
+cd apps/collector
+. .venv/bin/activate
+pytest -v
+```
+
 Web:
 
 ```bash
@@ -57,3 +65,7 @@ Important decisions belong in:
 - `docs/superpowers/DECISION_LOG.md`
 - `docs/superpowers/specs/`
 - `docs/superpowers/plans/`
+
+User-facing positioning belongs in the Korean default `README.md`. Keep
+`README.en.md` and `README.zh-CN.md` aligned when the product message, setup
+flow, safety boundary, or roadmap changes.

@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=70", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "quipu-collector"
+version = "0.1.0"
+description = "Read-only one-shot Linux signal collector for Quipu"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.optional-dependencies]
+test = [
+  "pytest>=8.2,<9.0"
+]
+
+[project.scripts]
+quipu-collector = "quipu_collector.__main__:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]

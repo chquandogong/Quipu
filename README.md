@@ -22,13 +22,16 @@ Implemented:
 - Rule-based fleet overview.
 - Deterministic three-device sample data.
 - Investigation queue and detail API.
+- Read-only one-shot Linux collector.
+- Persistent intervention records for investigation items.
 - Vite React investigation-first UI with queue, timeline, hypotheses, actions,
-  verification, and report sections.
+- recorded interventions, verification, and report sections.
+- GitHub Actions CI for server, collector, and web checks.
 
 Next product direction:
 
-- Persist intervention records and before/after comparison windows.
-- Add a native read-only Linux collector.
+- Add before/after comparison windows for recorded interventions.
+- Expand the collector into a supervised local agent.
 - Add team pattern exploration across models, kernels, drivers, storage, Wi-Fi,
   workloads, and physical setups.
 - Add role-aware team workflows, redaction controls, and retention policy.
@@ -117,7 +120,29 @@ Example queue items:
 | Medium | `ops-framework` graphics warning | Kernel graphics warning before visible stutter | Check i915/session timeline and repeated signatures |
 
 Each queue item opens into an incident detail view with timeline, evidence,
-hypotheses, suggested actions, verification, and report sections.
+hypotheses, suggested actions, recorded interventions, verification, and report
+sections.
+
+## Read-Only Collector
+
+The collector is a one-shot Linux signal reader. It does not require root, does
+not execute repair commands, and does not upload raw logs.
+
+Print a local observation batch:
+
+```bash
+cd apps/collector
+python -m venv .venv
+. .venv/bin/activate
+pip install -e .
+quipu-collector
+```
+
+Send one batch to a local Quipu server:
+
+```bash
+quipu-collector --server-url http://127.0.0.1:8000 --token dev-local-token
+```
 
 ## Architecture
 
@@ -175,6 +200,12 @@ cd apps/server
 . .venv/bin/activate
 pytest -v
 
+cd ../collector
+python -m venv .venv
+. .venv/bin/activate
+pip install -e ".[test]"
+pytest -v
+
 cd ../web
 npm test
 npm run build
@@ -184,6 +215,7 @@ npm run build
 
 ```text
 apps/
+  collector/     Read-only one-shot Linux observation collector
   server/        FastAPI API, SQLite persistence, rule-based analysis
   web/           Vite React UI
 docs/

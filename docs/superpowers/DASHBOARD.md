@@ -1,6 +1,6 @@
 # Quipu Project Dashboard
 
-> Status: v0.1.0 release candidate
+> Status: v0.2.0 release candidate
 > Date: 2026-07-07
 > Owner: chquan
 
@@ -39,6 +39,9 @@ The second valuable question is:
 | Done | Problem-solving UX redefinition | `docs/superpowers/specs/2026-07-07-problem-solving-flow-ux-design.md` |
 | Done | Investigation-first UI implementation | Queue, incident detail, hypotheses, action, verification, report |
 | Done | Release prep | `CHANGELOG.md`, `docs/superpowers/SHIP_CHECKLIST.md`, `docs/superpowers/RETRO.md` |
+| Done | CI workflow | Server, collector, web tests/build |
+| Done | Read-only collector foundation | `apps/collector` one-shot Linux observation batch |
+| Done | Intervention records | API, SQLite persistence, investigation detail, React UI |
 | Approved | Private remote push and release | User requested commit, tag, push, and release on 2026-07-07 |
 
 ## Open Decisions
@@ -53,6 +56,6 @@ The second valuable question is:
 
 ## Gate
 
-Native Linux collectors, persistent intervention records, public release,
+Collector daemonization, before/after verification windows, public release,
 package publishing, production deployment, destructive git operations, and any
 remote repair capability remain gated.

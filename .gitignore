@@ -1,0 +1,10 @@
+node_modules/
+dist/
+build/
+target/
+.env
+.env.*
+*.log
+*.tmp
+.DS_Store
+.superpowers/

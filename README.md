@@ -2,7 +2,7 @@
 
 <p align="center">
   <img alt="CI" src="https://github.com/chquandogong/Quipu/actions/workflows/ci.yml/badge.svg">
-  <img alt="Version" src="https://img.shields.io/badge/version-v0.3.1-2f6f7e">
+  <img alt="Version" src="https://img.shields.io/badge/version-v0.3.2-2f6f7e">
   <img alt="Status" src="https://img.shields.io/badge/status-local--first%20prototype-5b6b73">
   <img alt="License" src="https://img.shields.io/badge/license-not%20selected-lightgrey">
 </p>
@@ -41,27 +41,27 @@ Detect -> Triage -> Investigate -> Hypothesize -> Act -> Verify -> Report
 
 ## UI/UX 원칙
 
-Quipu의 화면은 모든 로그와 지표를 한 번에 펼치지 않습니다. 여러 대안을
-비교한 결과, 단순 카드형 대시보드나 장식적인 mission-control 화면보다
-`Investigation Lens` 방식을 채택했습니다. 먼저 한 사건을 중심에 두고
-세 가지 질문만 보이게 합니다.
+Quipu의 화면은 모든 로그와 지표를 한 번에 펼치지 않습니다. 최신 dashboard,
+design system, progressive disclosure 사례를 비교한 결과, 단순 카드형
+대시보드보다 `Command Center` 방식을 채택했습니다. 첫 화면은 한 사건에
+대해 네 가지 답만 강하게 보여줍니다.
 
-- 무엇을 먼저 봐야 하는가?
-- 지금 어떤 행동을 기록해야 하는가?
-- 그 행동이 실제로 효과가 있었는가?
+- 무엇을 지금 확인해야 하는가?
+- 왜 중요한가?
+- 다음 행동은 무엇인가?
+- 어떤 증거가 있어야 해결됐다고 말할 수 있는가?
 
 상세 근거는 요약 상태로 접혀 있다가 마우스 접근, 키보드 포커스, 버튼
 클릭 흐름에서 확장됩니다. 핵심 CTA는 `Review evidence`, `Record action`,
-`Verify result`로 고정해 사용자가 다음 행동을 놓치지 않게 합니다.
+`Verify result`로 고정합니다.
 
 CPU package, Load Average, NVMe 같은 핵심 지표는 숫자만 보여주지 않습니다.
-각 metric 카드의 정보 버튼에 마우스가 닿거나 키보드 포커스가 가면
-`Definition`, `Window`, `How to read`, `Next check`가 열립니다. 예를 들어
-Load 값은 순간 CPU 사용률이 아니라 Linux 1분 load average임을 명시합니다.
+각 metric 카드의 정보 버튼은 한국어 설명과 영어 기술 용어를 함께 보여줍니다.
+예를 들어 Load 값은 순간 CPU 사용률이 아니라 Linux 1분 load average임을
+명시합니다.
 
-Dogu Robotics, Dogu X, Physical AI 공개 레퍼런스와 제작자 정보는 접힌
-보조 영역으로 내려, 제품의 맥락은 남기되 조사 업무 표면은 방해하지
-않도록 설계했습니다.
+제작자와 버전 정보는 헤더의 작은 metadata chip으로만 유지합니다. 큰
+creator/reference 이미지 영역은 조사 판단에 직접 도움이 되지 않아 제거했습니다.
 
 ## 왜 Quipu인가
 
@@ -118,9 +118,9 @@ Quipu는 초기 로컬 우선 프로토타입입니다.
 - 조사 항목별 intervention 기록
 - intervention 전후 검증 결과
 - Vite React 조사 중심 UI
-- Investigation Lens형 focus board와 hover/focus 확장 패널
-- 핵심 metric별 정의, 시간창, 해석, 다음 확인 항목 tooltip
-- 접힌 제작자/Physical AI 레퍼런스 영역
+- Command Center 첫 화면과 hover/focus 확장 패널
+- 핵심 metric별 한국어 설명, 영어 기술 용어, 시간창, 해석, 다음 확인 tooltip
+- 작고 항상 보이는 Made by, About, Version metadata chip
 - 서버, 컬렉터, 웹 테스트 및 빌드용 GitHub Actions CI
 
 다음 방향:

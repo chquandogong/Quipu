@@ -3,7 +3,7 @@
 > Status: release candidate approved for GitHub release and public visibility after audit
 > Date: 2026-07-07
 > Owner: chquan
-> Release: v0.3.1
+> Release: v0.3.2
 
 ## Scope
 
@@ -23,11 +23,10 @@ Included:
 - Intervention recording UI.
 - Before/after intervention verification.
 - Verification result UI.
-- Investigation Lens focus board and hover/focus expansion panels.
+- Command Center first viewport and hover/focus expansion panels.
 - Hover/focus metric explanations for CPU package temperature, 1-minute load
   average, and NVMe temperature.
-- Collapsed creator/reference drawer with public Dogu Robotics, Dogu X, and
-  Physical AI materials.
+- Removed duplicate creator/reference image drawer from the working UI.
 - Visible Made by, About, and Version metadata chips.
 - Project docs, GitHub templates, contribution notes, and security policy.
 
@@ -63,8 +62,8 @@ Known risks:
 - Verification uses a fixed 30-minute window.
 - `npm ci` reports existing transitive web dependency vulnerabilities; no public
   production deployment is included in this release.
-- UI reference images are loaded from public GitHub raw URLs to avoid bundling
-  heavy binary assets in the repository.
+- Public creator/reference images are not shown in the working UI; provenance
+  remains in compact metadata.
 
 Approved risks:
 
@@ -83,7 +82,7 @@ Unapproved risks:
 Rollback method:
 
 - Delete or supersede the private GitHub release if the release note is wrong.
-- Move forward with a patch tag such as `v0.3.1` for code or documentation fixes.
+- Move forward with a patch tag such as `v0.3.2` for code or documentation fixes.
 - Avoid force-push and history rewrite.
 
 Rollback owner:
@@ -102,8 +101,8 @@ Check after release:
 
 - GitHub repository URL resolves.
 - `main` branch is pushed.
-- `v0.3.1` tag exists locally and remotely.
-- GitHub release exists for `v0.3.1`.
+- `v0.3.2` tag exists locally and remotely.
+- GitHub release exists for `v0.3.2`.
 - Repository visibility is public after audit.
 
 ## Documents
@@ -111,12 +110,12 @@ Check after release:
 - README: current.
 - Dashboard: current release state recorded.
 - Roadmap: intervention verification slice recorded.
-- Changelog: `v0.3.1` prepared.
+- Changelog: `v0.3.2` prepared.
 - Security policy: present.
 
 ## Final Judgment
 
-GitHub release is allowed for `v0.3.1`.
+GitHub release is allowed for `v0.3.2`.
 
 Public repository visibility is allowed after sensitive-content audit.
 Package publishing, production deployment, destructive git operations, and

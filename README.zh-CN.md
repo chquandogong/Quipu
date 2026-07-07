@@ -2,7 +2,7 @@
 
 <p align="center">
   <img alt="CI" src="https://github.com/chquandogong/Quipu/actions/workflows/ci.yml/badge.svg">
-  <img alt="Version" src="https://img.shields.io/badge/version-v0.3.1-2f6f7e">
+  <img alt="Version" src="https://img.shields.io/badge/version-v0.3.2-2f6f7e">
   <img alt="Status" src="https://img.shields.io/badge/status-local--first%20prototype-5b6b73">
   <img alt="License" src="https://img.shields.io/badge/license-not%20selected-lightgrey">
 </p>
@@ -39,25 +39,26 @@ Detect -> Triage -> Investigate -> Hypothesize -> Act -> Verify -> Report
 
 ## UI/UX 原则
 
-Quipu 不会一次性展开所有日志和指标。比较普通卡片式看板、偏装饰的
-mission-control 界面和调查中心式布局之后，Quipu 采用 `Investigation Lens`
-方式：始终围绕一个事件展开，并优先回答三个问题：
+Quipu 不会一次性展开所有日志和指标。比较当前 dashboard、design system 和
+progressive disclosure 模式之后，Quipu 采用 `Command Center` 方式：始终
+围绕一个事件展开，并优先回答四个问题：
 
-- 应该先看什么？
-- 现在应该记录什么操作？
-- 这个操作是否真的有效？
+- 现在应该检查什么？
+- 为什么重要？
+- 下一步应该做什么？
+- 需要什么证据才能确认问题已改善？
 
 详细证据默认保持紧凑，在鼠标靠近、键盘焦点或按钮导航时展开。核心
 CTA 固定为 `Review evidence`、`Record action` 和 `Verify result`，让下一步
 操作保持清晰。
 
 CPU package、Load Average、NVMe 等核心指标不会只显示孤立数字。每个
-metric 卡片都有信息按钮，鼠标 hover 或键盘 focus 时显示 `Definition`、
-`Window`、`How to read` 和 `Next check`。例如 Load 会明确说明它是 Linux
-1 分钟 load average，而不是瞬时 CPU 使用率。
+metric 卡片会用韩文解释并保留英文技术术语，同时说明时间窗口、解读方式
+和下一步检查。例如 Load 会明确说明它是 Linux 1 分钟 load average，而不是
+瞬时 CPU 使用率。
 
-Dogu Robotics、Dogu X、Physical AI 的公开参考资料以及创作者信息被放在
-默认折叠的辅助区域中：保留产品语境，但不打断调查流程。
+创作者和版本信息只保留在顶部小型 metadata chip 中。大型 creator/reference
+图片区域因为不能直接帮助调查判断，已从工作界面移除。
 
 ## 为什么需要 Quipu
 
@@ -111,9 +112,9 @@ Quipu 仍是早期本地优先原型。
 - 调查项 intervention 记录
 - intervention 前后验证结果
 - Vite React 调查优先 UI
-- Investigation Lens 型 focus board 与 hover/focus 展开面板
-- 每个核心 metric 的定义、时间窗口、解读方式和下一步检查 tooltip
-- 默认折叠的创作者与 Physical AI 参考区域
+- Command Center 首屏与 hover/focus 展开面板
+- 每个核心 metric 的韩文说明、英文技术术语、时间窗口、解读方式和下一步检查 tooltip
+- 小型 Made by、About、Version metadata chip
 - 覆盖 server、collector、web 的 GitHub Actions CI
 
 下一步方向：

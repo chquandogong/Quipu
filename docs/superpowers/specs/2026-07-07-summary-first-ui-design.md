@@ -2,7 +2,7 @@
 
 > Date: 2026-07-07
 > Release: v0.3.1
-> Status: implemented
+> Status: superseded by `2026-07-07-command-center-redesign.md`
 
 ## Problem
 
@@ -55,12 +55,9 @@ Detect -> Triage -> Investigate -> Hypothesize -> Act -> Verify -> Report
 
 ## Visual References
 
-The UI includes a collapsed maker/reference drawer with public Dogu Robotics,
-Dogu X, and Physical AI portfolio materials. The drawer provides provenance and
-domain context without competing with the investigation surface.
-
-To keep the repository light, v0.3.0 uses public GitHub raw URLs for those
-visuals instead of committing large binary image assets.
+This v0.3.1 approach was superseded in v0.3.2. The working UI no longer shows a
+maker/reference drawer because it duplicated compact header metadata and did
+not help the investigation decision.
 
 ## Boundaries
 

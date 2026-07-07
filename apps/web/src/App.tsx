@@ -2,15 +2,18 @@ import { useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import {
   Activity,
+  AlertTriangle,
   CheckCircle2,
   ChevronRight,
   ClipboardCheck,
-  ExternalLink,
+  FileSearch,
   Gauge,
   HardDrive,
   HelpCircle,
   Info,
+  ListChecks,
   MousePointer2,
+  ShieldCheck,
   Tag,
   Thermometer,
   UserRound,
@@ -21,25 +24,7 @@ import type { FleetOverview, InvestigationDetail, InvestigationItem, RiskLevel, 
 import './styles.css';
 
 const flowStages = ['Detect', 'Triage', 'Investigate', 'Hypothesize', 'Act', 'Verify', 'Report'];
-const appVersion = 'v0.3.1';
-
-const makerImages = [
-  {
-    title: 'Physical AI systems',
-    src: 'https://raw.githubusercontent.com/chquandogong/CHENGHAO-QUAN/gh-pages/chenghao_intro_assets/physical_ai_robotics_hero.png',
-    caption: 'Robotics field context',
-  },
-  {
-    title: 'Creator profile',
-    src: 'https://raw.githubusercontent.com/chquandogong/CHENGHAO-QUAN/gh-pages/downloads/chenghao_physical_ai_self_intro.png',
-    caption: 'Public portfolio snapshot',
-  },
-  {
-    title: 'Dogu public site',
-    src: 'https://cdn.imweb.me/upload/S202302215d855936bf226/5a39a0539f5c0.png',
-    caption: 'MAKING THE WORLD SAFER',
-  },
-];
+const appVersion = 'v0.3.2';
 
 const riskLabels: Record<RiskLevel, string> = {
   healthy: 'Healthy',
@@ -55,10 +40,10 @@ const keyMetrics = [
     shortLabel: 'CPU',
     ariaLabel: 'CPU package temperature',
     Icon: Thermometer,
-    definition: 'CPU package sensor reading for the selected device.',
-    window: 'Latest collector sample; compare against nearby samples before calling a trend.',
-    reading: 'Above sustained mid-80s Celsius is a thermal warning on most laptops.',
-    nextCheck: 'Check fan airflow, table clearance, workload, and new kernel thermal warnings.',
+    definition: '선택한 장비의 CPU 패키지 센서 온도입니다. (CPU package temperature)',
+    window: '가장 최근 collector 샘플입니다. 가까운 샘플과 비교해야 추세를 판단할 수 있습니다.',
+    reading: '지속적인 80도 중반 이상은 대부분의 노트북에서 thermal warning으로 봅니다.',
+    nextCheck: '팬 흡기, 바닥 clearance, workload, 새 kernel thermal warning을 함께 확인합니다.',
   },
   {
     name: 'cpu.load_1m',
@@ -66,10 +51,10 @@ const keyMetrics = [
     shortLabel: 'Load',
     ariaLabel: '1 minute load average',
     Icon: Activity,
-    definition: 'Average runnable or waiting workload over the last 1 minute.',
-    window: '1 minute Linux load average, not an instant CPU percent reading.',
-    reading: 'Compare with CPU cores and thermal trend before deciding it is overload.',
-    nextCheck: 'If load is high and temperature climbs, inspect active jobs and cooling together.',
+    definition: '최근 1분 동안 실행 중이거나 대기 중인 작업 평균입니다. (1-minute load average)',
+    window: 'Linux 1분 load average이며, 순간 CPU percent가 아닙니다.',
+    reading: 'CPU 코어 수와 온도 추세를 함께 봐야 과부하인지 판단할 수 있습니다.',
+    nextCheck: 'load와 온도가 같이 오르면 실행 중인 작업과 냉각 조건을 같이 봅니다.',
   },
   {
     name: 'nvme.temp_c',
@@ -77,10 +62,10 @@ const keyMetrics = [
     shortLabel: 'NVMe',
     ariaLabel: 'NVMe SSD temperature',
     Icon: HardDrive,
-    definition: 'Latest storage device temperature reported by the selected device.',
-    window: 'Latest collector sample from storage telemetry.',
-    reading: 'Low 40s Celsius is usually normal; sustained high values can affect reliability.',
-    nextCheck: 'Compare with I/O workload, chassis heat, and SMART or kernel storage warnings.',
+    definition: '선택한 장비의 저장장치 온도입니다. (NVMe SSD temperature)',
+    window: 'storage telemetry에서 들어온 가장 최근 collector 샘플입니다.',
+    reading: '40도 초반은 보통 정상 범위이며, 지속적인 고온은 신뢰성 문제로 이어질 수 있습니다.',
+    nextCheck: 'I/O workload, chassis heat, SMART warning, kernel storage warning을 같이 확인합니다.',
   },
 ];
 
@@ -154,10 +139,10 @@ function MetricCard({ detail, metric }: { detail: InvestigationDetail; metric: (
           </button>
           <div className="metric-tooltip" id={`${metric.name}-help`} role="tooltip">
             <strong>{metric.ariaLabel}</strong>
-            <span>Definition: {metric.definition}</span>
-            <span>Window: {metric.window}</span>
-            <span>How to read: {metric.reading}</span>
-            <span>Next check: {metric.nextCheck}</span>
+            <span>정의: {metric.definition}</span>
+            <span>시간창: {metric.window}</span>
+            <span>해석: {metric.reading}</span>
+            <span>다음 확인: {metric.nextCheck}</span>
           </div>
         </div>
       </div>
@@ -231,9 +216,22 @@ export default function App() {
   );
   const latestVerificationResult = detail?.interventions[detail.interventions.length - 1]?.verification_result;
   const nextAction = detail?.actions[0];
-  const primaryEvidence = detail?.timeline[0]?.summary ?? detail?.item.evidence ?? 'Select a queue item to inspect evidence.';
+  const primaryEvidence = detail?.item.evidence ?? detail?.timeline[0]?.summary ?? 'Select a queue item to inspect evidence.';
   const verificationLabel = detail?.verification.status ?? 'Pending';
   const verificationSummary = detail?.verification.summary ?? 'Record an intervention before verification.';
+  const selectedStage = selectedItem?.stage ?? 'Detect';
+  const deviceLabel = detail?.fleet_context.device.hostname ?? selectedItem?.device_hostname ?? 'No device selected';
+  const caseTitle = detail?.item.title ?? selectedItem?.title ?? 'Select an investigation';
+  const riskLabel = detail ? riskLabels[detail.item.risk_level] : 'No risk';
+  const whyNow = detail?.item.evidence ?? selectedItem?.why_now ?? 'Choose a queue item to see the evidence.';
+  const whyDetail = detail?.item.category === 'agent'
+    ? 'Fresh telemetry is required before trusting older thermal, load, or storage readings.'
+    : detail?.hypotheses[0]?.contradicting_evidence[0]
+      ?? detail?.hypotheses[0]?.supporting_evidence[0]
+      ?? 'Evidence appears after selecting an investigation.';
+  const actionLabel = nextAction?.label ?? selectedItem?.next_step ?? 'Select a queue item';
+  const actionSummary = nextAction?.description ?? selectedItem?.next_step ?? 'Choose an investigation before recording action.';
+  const proofSummary = latestVerificationResult?.summary ?? verificationSummary;
 
   async function handleRecordIntervention(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -307,56 +305,77 @@ export default function App() {
         </div>
       </header>
 
-      <section className="flow-rail" aria-label="DTIHAVR workflow">
-        <p>Detect -&gt; Triage -&gt; Investigate -&gt; Hypothesize -&gt; Act -&gt; Verify -&gt; Report</p>
-        <div>
-          {flowStages.map((stage) => (
-            <span
-              aria-current={selectedItem?.stage === stage ? 'step' : undefined}
-              className={selectedItem?.stage === stage ? 'active' : undefined}
-              key={stage}
-            >
-              {stage}
-            </span>
-          ))}
+      <section className="command-center" aria-label="Investigation command center">
+        <div className="command-head">
+          <div>
+            <p className="command-kicker">Command Center</p>
+            <h2>{deviceLabel}</h2>
+            <p>{caseTitle}</p>
+          </div>
+          <div className="case-badges" aria-label="Selected case status">
+            <span><AlertTriangle aria-hidden="true" /> {selectedItem?.priority ?? 'No priority'}</span>
+            <span><ShieldCheck aria-hidden="true" /> {riskLabel}</span>
+            <span><ListChecks aria-hidden="true" /> {selectedStage}</span>
+          </div>
         </div>
-      </section>
 
-      <section className="summary" aria-label="Fleet summary">
-        <div><span>{overview?.summary.total ?? 0}</span><strong>Total devices</strong><em>fleet scope</em></div>
-        <div><span>{overview?.summary.critical ?? 0}</span><strong>Critical</strong><em>needs action now</em></div>
-        <div><span>{overview?.summary.warning ?? 0}</span><strong>Warnings</strong><em>watch closely</em></div>
-        <div><span>{queue.length}</span><strong>Queue</strong><em>open investigations</em></div>
-      </section>
+        <div className="answer-grid">
+          <article className="answer-card answer-primary">
+            <span className="answer-label"><FileSearch aria-hidden="true" /> Inspect now <small>지금 확인</small></span>
+            <strong>{caseTitle}</strong>
+            <p>{primaryEvidence}</p>
+          </article>
+          <article className="answer-card">
+            <span className="answer-label"><AlertTriangle aria-hidden="true" /> Why it matters <small>판단 근거</small></span>
+            <strong>{whyNow}</strong>
+            <p>{whyDetail}</p>
+          </article>
+          <article className="answer-card">
+            <span className="answer-label"><ChevronRight aria-hidden="true" /> Do next <small>다음 행동</small></span>
+            <strong>{actionLabel}</strong>
+            <p>{actionSummary}</p>
+          </article>
+          <article className="answer-card">
+            <span className="answer-label"><CheckCircle2 aria-hidden="true" /> Proof needed <small>검증 조건</small></span>
+            <strong>{verificationLabel}</strong>
+            <p>{proofSummary}</p>
+          </article>
+        </div>
 
-      <section className="focus-board" aria-label="Current investigation focus">
-        <article className="focus-card focus-primary">
-          <span><Thermometer aria-hidden="true" /> Look first</span>
-          <strong>{detail?.item.title ?? selectedItem?.title ?? 'No active investigation'}</strong>
-          <p>{primaryEvidence}</p>
+        <div className="command-actions" aria-label="Primary investigation actions">
           <button onClick={() => scrollToPanel('evidence-panel')} type="button">
             <MousePointer2 aria-hidden="true" />
             Review evidence
           </button>
-        </article>
-        <article className="focus-card">
-          <span><ChevronRight aria-hidden="true" /> Next action</span>
-          <strong>{nextAction?.label ?? selectedItem?.next_step ?? 'Select a queue item'}</strong>
-          <p>{nextAction?.description ?? selectedItem?.next_step ?? 'Choose an investigation before recording action.'}</p>
           <button onClick={() => scrollToPanel('action-plan')} type="button">
             <ClipboardCheck aria-hidden="true" />
             Record action
           </button>
-        </article>
-        <article className="focus-card">
-          <span><CheckCircle2 aria-hidden="true" /> Verification</span>
-          <strong>{verificationLabel}</strong>
-          <p>{verificationSummary}</p>
           <button onClick={() => scrollToPanel('verification-panel')} type="button">
             <Gauge aria-hidden="true" />
             Verify result
           </button>
-        </article>
+        </div>
+
+        <div className="command-footer">
+          <div className="health-strip" aria-label="Fleet health strip">
+            <span><strong>{overview?.summary.total ?? 0}</strong>Total</span>
+            <span><strong>{overview?.summary.critical ?? 0}</strong>Critical</span>
+            <span><strong>{overview?.summary.warning ?? 0}</strong>Warning</span>
+            <span><strong>{queue.length}</strong>Queue</span>
+          </div>
+          <div className="stage-strip" aria-label="DTIHAVR workflow">
+            {flowStages.map((stage) => (
+              <span
+                aria-current={selectedStage === stage ? 'step' : undefined}
+                className={selectedStage === stage ? 'active' : undefined}
+                key={stage}
+              >
+                {stage}
+              </span>
+            ))}
+          </div>
+        </div>
       </section>
 
       <section className="investigation-layout">
@@ -529,34 +548,6 @@ export default function App() {
           </article>
         </section>
       </section>
-
-      <details className="reference-drawer">
-        <summary>
-          <UserRound aria-hidden="true" />
-          Creator and visual references
-        </summary>
-        <div className="reference-body">
-          <div className="reference-copy">
-            <strong>Dr. 권성호 (QUAN CHENGHAO)</strong>
-            <span>Dogu Robotics · Dogu X · Physical AI</span>
-            <a href="https://github.com/chquandogong/CHENGHAO-QUAN" target="_blank" rel="noreferrer">
-              <ExternalLink aria-hidden="true" />
-              Creator profile
-            </a>
-          </div>
-          <div className="visual-carousel" aria-label="Reference carousel">
-            {makerImages.map((image) => (
-              <figure className="visual-slide" key={image.title}>
-                <img alt={image.title} loading="lazy" src={image.src} />
-                <figcaption>
-                  <strong>{image.title}</strong>
-                  <span>{image.caption}</span>
-                </figcaption>
-              </figure>
-            ))}
-          </div>
-        </div>
-      </details>
     </main>
   );
 }

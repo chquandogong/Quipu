@@ -2,7 +2,7 @@
 
 <p align="center">
   <img alt="CI" src="https://github.com/chquandogong/Quipu/actions/workflows/ci.yml/badge.svg">
-  <img alt="Version" src="https://img.shields.io/badge/version-v0.3.1-2f6f7e">
+  <img alt="Version" src="https://img.shields.io/badge/version-v0.3.2-2f6f7e">
   <img alt="Status" src="https://img.shields.io/badge/status-local--first%20prototype-5b6b73">
   <img alt="License" src="https://img.shields.io/badge/license-not%20selected-lightgrey">
 </p>
@@ -40,28 +40,28 @@ Detect -> Triage -> Investigate -> Hypothesize -> Act -> Verify -> Report
 
 ## UI/UX Principle
 
-Quipu does not open every log and metric at once. After comparing a plain card
-dashboard, a decorative mission-control surface, and an investigation-centered
-layout, Quipu uses an `Investigation Lens`: one incident stays central while
-three questions remain visible:
+Quipu does not open every log and metric at once. After comparing current
+dashboard, design-system, and progressive-disclosure patterns, Quipu uses a
+`Command Center`: one incident stays central while four answers remain visible:
 
-- What should we inspect first?
-- What action should we record now?
-- Did that action actually help?
+- What should we inspect now?
+- Why does it matter?
+- What should we do next?
+- What proof is needed before calling it fixed?
 
 Detailed evidence stays compact until hover, keyboard focus, or button-driven
-navigation expands it. The main CTAs are fixed as `Review evidence`,
-`Record action`, and `Verify result` so the next move stays obvious.
+navigation expands it. The main CTAs stay fixed as `Review evidence`,
+`Record action`, and `Verify result`.
 
 Key metrics such as CPU package temperature, Load Average, and NVMe temperature
-do not stand alone as unexplained numbers. Each metric card has an info control
-that opens `Definition`, `Window`, `How to read`, and `Next check` on hover or
-keyboard focus. For example, Load is explicitly described as the Linux
+do not stand alone as unexplained numbers. Each metric card explains the Korean
+meaning together with the English technical term, time window, reading guidance,
+and next check. For example, Load is explicitly described as the Linux
 1-minute load average, not instant CPU utilization.
 
-Public Dogu Robotics, Dogu X, and Physical AI references plus creator details
-sit in a collapsed secondary drawer: useful context without interrupting the
-investigation workflow.
+Creator and version information stays as compact header metadata. The large
+creator/reference image drawer was removed because it did not help the
+investigation decision.
 
 ## Why Quipu Exists
 
@@ -118,9 +118,10 @@ Implemented:
 - Intervention records for investigation items
 - Before/after verification results for interventions
 - Vite React investigation-first UI
-- Investigation Lens focus board with hover/focus expansion panels
-- Per-metric definition, time window, reading guidance, and next-check tooltip
-- Collapsed creator and Physical AI reference drawer
+- Command Center first viewport with hover/focus expansion panels
+- Per-metric Korean explanation, English technical term, time window, reading
+  guidance, and next-check tooltip
+- Compact Made by, About, and Version metadata chips
 - GitHub Actions CI for server, collector, and web checks
 
 Next direction:

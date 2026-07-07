@@ -2,6 +2,28 @@
 
 All notable changes to Quipu are documented in this file.
 
+## v0.3.2 - 2026-07-07
+
+Command-center UI redesign.
+
+### Changed
+
+- Replaced the separate flow rail, fleet summary cards, and focus-board stack
+  with a single `Command Center` first viewport.
+- Added four first-glance answers: `Inspect now`, `Why it matters`, `Do next`,
+  and `Proof needed`.
+- Reworked metric help to use Korean explanation with English technical terms
+  for CPU package temperature, 1-minute load average, and NVMe temperature.
+- Removed the large creator/reference image drawer because it duplicated header
+  metadata and did not support investigation decisions.
+- Updated package and app versions to `0.3.2`.
+
+### Research
+
+- Compared Carbon dashboard hierarchy, Material tooltip behavior, Fluent
+  responsive layout, Primer progressive disclosure, and 2026 SaaS command-style
+  workflow patterns.
+
 ## v0.3.1 - 2026-07-07
 
 Metadata, metric explanation, and visual investigation-lens patch after the

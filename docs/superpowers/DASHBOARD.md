@@ -1,6 +1,6 @@
 # Quipu Project Dashboard
 
-> Status: draft direction set
+> Status: implementation plan ready
 > Date: 2026-07-07
 > Owner: chquan
 
@@ -33,9 +33,9 @@ The second valuable question is:
 | --- | --- | --- |
 | Done | Project directory and Git repo | `/home/chquan/Quipu`, branch `main` |
 | Done | Team direction selected | User selected multi-device/team scope |
-| In progress | Design spec | `docs/superpowers/specs/2026-07-07-team-health-investigator-design.md` |
-| Pending | Implementation plan | Wait for user review of spec |
-| Pending | App scaffold | Do after design/spec approval |
+| Done | Design spec | `docs/superpowers/specs/2026-07-07-team-health-investigator-design.md` |
+| Done | Implementation plan | `docs/superpowers/plans/2026-07-07-team-ingest-vertical-slice.md` |
+| Pending | First vertical slice execution | Server ingest, SQLite, fixtures, fleet overview UI |
 | Pending | Remote push | User said later; no remote configured yet |
 
 ## Open Decisions
@@ -45,10 +45,10 @@ The second valuable question is:
 | MVP storage | SQLite WAL on one server | Light enough for a first self-hosted team version |
 | Future storage | Postgres adapter | Useful if fleet size or concurrency grows |
 | Agent language | Rust or Go | Static binary, low overhead, good system integration |
-| Server/UI stack | Decide in implementation plan | Avoid premature framework lock-in |
+| First slice stack | Python FastAPI server + Vite React UI | Fastest small-team end-to-end slice |
 | AI analysis | Optional, evidence-gated | Rule-based findings must work without AI |
 
 ## Gate
 
-Do not scaffold the app or implement collectors until the written design spec is
-reviewed and approved.
+Native Linux collectors, remote push, and any public release remain gated.
+The first vertical slice can be executed from the written plan.

@@ -1,6 +1,6 @@
 # Quipu Project Dashboard
 
-> Status: first vertical slice in progress
+> Status: first vertical slice implemented
 > Date: 2026-07-07
 > Owner: chquan
 
@@ -35,7 +35,7 @@ The second valuable question is:
 | Done | Team direction selected | User selected multi-device/team scope |
 | Done | Design spec | `docs/superpowers/specs/2026-07-07-team-health-investigator-design.md` |
 | Done | Implementation plan | `docs/superpowers/plans/2026-07-07-team-ingest-vertical-slice.md` |
-| In progress | First vertical slice execution | Server ingest, SQLite, fixtures, fleet overview UI |
+| Done | First vertical slice execution | Server ingest, SQLite, fixtures, fleet overview UI |
 | Pending | Remote push | User said later; no remote configured yet |
 
 ## Open Decisions

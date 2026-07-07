@@ -2,7 +2,7 @@ from collections.abc import AsyncIterator, Iterator
 from contextlib import asynccontextmanager
 from pathlib import Path
 import sqlite3
-from threading import RLock
+from threading import Lock
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Response, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -29,7 +29,7 @@ def create_app(
     db_path = database_path or settings.database_path
     token = dev_agent_token or settings.dev_agent_token
     conn = initialize(connect(db_path))
-    db_lock = RLock()
+    db_lock = Lock()
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:

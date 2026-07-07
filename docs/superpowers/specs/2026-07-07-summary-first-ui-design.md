@@ -48,9 +48,9 @@ Detect -> Triage -> Investigate -> Hypothesize -> Act -> Verify -> Report
 
 ## Visual References
 
-The UI includes a separate maker/reference band with public Dogu Robotics,
-Dogu X, and Physical AI portfolio materials. The band provides provenance and
-domain context without turning the app into a marketing landing page.
+The UI includes a collapsed maker/reference drawer with public Dogu Robotics,
+Dogu X, and Physical AI portfolio materials. The drawer provides provenance and
+domain context without competing with the investigation surface.
 
 To keep the repository light, v0.3.0 uses public GitHub raw URLs for those
 visuals instead of committing large binary image assets.

@@ -40,7 +40,7 @@ Implemented:
 - Summary-first focus board.
 - CTA routing to evidence, action recording, and verification.
 - Hover/focus expansion for detailed panels.
-- Creator/reference visual band using public Dogu/Physical AI materials.
+- Collapsed creator/reference drawer using public Dogu/Physical AI materials.
 
 Remaining:
 

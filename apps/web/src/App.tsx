@@ -1,15 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import {
-  Activity,
-  Bot,
   CheckCircle2,
   ChevronRight,
   ClipboardCheck,
   ExternalLink,
   Gauge,
   MousePointer2,
-  ShieldCheck,
   Thermometer,
   UserRound,
 } from 'lucide-react';
@@ -216,7 +213,13 @@ export default function App() {
           <p className="eyebrow">Team workstation health investigator</p>
           <h1>Quipu</h1>
         </div>
-        <p className="generated">Detect - triage - verify with evidence</p>
+        <div className="topbar-meta">
+          <p className="generated">Detect - triage - verify with evidence</p>
+          <a className="creator-chip" href="https://github.com/chquandogong/CHENGHAO-QUAN" target="_blank" rel="noreferrer">
+            <UserRound aria-hidden="true" />
+            Made by Dr. 권성호
+          </a>
+        </div>
       </header>
 
       <section className="flow-rail" aria-label="DTIHAVR workflow">
@@ -231,47 +234,6 @@ export default function App() {
               {stage}
             </span>
           ))}
-        </div>
-      </section>
-
-      <section className="maker-band" aria-label="Creator and reference visuals">
-        <div className="maker-copy">
-          <span><UserRound aria-hidden="true" /> Made by</span>
-          <strong>Dr. 권성호 (QUAN CHENGHAO)</strong>
-          <p>Dogu Robotics · Dogu X · Physical AI</p>
-          <a href="https://github.com/chquandogong/CHENGHAO-QUAN" target="_blank" rel="noreferrer">
-            <ExternalLink aria-hidden="true" />
-            Creator profile
-          </a>
-        </div>
-        <div className="visual-carousel" aria-label="Reference carousel">
-          {makerImages.map((image) => (
-            <figure className="visual-slide" key={image.title}>
-              <img alt={image.title} loading="lazy" src={image.src} />
-              <figcaption>
-                <strong>{image.title}</strong>
-                <span>{image.caption}</span>
-              </figcaption>
-            </figure>
-          ))}
-        </div>
-        <div className="signal-turntable" aria-label="Signal turntable">
-          <div>
-            <Thermometer aria-hidden="true" />
-            <span>Thermal</span>
-          </div>
-          <div>
-            <Activity aria-hidden="true" />
-            <span>Load</span>
-          </div>
-          <div>
-            <ShieldCheck aria-hidden="true" />
-            <span>Events</span>
-          </div>
-          <div>
-            <Bot aria-hidden="true" />
-            <span>Fleet</span>
-          </div>
         </div>
       </section>
 
@@ -482,6 +444,34 @@ export default function App() {
           </article>
         </section>
       </section>
+
+      <details className="reference-drawer">
+        <summary>
+          <UserRound aria-hidden="true" />
+          Creator and visual references
+        </summary>
+        <div className="reference-body">
+          <div className="reference-copy">
+            <strong>Dr. 권성호 (QUAN CHENGHAO)</strong>
+            <span>Dogu Robotics · Dogu X · Physical AI</span>
+            <a href="https://github.com/chquandogong/CHENGHAO-QUAN" target="_blank" rel="noreferrer">
+              <ExternalLink aria-hidden="true" />
+              Creator profile
+            </a>
+          </div>
+          <div className="visual-carousel" aria-label="Reference carousel">
+            {makerImages.map((image) => (
+              <figure className="visual-slide" key={image.title}>
+                <img alt={image.title} loading="lazy" src={image.src} />
+                <figcaption>
+                  <strong>{image.title}</strong>
+                  <span>{image.caption}</span>
+                </figcaption>
+              </figure>
+            ))}
+          </div>
+        </div>
+      </details>
     </main>
   );
 }

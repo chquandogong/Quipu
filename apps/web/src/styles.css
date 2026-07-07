@@ -31,6 +31,34 @@ svg {
   margin-bottom: 18px;
 }
 
+.topbar-meta {
+  display: grid;
+  justify-items: end;
+  gap: 8px;
+}
+
+.creator-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  min-height: 28px;
+  padding: 0 10px;
+  border: 1px solid #d8dde6;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #344054;
+  font-size: 12px;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.creator-chip svg {
+  width: 14px;
+  height: 14px;
+  color: #0f766e;
+}
+
 .eyebrow {
   margin: 0 0 6px;
   color: #0f766e;
@@ -106,18 +134,7 @@ h2 {
   color: #134e4a;
 }
 
-.maker-band {
-  display: grid;
-  grid-template-columns: minmax(250px, 0.9fr) minmax(320px, 1.2fr) minmax(190px, 0.75fr);
-  gap: 14px;
-  align-items: stretch;
-  margin-bottom: 16px;
-  min-width: 0;
-}
-
-.maker-copy,
 .visual-slide,
-.signal-turntable,
 .focus-card {
   border: 1px solid #d8dde6;
   border-radius: 8px;
@@ -125,14 +142,6 @@ h2 {
   box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
 }
 
-.maker-copy {
-  display: grid;
-  align-content: center;
-  gap: 9px;
-  padding: 16px;
-}
-
-.maker-copy span,
 .focus-card span {
   display: inline-flex;
   align-items: center;
@@ -143,34 +152,7 @@ h2 {
   text-transform: uppercase;
 }
 
-.maker-copy span svg,
 .focus-card span svg {
-  width: 15px;
-  height: 15px;
-}
-
-.maker-copy strong {
-  font-size: 20px;
-}
-
-.maker-copy p {
-  margin-bottom: 0;
-  color: #475467;
-  line-height: 1.45;
-}
-
-.maker-copy a {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  width: fit-content;
-  color: #175cd3;
-  font-size: 13px;
-  font-weight: 800;
-  text-decoration: none;
-}
-
-.maker-copy a svg {
   width: 15px;
   height: 15px;
 }
@@ -217,77 +199,6 @@ h2 {
 .visual-slide figcaption span {
   color: #667085;
   font-size: 12px;
-}
-
-.signal-turntable {
-  position: relative;
-  min-height: 188px;
-  overflow: hidden;
-  background: #111827;
-}
-
-.signal-turntable::before {
-  content: "";
-  position: absolute;
-  inset: 42px;
-  border: 1px solid rgba(255, 255, 255, 0.22);
-  border-radius: 50%;
-}
-
-.signal-turntable::after {
-  content: "";
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 56px;
-  height: 56px;
-  border: 8px solid #f5f7fa;
-  border-radius: 50%;
-  transform: translate(-50%, -50%);
-}
-
-.signal-turntable div {
-  position: absolute;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 82px;
-  padding: 7px 9px;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.1);
-  color: #ffffff;
-  font-size: 12px;
-  font-weight: 800;
-}
-
-.signal-turntable svg {
-  width: 15px;
-  height: 15px;
-}
-
-.signal-turntable div:nth-child(1) {
-  top: 16px;
-  left: 18px;
-  color: #fedf89;
-}
-
-.signal-turntable div:nth-child(2) {
-  top: 16px;
-  right: 18px;
-  color: #a6f4c5;
-}
-
-.signal-turntable div:nth-child(3) {
-  right: 18px;
-  bottom: 16px;
-  color: #b2ddff;
-}
-
-.signal-turntable div:nth-child(4) {
-  bottom: 16px;
-  left: 18px;
-  color: #fecdc9;
 }
 
 .summary {
@@ -383,7 +294,8 @@ h2 {
 }
 
 .focus-card button:focus-visible,
-.maker-copy a:focus-visible,
+.creator-chip:focus-visible,
+.reference-drawer a:focus-visible,
 .intervention-form button:focus-visible,
 .queue-item:focus-visible {
   outline: 3px solid rgba(15, 118, 110, 0.24);
@@ -776,8 +688,78 @@ code {
   text-align: right;
 }
 
+.reference-drawer {
+  margin-top: 18px;
+  border: 1px solid #d8dde6;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.05);
+}
+
+.reference-drawer summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 0 14px;
+  color: #344054;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 850;
+  list-style: none;
+}
+
+.reference-drawer summary::-webkit-details-marker {
+  display: none;
+}
+
+.reference-drawer summary svg {
+  width: 15px;
+  height: 15px;
+  color: #0f766e;
+}
+
+.reference-body {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.35fr) minmax(0, 1fr);
+  gap: 12px;
+  padding: 0 14px 14px;
+}
+
+.reference-copy {
+  display: grid;
+  align-content: start;
+  gap: 7px;
+  padding-top: 6px;
+}
+
+.reference-copy strong {
+  font-size: 14px;
+}
+
+.reference-copy span {
+  color: #667085;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.reference-copy a {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  width: fit-content;
+  color: #175cd3;
+  font-size: 12px;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.reference-copy a svg {
+  width: 14px;
+  height: 14px;
+}
+
 @media (max-width: 1050px) {
-  .maker-band,
   .focus-board,
   .investigation-layout,
   .detail-grid {
@@ -799,6 +781,10 @@ code {
     flex-direction: column;
   }
 
+  .topbar-meta {
+    justify-items: start;
+  }
+
   .summary,
   .focus-board,
   .flow-rail div,
@@ -812,12 +798,12 @@ code {
     display: none;
   }
 
-  .maker-band {
-    grid-template-columns: 1fr;
-  }
-
   .visual-carousel {
     grid-auto-columns: minmax(220px, 78%);
+  }
+
+  .reference-body {
+    grid-template-columns: 1fr;
   }
 
   .collapsible-panel {

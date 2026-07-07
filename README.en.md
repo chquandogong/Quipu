@@ -52,7 +52,7 @@ navigation expands it. The main CTAs are fixed as `Review evidence`,
 `Record action`, and `Verify result` so the next move stays obvious.
 
 Public Dogu Robotics, Dogu X, and Physical AI references plus creator details
-sit in a separate visual band: useful context without interrupting the
+sit in a collapsed secondary drawer: useful context without interrupting the
 investigation workflow.
 
 ## Why Quipu Exists
@@ -111,7 +111,7 @@ Implemented:
 - Before/after verification results for interventions
 - Vite React investigation-first UI
 - Summary-first focus board with hover/focus expansion panels
-- Creator and Physical AI reference visual band
+- Collapsed creator and Physical AI reference drawer
 - GitHub Actions CI for server, collector, and web checks
 
 Next direction:

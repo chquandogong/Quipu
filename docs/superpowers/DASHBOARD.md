@@ -46,7 +46,7 @@ The second valuable question is:
 | Done | Intervention records | API, SQLite persistence, investigation detail, React UI |
 | Done | Before/after intervention verification | 30-minute metric/event windows, deterministic result, UI comparison |
 | Done | Summary-first UI polish | Focus board, CTA routing, hover/focus expansion panels |
-| Done | Maker/reference visual band | Public Dogu Robotics, Dogu X, Physical AI assets and creator profile link |
+| Done | Collapsed maker/reference drawer | Public Dogu Robotics, Dogu X, Physical AI assets and creator profile link |
 | Approved | Private remote push and release | User requested commit, tag, push, and release on 2026-07-07 |
 | Approved | Public repository visibility after audit | User approved public visibility on 2026-07-07 |
 

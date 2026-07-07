@@ -24,7 +24,7 @@ Included:
 - Before/after intervention verification.
 - Verification result UI.
 - Summary-first focus board and hover/focus expansion panels.
-- Creator/reference visual band with public Dogu Robotics, Dogu X, and
+- Collapsed creator/reference drawer with public Dogu Robotics, Dogu X, and
   Physical AI materials.
 - Project docs, GitHub templates, contribution notes, and security policy.
 

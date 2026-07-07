@@ -18,7 +18,7 @@ Evidence-backed intervention verification release.
   `Verify result` CTAs.
 - Hover/focus expansion panels for evidence, hypotheses, interventions,
   verification, and report detail.
-- Creator/reference visual band using public Dogu Robotics, Dogu X, and
+- Collapsed creator/reference drawer using public Dogu Robotics, Dogu X, and
   Physical AI portfolio assets.
 - Lucide icon treatment for action buttons and signal surfaces.
 - v0.3.0 design and implementation plan documents.
@@ -30,6 +30,8 @@ Evidence-backed intervention verification release.
 - Interventions in the detail API may include a derived `verification_result`.
 - Investigation UI now leads with what to inspect, what to do, and how to
   verify, instead of presenting every panel at full height.
+- Creator/reference visuals now stay secondary so they do not compete with
+  investigation decisions.
 - README editions now list intervention verification as implemented.
 
 ### Fixed

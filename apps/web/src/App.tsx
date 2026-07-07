@@ -1,12 +1,17 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import {
+  Activity,
   CheckCircle2,
   ChevronRight,
   ClipboardCheck,
   ExternalLink,
   Gauge,
+  HardDrive,
+  HelpCircle,
+  Info,
   MousePointer2,
+  Tag,
   Thermometer,
   UserRound,
 } from 'lucide-react';
@@ -16,6 +21,7 @@ import type { FleetOverview, InvestigationDetail, InvestigationItem, RiskLevel, 
 import './styles.css';
 
 const flowStages = ['Detect', 'Triage', 'Investigate', 'Hypothesize', 'Act', 'Verify', 'Report'];
+const appVersion = 'v0.3.1';
 
 const makerImages = [
   {
@@ -42,12 +48,54 @@ const riskLabels: Record<RiskLevel, string> = {
   stale: 'Stale',
 };
 
+const keyMetrics = [
+  {
+    name: 'cpu.package_temp_c',
+    label: 'CPU Package',
+    shortLabel: 'CPU',
+    ariaLabel: 'CPU package temperature',
+    Icon: Thermometer,
+    definition: 'CPU package sensor reading for the selected device.',
+    window: 'Latest collector sample; compare against nearby samples before calling a trend.',
+    reading: 'Above sustained mid-80s Celsius is a thermal warning on most laptops.',
+    nextCheck: 'Check fan airflow, table clearance, workload, and new kernel thermal warnings.',
+  },
+  {
+    name: 'cpu.load_1m',
+    label: 'Load Average',
+    shortLabel: 'Load',
+    ariaLabel: '1 minute load average',
+    Icon: Activity,
+    definition: 'Average runnable or waiting workload over the last 1 minute.',
+    window: '1 minute Linux load average, not an instant CPU percent reading.',
+    reading: 'Compare with CPU cores and thermal trend before deciding it is overload.',
+    nextCheck: 'If load is high and temperature climbs, inspect active jobs and cooling together.',
+  },
+  {
+    name: 'nvme.temp_c',
+    label: 'NVMe SSD',
+    shortLabel: 'NVMe',
+    ariaLabel: 'NVMe SSD temperature',
+    Icon: HardDrive,
+    definition: 'Latest storage device temperature reported by the selected device.',
+    window: 'Latest collector sample from storage telemetry.',
+    reading: 'Low 40s Celsius is usually normal; sustained high values can affect reliability.',
+    nextCheck: 'Compare with I/O workload, chassis heat, and SMART or kernel storage warnings.',
+  },
+];
+
 function metricValue(detail: InvestigationDetail | null, name: string): string {
   const metric = detail?.fleet_context.latest_metrics[name];
   if (!metric) return 'Unavailable';
   if (metric.unit === 'celsius') return `${metric.value.toFixed(1)}C`;
   if (metric.unit === 'percent') return `${metric.value.toFixed(1)}%`;
   return `${metric.value}`;
+}
+
+function observedTime(detail: InvestigationDetail | null, name: string): string {
+  const observedAt = detail?.fleet_context.latest_metrics[name]?.observed_at;
+  if (!observedAt) return 'No sample time';
+  return new Date(observedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
 function priorityClass(priority: InvestigationItem['priority']): string {
@@ -88,6 +136,33 @@ function VerificationResultView({ result }: { result: VerificationResult }) {
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+function MetricCard({ detail, metric }: { detail: InvestigationDetail; metric: (typeof keyMetrics)[number] }) {
+  return (
+    <div className="metric-card">
+      <div className="metric-topline">
+        <dt className="metric-name">
+          <metric.Icon aria-hidden="true" />
+          {metric.label}
+        </dt>
+        <div className="metric-help">
+          <button aria-describedby={`${metric.name}-help`} aria-label={`Explain ${metric.ariaLabel} metric`} type="button">
+            <HelpCircle aria-hidden="true" />
+          </button>
+          <div className="metric-tooltip" id={`${metric.name}-help`} role="tooltip">
+            <strong>{metric.ariaLabel}</strong>
+            <span>Definition: {metric.definition}</span>
+            <span>Window: {metric.window}</span>
+            <span>How to read: {metric.reading}</span>
+            <span>Next check: {metric.nextCheck}</span>
+          </div>
+        </div>
+      </div>
+      <dd>{metricValue(detail, metric.name)}</dd>
+      <span className="metric-observed">{metric.shortLabel} / observed {observedTime(detail, metric.name)}</span>
     </div>
   );
 }
@@ -215,10 +290,20 @@ export default function App() {
         </div>
         <div className="topbar-meta">
           <p className="generated">Detect - triage - verify with evidence</p>
-          <a className="creator-chip" href="https://github.com/chquandogong/CHENGHAO-QUAN" target="_blank" rel="noreferrer">
-            <UserRound aria-hidden="true" />
-            Made by Dr. 권성호
-          </a>
+          <div className="meta-chips" aria-label="Project metadata">
+            <a className="meta-chip" href="https://github.com/chquandogong/CHENGHAO-QUAN" target="_blank" rel="noreferrer">
+              <UserRound aria-hidden="true" />
+              Made by Dr. 권성호
+            </a>
+            <span className="meta-chip">
+              <Info aria-hidden="true" />
+              About: workstation health investigation
+            </span>
+            <span className="meta-chip">
+              <Tag aria-hidden="true" />
+              Version {appVersion}
+            </span>
+          </div>
         </div>
       </header>
 
@@ -238,10 +323,10 @@ export default function App() {
       </section>
 
       <section className="summary" aria-label="Fleet summary">
-        <div><span>{overview?.summary.total ?? 0}</span><strong>Total</strong></div>
-        <div><span>{overview?.summary.critical ?? 0}</span><strong>Critical</strong></div>
-        <div><span>{overview?.summary.warning ?? 0}</span><strong>Warnings</strong></div>
-        <div><span>{queue.length}</span><strong>Queue</strong></div>
+        <div><span>{overview?.summary.total ?? 0}</span><strong>Total devices</strong><em>fleet scope</em></div>
+        <div><span>{overview?.summary.critical ?? 0}</span><strong>Critical</strong><em>needs action now</em></div>
+        <div><span>{overview?.summary.warning ?? 0}</span><strong>Warnings</strong><em>watch closely</em></div>
+        <div><span>{queue.length}</span><strong>Queue</strong><em>open investigations</em></div>
       </section>
 
       <section className="focus-board" aria-label="Current investigation focus">
@@ -310,9 +395,9 @@ export default function App() {
             <p className="lead">{detail?.item.evidence ?? 'Choose an item from the investigation queue.'}</p>
             {detail && (
               <dl className="metric-strip">
-                <div><dt>CPU</dt><dd>{metricValue(detail, 'cpu.package_temp_c')}</dd></div>
-                <div><dt>Load</dt><dd>{metricValue(detail, 'cpu.load_1m')}</dd></div>
-                <div><dt>NVMe</dt><dd>{metricValue(detail, 'nvme.temp_c')}</dd></div>
+                {keyMetrics.map((metric) => (
+                  <MetricCard detail={detail} key={metric.name} metric={metric} />
+                ))}
               </dl>
             )}
           </article>

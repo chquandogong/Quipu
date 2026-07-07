@@ -1,7 +1,7 @@
 # Summary-First Investigation UI Design
 
 > Date: 2026-07-07
-> Release: v0.3.0
+> Release: v0.3.1
 > Status: implemented
 
 ## Problem
@@ -22,7 +22,10 @@ let the operator expand evidence as needed.
 
 ## Chosen Approach
 
-Use a summary-first surface with three always-visible focus cards:
+Use an `Investigation Lens` surface. A plain card dashboard was too generic,
+and a decorative mission-control treatment would make the product feel heavier
+than the lightweight local-first goal. The chosen approach keeps one incident
+central with three always-visible focus cards:
 
 1. **Look first**: the strongest current signal and evidence.
 2. **Next action**: the recommended human action to record.
@@ -41,6 +44,10 @@ Detect -> Triage -> Investigate -> Hypothesize -> Act -> Verify -> Report
 - `Review evidence` routes to the evidence timeline.
 - `Record action` routes to the intervention form.
 - `Verify result` routes to the before/after verification panel.
+- `Made by`, `About`, and `Version` remain visible as compact metadata chips.
+- CPU package temperature, 1-minute load average, and NVMe temperature expose
+  hover/focus metric help with `Definition`, `Window`, `How to read`, and
+  `Next check`.
 - Evidence, hypotheses, interventions, verification, and report panels expose a
   short summary first, then expand to full detail.
 - Mobile view disables the collapsed height so touch users do not lose access

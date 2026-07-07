@@ -3,7 +3,7 @@
 > Status: release candidate approved for GitHub release and public visibility after audit
 > Date: 2026-07-07
 > Owner: chquan
-> Release: v0.3.0
+> Release: v0.3.1
 
 ## Scope
 
@@ -23,9 +23,12 @@ Included:
 - Intervention recording UI.
 - Before/after intervention verification.
 - Verification result UI.
-- Summary-first focus board and hover/focus expansion panels.
+- Investigation Lens focus board and hover/focus expansion panels.
+- Hover/focus metric explanations for CPU package temperature, 1-minute load
+  average, and NVMe temperature.
 - Collapsed creator/reference drawer with public Dogu Robotics, Dogu X, and
   Physical AI materials.
+- Visible Made by, About, and Version metadata chips.
 - Project docs, GitHub templates, contribution notes, and security policy.
 
 Excluded:
@@ -99,8 +102,8 @@ Check after release:
 
 - GitHub repository URL resolves.
 - `main` branch is pushed.
-- `v0.3.0` tag exists locally and remotely.
-- GitHub release exists for `v0.3.0`.
+- `v0.3.1` tag exists locally and remotely.
+- GitHub release exists for `v0.3.1`.
 - Repository visibility is public after audit.
 
 ## Documents
@@ -108,12 +111,12 @@ Check after release:
 - README: current.
 - Dashboard: current release state recorded.
 - Roadmap: intervention verification slice recorded.
-- Changelog: `v0.3.0` prepared.
+- Changelog: `v0.3.1` prepared.
 - Security policy: present.
 
 ## Final Judgment
 
-GitHub release is allowed for `v0.3.0`.
+GitHub release is allowed for `v0.3.1`.
 
 Public repository visibility is allowed after sensitive-content audit.
 Package publishing, production deployment, destructive git operations, and

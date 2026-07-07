@@ -37,10 +37,13 @@ Implemented:
 - Suggested actions.
 - Verification summary.
 - Report draft.
-- Summary-first focus board.
+- Investigation Lens focus board.
+- Metric help tooltips for definition, time window, reading guidance, and next
+  check.
 - CTA routing to evidence, action recording, and verification.
 - Hover/focus expansion for detailed panels.
 - Collapsed creator/reference drawer using public Dogu/Physical AI materials.
+- Visible Made by, About, and Version metadata chips.
 
 Remaining:
 

@@ -2,6 +2,32 @@
 
 All notable changes to Quipu are documented in this file.
 
+## v0.3.1 - 2026-07-07
+
+Metadata, metric explanation, and visual investigation-lens patch after the
+v0.3.0 tag.
+
+### Changed
+
+- Kept `Made by`, `About`, and `Version` visible in the header as compact
+  metadata chips.
+- Reworked the first viewport toward an `Investigation Lens` visual treatment:
+  stronger fleet summary cards, a clearer current-incident focus board, and a
+  more distinctive selected-investigation panel.
+- Added hover/focus metric help for CPU package temperature, 1-minute load
+  average, and NVMe temperature with definition, time window, reading guidance,
+  and next-check text.
+- Kept large creator/reference images in the collapsed secondary drawer so they
+  do not compete with the investigation workflow.
+- Updated package and app versions to `0.3.1`.
+
+### Verified
+
+- Server test suite: 21 tests passed.
+- Collector test suite: 1 test passed.
+- Web test suite: 1 test passed.
+- Web production build succeeded.
+
 ## v0.3.0 - 2026-07-07
 
 Evidence-backed intervention verification release.

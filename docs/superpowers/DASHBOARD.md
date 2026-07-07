@@ -1,6 +1,6 @@
 # Quipu Project Dashboard
 
-> Status: v0.3.0 release track
+> Status: v0.3.1 release track
 > Date: 2026-07-07
 > Owner: chquan
 
@@ -45,8 +45,10 @@ The second valuable question is:
 | Done | Read-only collector foundation | `apps/collector` one-shot Linux observation batch |
 | Done | Intervention records | API, SQLite persistence, investigation detail, React UI |
 | Done | Before/after intervention verification | 30-minute metric/event windows, deterministic result, UI comparison |
-| Done | Summary-first UI polish | Focus board, CTA routing, hover/focus expansion panels |
+| Done | Investigation Lens UI polish | Stronger first viewport, CTA routing, hover/focus expansion panels |
+| Done | Metric explanation tooltips | CPU package, 1-minute load average, and NVMe cards explain definition/window/reading/next check |
 | Done | Collapsed maker/reference drawer | Public Dogu Robotics, Dogu X, Physical AI assets and creator profile link |
+| Done | Visible metadata chips | Made by, About, and Version remain visible without dominating the first viewport |
 | Approved | Private remote push and release | User requested commit, tag, push, and release on 2026-07-07 |
 | Approved | Public repository visibility after audit | User approved public visibility on 2026-07-07 |
 

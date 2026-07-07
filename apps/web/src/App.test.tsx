@@ -167,6 +167,13 @@ describe('App', () => {
     expect(screen.getByText('Detect -> Triage -> Investigate -> Hypothesize -> Act -> Verify -> Report')).toBeInTheDocument();
     expect(screen.getByText('Dr. 권성호 (QUAN CHENGHAO)')).toBeInTheDocument();
     expect(screen.getByText('Dogu Robotics · Dogu X · Physical AI')).toBeInTheDocument();
+    expect(screen.getByText('About: workstation health investigation')).toBeInTheDocument();
+    expect(screen.getByText('Version v0.3.1')).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Explain CPU package temperature metric' })).toBeInTheDocument());
+    expect(screen.getByText('Definition: CPU package sensor reading for the selected device.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Explain 1 minute load average metric' })).toBeInTheDocument();
+    expect(screen.getByText('Definition: Average runnable or waiting workload over the last 1 minute.')).toBeInTheDocument();
+    expect(screen.getByText('How to read: Compare with CPU cores and thermal trend before deciding it is overload.')).toBeInTheDocument();
     expect(screen.getByText('build-xps')).toBeInTheDocument();
     expect(screen.getByText('Top hypotheses')).toBeInTheDocument();
     expect(screen.getByText('Action plan')).toBeInTheDocument();

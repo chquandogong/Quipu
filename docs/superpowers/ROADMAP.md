@@ -37,10 +37,13 @@ Implemented:
 - Suggested actions.
 - Verification summary.
 - Report draft.
+- Summary-first focus board.
+- CTA routing to evidence, action recording, and verification.
+- Hover/focus expansion for detailed panels.
+- Creator/reference visual band using public Dogu/Physical AI materials.
 
 Remaining:
 
-- Before/after verification windows.
 - Assignee, owner, and team handoff states.
 
 ## Phase 3: Native Read-Only Agent
@@ -69,7 +72,7 @@ Remaining:
 
 ## Phase 4: Intervention Verification
 
-Status: action recording foundation implemented.
+Status: deterministic verification slice implemented.
 
 Goal: prove whether a human action helped.
 
@@ -78,13 +81,17 @@ Implemented:
 - Persistent action history.
 - Investigation detail includes recorded interventions.
 - UI form for recording human actions.
+- 30-minute before/after metric and event windows.
+- CPU package temperature comparison.
+- Load context comparison.
+- Warning recurrence comparison.
+- Verification result: helped, unclear, worse, or insufficient data.
 
 Remaining:
 
-- Before/after comparison windows.
-- Load-adjusted thermal comparison.
-- Event recurrence comparison.
-- Verification result: helped, unclear, or worse.
+- Configurable verification windows.
+- Materialized historical verification audit trail.
+- Longer-term baseline and recurrence analytics.
 
 ## Phase 5: Team Pattern Explorer
 
@@ -106,5 +113,6 @@ Goal: make Quipu trustworthy for real team use.
 - Redaction controls.
 - Retention policy.
 - Role-aware UI.
+- Local image asset strategy or cache for public reference visuals.
 - Backup and restore guide.
 - Optional Postgres adapter.

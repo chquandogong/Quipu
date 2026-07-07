@@ -1,6 +1,6 @@
 # Quipu Project Dashboard
 
-> Status: v0.2.1 private release track
+> Status: v0.3.0 release track
 > Date: 2026-07-07
 > Owner: chquan
 
@@ -44,7 +44,11 @@ The second valuable question is:
 | Done | CI runtime patch | GitHub Actions major versions updated for v0.2.1 |
 | Done | Read-only collector foundation | `apps/collector` one-shot Linux observation batch |
 | Done | Intervention records | API, SQLite persistence, investigation detail, React UI |
+| Done | Before/after intervention verification | 30-minute metric/event windows, deterministic result, UI comparison |
+| Done | Summary-first UI polish | Focus board, CTA routing, hover/focus expansion panels |
+| Done | Maker/reference visual band | Public Dogu Robotics, Dogu X, Physical AI assets and creator profile link |
 | Approved | Private remote push and release | User requested commit, tag, push, and release on 2026-07-07 |
+| Approved | Public repository visibility after audit | User approved public visibility on 2026-07-07 |
 
 ## Open Decisions
 
@@ -58,6 +62,6 @@ The second valuable question is:
 
 ## Gate
 
-Collector daemonization, before/after verification windows, public release,
-package publishing, production deployment, destructive git operations, and any
-remote repair capability remain gated.
+Collector daemonization, package publishing, production deployment, destructive
+git operations, and any remote repair capability remain gated. Public repository
+visibility is allowed only after a final sensitive-content audit passes.

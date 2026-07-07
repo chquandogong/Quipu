@@ -165,14 +165,19 @@ describe('App', () => {
 
     await waitFor(() => expect(screen.getByText('Investigation Queue')).toBeInTheDocument());
     expect(screen.getByText('Detect -> Triage -> Investigate -> Hypothesize -> Act -> Verify -> Report')).toBeInTheDocument();
+    expect(screen.getByText('Dr. 권성호 (QUAN CHENGHAO)')).toBeInTheDocument();
+    expect(screen.getByText('Dogu Robotics · Dogu X · Physical AI')).toBeInTheDocument();
     expect(screen.getByText('build-xps')).toBeInTheDocument();
     expect(screen.getByText('Top hypotheses')).toBeInTheDocument();
     expect(screen.getByText('Action plan')).toBeInTheDocument();
     expect(screen.getByText('Recorded interventions')).toBeInTheDocument();
-    expect(screen.getByText('Verification')).toBeInTheDocument();
+    expect(screen.getAllByText('Verification').length).toBeGreaterThan(0);
+    expect(screen.getByRole('button', { name: 'Review evidence' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Record action' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Verify result' })).toBeInTheDocument();
     await waitFor(() => expect(screen.getAllByText('-17.4C').length).toBeGreaterThan(0));
     expect(screen.getAllByText('Report').length).toBeGreaterThan(0);
-    await waitFor(() => expect(screen.getByText('Check cooling and workload')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getAllByText('Check cooling and workload').length).toBeGreaterThan(0));
 
     fireEvent.change(screen.getByLabelText('Intervention label'), { target: { value: 'Raised rear edge' } });
     fireEvent.change(screen.getByLabelText('Intervention description'), {

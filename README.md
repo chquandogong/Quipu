@@ -2,7 +2,7 @@
 
 <p align="center">
   <img alt="CI" src="https://github.com/chquandogong/Quipu/actions/workflows/ci.yml/badge.svg">
-  <img alt="Version" src="https://img.shields.io/badge/version-v0.2.1-2f6f7e">
+  <img alt="Version" src="https://img.shields.io/badge/version-v0.3.0-2f6f7e">
   <img alt="Status" src="https://img.shields.io/badge/status-local--first%20prototype-5b6b73">
   <img alt="License" src="https://img.shields.io/badge/license-not%20selected-lightgrey">
 </p>
@@ -38,6 +38,23 @@ Quipu는 여러 대의 Linux 노트북과 개발 워크스테이션에서 발생
 ```text
 Detect -> Triage -> Investigate -> Hypothesize -> Act -> Verify -> Report
 ```
+
+## UI/UX 원칙
+
+Quipu의 화면은 모든 로그와 지표를 한 번에 펼치지 않습니다. 먼저
+세 가지 질문만 보이게 합니다.
+
+- 무엇을 먼저 봐야 하는가?
+- 지금 어떤 행동을 기록해야 하는가?
+- 그 행동이 실제로 효과가 있었는가?
+
+상세 근거는 요약 상태로 접혀 있다가 마우스 접근, 키보드 포커스, 버튼
+클릭 흐름에서 확장됩니다. 핵심 CTA는 `Review evidence`, `Record action`,
+`Verify result`로 고정해 사용자가 다음 행동을 놓치지 않게 합니다.
+
+Dogu Robotics, Dogu X, Physical AI 공개 레퍼런스와 제작자 정보는 별도
+비주얼 밴드로 분리해, 제품의 맥락은 보이되 조사 업무 표면은 방해하지
+않도록 설계했습니다.
 
 ## 왜 Quipu인가
 
@@ -92,12 +109,14 @@ Quipu는 초기 로컬 우선 프로토타입입니다.
 - Investigation queue/detail API
 - 읽기 전용 one-shot Linux collector
 - 조사 항목별 intervention 기록
+- intervention 전후 검증 결과
 - Vite React 조사 중심 UI
+- 요약 우선 focus board와 hover/focus 확장 패널
+- 제작자/Physical AI 레퍼런스 비주얼 밴드
 - 서버, 컬렉터, 웹 테스트 및 빌드용 GitHub Actions CI
 
 다음 방향:
 
-- 기록된 intervention의 전후 비교 창
 - supervised local agent 형태의 collector
 - 모델, 커널, 드라이버, 저장장치, Wi-Fi, 워크로드, 물리적 환경별 팀 패턴 탐색
 - 역할 기반 팀 워크플로, redaction, retention policy

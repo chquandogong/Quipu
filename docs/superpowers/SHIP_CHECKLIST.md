@@ -1,9 +1,9 @@
 # Quipu Ship Checklist
 
-> Status: release candidate approved for private GitHub release
+> Status: release candidate approved for GitHub release and public visibility after audit
 > Date: 2026-07-07
 > Owner: chquan
-> Release: v0.2.1
+> Release: v0.3.0
 
 ## Scope
 
@@ -21,19 +21,24 @@ Included:
 - Read-only one-shot Linux collector.
 - Persistent intervention records.
 - Intervention recording UI.
+- Before/after intervention verification.
+- Verification result UI.
+- Summary-first focus board and hover/focus expansion panels.
+- Creator/reference visual band with public Dogu Robotics, Dogu X, and
+  Physical AI materials.
 - Project docs, GitHub templates, contribution notes, and security policy.
 
 Excluded:
 
-- Before/after verification windows.
 - Long-running collector daemon.
 - Remote repair or remote command execution.
 - AI-generated conclusions.
-- Public release.
+- Package publishing.
+- Production deployment.
 
 ## Tests
 
-- Server tests: `pytest -v` -> 16 passed, 1 Starlette deprecation warning.
+- Server tests: `pytest -v` -> 21 passed, 1 Starlette deprecation warning.
 - Collector tests: `pytest -v` -> 1 passed.
 - Web tests: `npm test` -> 1 passed.
 - Web build: `npm run build` -> succeeded.
@@ -52,16 +57,20 @@ Known risks:
   machine.
 - Fan RPM collection remains out of scope and may be unreliable on some laptops.
 - Current analysis is deterministic and intentionally conservative.
-- GitHub repository remains private.
+- Verification uses a fixed 30-minute window.
+- `npm ci` reports existing transitive web dependency vulnerabilities; no public
+  production deployment is included in this release.
+- UI reference images are loaded from public GitHub raw URLs to avoid bundling
+  heavy binary assets in the repository.
 
 Approved risks:
 
 - User explicitly requested commit, tag, push, and release on 2026-07-07.
-- Private GitHub release is approved for this release cycle.
+- GitHub release is approved for this release cycle.
+- Public repository visibility is approved after sensitive-content audit.
 
 Unapproved risks:
 
-- Public repository or public release.
 - Package publishing.
 - Production deployment.
 - Remote execution on team machines.
@@ -71,7 +80,7 @@ Unapproved risks:
 Rollback method:
 
 - Delete or supersede the private GitHub release if the release note is wrong.
-- Move forward with a patch tag such as `v0.2.2` for code or documentation fixes.
+- Move forward with a patch tag such as `v0.3.1` for code or documentation fixes.
 - Avoid force-push and history rewrite.
 
 Rollback owner:
@@ -90,20 +99,22 @@ Check after release:
 
 - GitHub repository URL resolves.
 - `main` branch is pushed.
-- `v0.2.1` tag exists locally and remotely.
-- GitHub release exists for `v0.2.1`.
+- `v0.3.0` tag exists locally and remotely.
+- GitHub release exists for `v0.3.0`.
+- Repository visibility is public after audit.
 
 ## Documents
 
 - README: current.
 - Dashboard: current release state recorded.
-- Roadmap: collector and intervention foundations recorded.
-- Changelog: `v0.2.1` prepared.
+- Roadmap: intervention verification slice recorded.
+- Changelog: `v0.3.0` prepared.
 - Security policy: present.
 
 ## Final Judgment
 
-Private GitHub release is allowed for `v0.2.1`.
+GitHub release is allowed for `v0.3.0`.
 
-Public release, package publishing, production deployment, and destructive git
-operations remain outside this approval.
+Public repository visibility is allowed after sensitive-content audit.
+Package publishing, production deployment, destructive git operations, and
+remote repair remain outside this approval.

@@ -2,7 +2,7 @@
 
 <p align="center">
   <img alt="CI" src="https://github.com/chquandogong/Quipu/actions/workflows/ci.yml/badge.svg">
-  <img alt="Version" src="https://img.shields.io/badge/version-v0.2.1-2f6f7e">
+  <img alt="Version" src="https://img.shields.io/badge/version-v0.3.0-2f6f7e">
   <img alt="Status" src="https://img.shields.io/badge/status-local--first%20prototype-5b6b73">
   <img alt="License" src="https://img.shields.io/badge/license-not%20selected-lightgrey">
 </p>
@@ -37,6 +37,23 @@ The product is designed to answer practical investigation questions:
 ```text
 Detect -> Triage -> Investigate -> Hypothesize -> Act -> Verify -> Report
 ```
+
+## UI/UX Principle
+
+Quipu does not open every log and metric at once. The primary surface keeps
+three questions visible:
+
+- What should we inspect first?
+- What action should we record now?
+- Did that action actually help?
+
+Detailed evidence stays compact until hover, keyboard focus, or button-driven
+navigation expands it. The main CTAs are fixed as `Review evidence`,
+`Record action`, and `Verify result` so the next move stays obvious.
+
+Public Dogu Robotics, Dogu X, and Physical AI references plus creator details
+sit in a separate visual band: useful context without interrupting the
+investigation workflow.
 
 ## Why Quipu Exists
 
@@ -91,12 +108,14 @@ Implemented:
 - Investigation queue/detail API
 - Read-only one-shot Linux collector
 - Intervention records for investigation items
+- Before/after verification results for interventions
 - Vite React investigation-first UI
+- Summary-first focus board with hover/focus expansion panels
+- Creator and Physical AI reference visual band
 - GitHub Actions CI for server, collector, and web checks
 
 Next direction:
 
-- Before/after comparison windows for recorded interventions
 - A supervised local-agent version of the collector
 - Team pattern exploration by model, kernel, driver, storage, Wi-Fi, workload,
   and physical setup

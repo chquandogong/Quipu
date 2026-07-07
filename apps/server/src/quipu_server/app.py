@@ -1,7 +1,8 @@
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Iterator
 from contextlib import asynccontextmanager
 from pathlib import Path
 import sqlite3
+from threading import RLock
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Response, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -28,6 +29,7 @@ def create_app(
     db_path = database_path or settings.database_path
     token = dev_agent_token or settings.dev_agent_token
     conn = initialize(connect(db_path))
+    db_lock = RLock()
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
@@ -36,8 +38,9 @@ def create_app(
         finally:
             app.state.conn.close()
 
-    app = FastAPI(title="Quipu Server", version="0.2.1", lifespan=lifespan)
+    app = FastAPI(title="Quipu Server", version="0.3.0", lifespan=lifespan)
     app.state.conn = conn
+    app.state.db_lock = db_lock
     app.state.dev_agent_token = token
 
     app.add_middleware(
@@ -48,8 +51,9 @@ def create_app(
         allow_headers=["Content-Type", "X-Quipu-Agent-Token"],
     )
 
-    def get_conn() -> sqlite3.Connection:
-        return app.state.conn
+    def get_conn() -> Iterator[sqlite3.Connection]:
+        with app.state.db_lock:
+            yield app.state.conn
 
     def require_agent_token(x_quipu_agent_token: str | None = Header(default=None)) -> None:
         if x_quipu_agent_token != app.state.dev_agent_token:

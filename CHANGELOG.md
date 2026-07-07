@@ -2,6 +2,58 @@
 
 All notable changes to Quipu are documented in this file.
 
+## v0.3.0 - 2026-07-07
+
+Evidence-backed intervention verification release.
+
+### Added
+
+- SQLite-backed observation window queries around recorded interventions.
+- Deterministic before/after verification results for investigation details.
+- Thermal comparison for `cpu.package_temp_c` averages.
+- Load context comparison for `cpu.load_1m`.
+- Warning/critical event recurrence comparison for the intervention category.
+- UI rendering for verification result status, window length, checks, and deltas.
+- Summary-first focus board with `Review evidence`, `Record action`, and
+  `Verify result` CTAs.
+- Hover/focus expansion panels for evidence, hypotheses, interventions,
+  verification, and report detail.
+- Creator/reference visual band using public Dogu Robotics, Dogu X, and
+  Physical AI portfolio assets.
+- Lucide icon treatment for action buttons and signal surfaces.
+- v0.3.0 design and implementation plan documents.
+
+### Changed
+
+- Investigation verification now summarizes the latest intervention result when
+  before/after data exists.
+- Interventions in the detail API may include a derived `verification_result`.
+- Investigation UI now leads with what to inspect, what to do, and how to
+  verify, instead of presenting every panel at full height.
+- README editions now list intervention verification as implemented.
+
+### Fixed
+
+- Serialized access to the local SQLite connection so concurrent dashboard
+  requests do not intermittently fail with `sqlite3.InterfaceError`.
+
+### Verified
+
+- Server test suite: 21 tests passed.
+- Collector test suite: 1 test passed.
+- Web test suite: 1 test passed.
+- Web production build succeeded.
+- Remote GitHub Actions CI is the release gate after push.
+
+### Known Gaps
+
+- Collector is still one-shot, not a daemon.
+- Verification uses a fixed 30-minute window.
+- Verification is deterministic and rule-based; no AI-generated conclusions.
+- Reference visuals are loaded from public GitHub raw URLs to avoid bundling
+  heavy image assets.
+- Long-term baseline analytics remain deferred.
+
 ## v0.2.1 - 2026-07-07
 
 Patch release for CI runtime hygiene after `v0.2.0`.

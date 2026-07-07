@@ -54,6 +54,21 @@ CREATE INDEX IF NOT EXISTS idx_metric_samples_device_name_time
 
 CREATE INDEX IF NOT EXISTS idx_events_device_time
   ON events(device_id, observed_at DESC);
+
+CREATE TABLE IF NOT EXISTS interventions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  investigation_id TEXT NOT NULL,
+  device_id TEXT NOT NULL REFERENCES devices(device_id) ON DELETE CASCADE,
+  category TEXT NOT NULL,
+  label TEXT NOT NULL,
+  description TEXT NOT NULL,
+  expected_effect TEXT,
+  recorded_at TEXT NOT NULL,
+  verification_status TEXT NOT NULL DEFAULT 'pending'
+);
+
+CREATE INDEX IF NOT EXISTS idx_interventions_investigation_time
+  ON interventions(investigation_id, recorded_at ASC, id ASC);
 """
 
 

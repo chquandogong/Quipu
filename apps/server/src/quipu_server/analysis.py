@@ -251,6 +251,7 @@ def build_investigation_detail(
     item_id: str,
     *,
     now: datetime | None = None,
+    interventions: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any] | None:
     queue = build_investigation_queue(snapshots, now=now)
     item = next((candidate for candidate in queue if candidate["id"] == item_id), None)
@@ -284,25 +285,41 @@ def build_investigation_detail(
             }
         ]
 
+    recorded_interventions = interventions or []
+    contradiction = (
+        "An intervention is recorded; after-window evidence has not been compared yet."
+        if recorded_interventions
+        else "No before/after intervention window has been recorded yet."
+    )
     hypothesis = {
         "category": item["category"],
         "title": item["title"],
         "confidence": item["confidence"],
         "supporting_evidence": [item["evidence"]],
-        "contradicting_evidence": ["No before/after intervention window has been recorded yet."],
+        "contradicting_evidence": [contradiction],
         "missing_checks": [item["next_step"]],
     }
     action = _action_for_category(item["category"])
+    verification = (
+        {
+            "status": "Waiting for after window",
+            "summary": "Intervention recorded. Compare the next observation window before concluding it helped.",
+            "signals": ["temperature delta", "warning recurrence", "load context"],
+        }
+        if recorded_interventions
+        else {
+            "status": "Needs before/after data",
+            "summary": "Record an intervention and compare the next observation window.",
+            "signals": ["temperature delta", "warning recurrence", "load context"],
+        }
+    )
     return {
         "item": item,
         "timeline": timeline,
         "hypotheses": [hypothesis],
         "actions": [action],
-        "verification": {
-            "status": "Needs before/after data",
-            "summary": "Record an intervention and compare the next observation window.",
-            "signals": ["temperature delta", "warning recurrence", "load context"],
-        },
+        "interventions": recorded_interventions,
+        "verification": verification,
         "report": {
             "summary": f"{item['device_hostname']} needs investigation for {item['category']} evidence.",
             "recommended_next_step": item["next_step"],

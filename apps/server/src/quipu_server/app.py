@@ -7,9 +7,14 @@ from fastapi import Depends, FastAPI, Header, HTTPException, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 
 from quipu_server.analysis import build_fleet_overview, build_investigation_detail, build_investigation_queue
-from quipu_server.contracts import ObservationBatchIn
+from quipu_server.contracts import InterventionIn, ObservationBatchIn
 from quipu_server.db import connect, initialize
-from quipu_server.repository import ingest_batch, list_device_snapshots
+from quipu_server.repository import (
+    ingest_batch,
+    list_device_snapshots,
+    list_interventions_for_item,
+    record_intervention,
+)
 from quipu_server.settings import Settings
 
 
@@ -82,10 +87,30 @@ def create_app(
     @app.get("/api/investigations/{item_id}")
     def investigation_detail(item_id: str, db: sqlite3.Connection = Depends(get_conn)) -> dict:
         snapshots = list_device_snapshots(db)
-        detail = build_investigation_detail(snapshots, item_id)
+        interventions = list_interventions_for_item(db, item_id)
+        detail = build_investigation_detail(snapshots, item_id, interventions=interventions)
         if detail is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="investigation not found")
         return detail
+
+    @app.post("/api/investigations/{item_id}/interventions", status_code=status.HTTP_201_CREATED)
+    def create_intervention(
+        item_id: str,
+        intervention: InterventionIn,
+        db: sqlite3.Connection = Depends(get_conn),
+    ) -> dict:
+        snapshots = list_device_snapshots(db)
+        detail = build_investigation_detail(snapshots, item_id)
+        if detail is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="investigation not found")
+        item = detail["item"]
+        return record_intervention(
+            db,
+            investigation_id=item_id,
+            device_id=item["device_id"],
+            category=item["category"],
+            intervention=intervention,
+        )
 
     return app
 

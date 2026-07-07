@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -64,3 +64,26 @@ class ObservationBatchIn(BaseModel):
         if not self.metrics and not self.events:
             raise ValueError("batch must include at least one metric or event")
         return self
+
+
+class InterventionIn(BaseModel):
+    label: str = Field(min_length=1, max_length=120)
+    description: str = Field(min_length=1, max_length=500)
+    expected_effect: str | None = Field(default=None, max_length=500)
+    recorded_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+    @field_validator("label", "description")
+    @classmethod
+    def strip_required_intervention_text(cls, value: str) -> str:
+        stripped = value.strip()
+        if not stripped:
+            raise ValueError("value must not be blank")
+        return stripped
+
+    @field_validator("expected_effect")
+    @classmethod
+    def strip_optional_intervention_text(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        stripped = value.strip()
+        return stripped or None

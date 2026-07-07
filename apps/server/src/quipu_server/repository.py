@@ -4,7 +4,7 @@ import hashlib
 import sqlite3
 from typing import Any
 
-from quipu_server.contracts import EventIn, ObservationBatchIn
+from quipu_server.contracts import EventIn, InterventionIn, ObservationBatchIn
 
 
 @dataclass(frozen=True)
@@ -184,3 +184,70 @@ def list_device_snapshots(conn: sqlite3.Connection, *, recent_event_limit: int =
             }
         )
     return snapshots
+
+
+def _intervention_row_to_dict(row: sqlite3.Row) -> dict[str, Any]:
+    return {
+        "id": row["id"],
+        "investigation_id": row["investigation_id"],
+        "device_id": row["device_id"],
+        "category": row["category"],
+        "label": row["label"],
+        "description": row["description"],
+        "expected_effect": row["expected_effect"],
+        "recorded_at": row["recorded_at"],
+        "verification_status": row["verification_status"],
+    }
+
+
+def record_intervention(
+    conn: sqlite3.Connection,
+    *,
+    investigation_id: str,
+    device_id: str,
+    category: str,
+    intervention: InterventionIn,
+) -> dict[str, Any]:
+    with conn:
+        cursor = conn.execute(
+            """
+            INSERT INTO interventions (
+              investigation_id, device_id, category, label, description,
+              expected_effect, recorded_at, verification_status
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')
+            """,
+            (
+                investigation_id,
+                device_id,
+                category,
+                intervention.label,
+                intervention.description,
+                intervention.expected_effect,
+                _iso(intervention.recorded_at),
+            ),
+        )
+        row = conn.execute(
+            """
+            SELECT id, investigation_id, device_id, category, label, description,
+                   expected_effect, recorded_at, verification_status
+            FROM interventions
+            WHERE id = ?
+            """,
+            (cursor.lastrowid,),
+        ).fetchone()
+    return _intervention_row_to_dict(row)
+
+
+def list_interventions_for_item(conn: sqlite3.Connection, investigation_id: str) -> list[dict[str, Any]]:
+    rows = conn.execute(
+        """
+        SELECT id, investigation_id, device_id, category, label, description,
+               expected_effect, recorded_at, verification_status
+        FROM interventions
+        WHERE investigation_id = ?
+        ORDER BY recorded_at ASC, id ASC
+        """,
+        (investigation_id,),
+    ).fetchall()
+    return [_intervention_row_to_dict(row) for row in rows]

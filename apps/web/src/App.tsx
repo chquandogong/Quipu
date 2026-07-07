@@ -3,28 +3,34 @@ import type { FormEvent } from 'react';
 import {
   Activity,
   AlertTriangle,
+  Clock3,
   CheckCircle2,
   ChevronRight,
   ClipboardCheck,
+  Cpu,
   FileSearch,
   Gauge,
   HardDrive,
   HelpCircle,
   Info,
   ListChecks,
+  MemoryStick,
   MousePointer2,
+  Network,
+  ServerCrash,
   ShieldCheck,
   Tag,
   Thermometer,
   UserRound,
+  Wifi,
 } from 'lucide-react';
 
 import { fetchFleetOverview, fetchInvestigationDetail, fetchInvestigationQueue, recordIntervention } from './api';
-import type { FleetOverview, InvestigationDetail, InvestigationItem, RiskLevel, VerificationResult } from './types';
+import type { FleetOverview, InvestigationDetail, InvestigationItem, MetricSample, RiskLevel, VerificationResult } from './types';
 import './styles.css';
 
 const flowStages = ['Detect', 'Triage', 'Investigate', 'Hypothesize', 'Act', 'Verify', 'Report'];
-const appVersion = 'v0.3.2';
+const appVersion = 'v0.3.3';
 
 const riskLabels: Record<RiskLevel, string> = {
   healthy: 'Healthy',
@@ -33,7 +39,22 @@ const riskLabels: Record<RiskLevel, string> = {
   stale: 'Stale',
 };
 
-const keyMetrics = [
+type SignalStatus = 'nominal' | 'watch' | 'critical' | 'missing';
+
+type MetricDefinition = {
+  name: string;
+  label: string;
+  shortLabel: string;
+  ariaLabel: string;
+  Icon: typeof Activity;
+  definition: string;
+  window: string;
+  reading: string;
+  nextCheck: string;
+  tone: 'thermal' | 'compute' | 'storage' | 'network';
+};
+
+const keyMetrics: MetricDefinition[] = [
   {
     name: 'cpu.package_temp_c',
     label: 'CPU Package',
@@ -44,17 +65,19 @@ const keyMetrics = [
     window: '가장 최근 collector 샘플입니다. 가까운 샘플과 비교해야 추세를 판단할 수 있습니다.',
     reading: '지속적인 80도 중반 이상은 대부분의 노트북에서 thermal warning으로 봅니다.',
     nextCheck: '팬 흡기, 바닥 clearance, workload, 새 kernel thermal warning을 함께 확인합니다.',
+    tone: 'thermal',
   },
   {
     name: 'cpu.load_1m',
     label: 'Load Average',
     shortLabel: 'Load',
     ariaLabel: '1 minute load average',
-    Icon: Activity,
+    Icon: Cpu,
     definition: '최근 1분 동안 실행 중이거나 대기 중인 작업 평균입니다. (1-minute load average)',
     window: 'Linux 1분 load average이며, 순간 CPU percent가 아닙니다.',
     reading: 'CPU 코어 수와 온도 추세를 함께 봐야 과부하인지 판단할 수 있습니다.',
     nextCheck: 'load와 온도가 같이 오르면 실행 중인 작업과 냉각 조건을 같이 봅니다.',
+    tone: 'compute',
   },
   {
     name: 'nvme.temp_c',
@@ -66,21 +89,150 @@ const keyMetrics = [
     window: 'storage telemetry에서 들어온 가장 최근 collector 샘플입니다.',
     reading: '40도 초반은 보통 정상 범위이며, 지속적인 고온은 신뢰성 문제로 이어질 수 있습니다.',
     nextCheck: 'I/O workload, chassis heat, SMART warning, kernel storage warning을 같이 확인합니다.',
+    tone: 'storage',
+  },
+  {
+    name: 'wifi.signal_dbm',
+    label: 'Wi-Fi Signal',
+    shortLabel: 'Wi-Fi',
+    ariaLabel: 'Wi-Fi signal strength',
+    Icon: Wifi,
+    definition: '무선 연결의 수신 신호 강도입니다. (Wi-Fi signal strength, dBm)',
+    window: '/proc/net/wireless에서 읽은 가장 최근 collector 샘플입니다.',
+    reading: '0에 가까울수록 강합니다. -70 dBm 이하는 불안정 가능성이 커집니다.',
+    nextCheck: 'signal drop, reconnect event, NetworkManager 로그, AP 거리나 간섭을 함께 확인합니다.',
+    tone: 'network',
   },
 ];
 
+type TelemetryTile = {
+  id: string;
+  category: string;
+  label: string;
+  value: string;
+  status: SignalStatus;
+  summary: string;
+  Icon: typeof Activity;
+};
+
+function latestMetric(detail: InvestigationDetail | null, name: string): MetricSample | undefined {
+  return detail?.fleet_context.latest_metrics[name];
+}
+
 function metricValue(detail: InvestigationDetail | null, name: string): string {
-  const metric = detail?.fleet_context.latest_metrics[name];
+  const metric = latestMetric(detail, name);
   if (!metric) return 'Unavailable';
   if (metric.unit === 'celsius') return `${metric.value.toFixed(1)}C`;
   if (metric.unit === 'percent') return `${metric.value.toFixed(1)}%`;
+  if (metric.unit === 'dbm') return `${metric.value.toFixed(0)} dBm`;
   return `${metric.value}`;
 }
 
 function observedTime(detail: InvestigationDetail | null, name: string): string {
-  const observedAt = detail?.fleet_context.latest_metrics[name]?.observed_at;
+  const observedAt = latestMetric(detail, name)?.observed_at;
   if (!observedAt) return 'No sample time';
   return new Date(observedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+function metricStatus(detail: InvestigationDetail | null, name: string): SignalStatus {
+  const metric = latestMetric(detail, name);
+  if (!metric) return 'missing';
+  const value = metric.value;
+  if (name === 'cpu.package_temp_c') {
+    if (value >= 90) return 'critical';
+    if (value >= 78) return 'watch';
+  }
+  if (name === 'cpu.load_1m' && value >= 4) return 'watch';
+  if (name === 'nvme.temp_c') {
+    if (value >= 75) return 'critical';
+    if (value >= 60) return 'watch';
+  }
+  if (name === 'memory.used_percent') {
+    if (value >= 95) return 'critical';
+    if (value >= 85) return 'watch';
+  }
+  if (name === 'wifi.signal_dbm') {
+    if (value <= -80) return 'critical';
+    if (value <= -70) return 'watch';
+  }
+  return 'nominal';
+}
+
+function statusLabel(status: SignalStatus): string {
+  return {
+    nominal: 'Nominal',
+    watch: 'Watch',
+    critical: 'Critical',
+    missing: 'No data',
+  }[status];
+}
+
+function warningCountText(count: number): string {
+  if (count === 1) return '1 warning';
+  return `${count} warnings`;
+}
+
+function eventSignalValue(events: InvestigationDetail['timeline']): string {
+  const warningCount = events.filter((event) => event.severity === 'warning' || event.severity === 'critical').length;
+  if (warningCount > 0) return warningCountText(warningCount);
+  if (events.length === 1) return '1 event';
+  return `${events.length} events`;
+}
+
+function minutesSince(laterIso: string | undefined, earlierIso: string | undefined): number | null {
+  if (!laterIso || !earlierIso) return null;
+  const later = new Date(laterIso).getTime();
+  const earlier = new Date(earlierIso).getTime();
+  if (Number.isNaN(later) || Number.isNaN(earlier)) return null;
+  return Math.max(0, Math.round((later - earlier) / 60000));
+}
+
+function buildTelemetryTiles(detail: InvestigationDetail | null, overview: FleetOverview | null): TelemetryTile[] {
+  const networkEvents = detail?.timeline.filter((event) => event.category === 'network') ?? [];
+  const kernelWarnings = detail?.timeline.filter(
+    (event) => event.source.toLowerCase().includes('kernel') && (event.severity === 'warning' || event.severity === 'critical'),
+  ) ?? [];
+  const freshnessMinutes = minutesSince(overview?.generated_at, detail?.fleet_context.device.last_seen_at);
+  const freshnessStatus: SignalStatus = freshnessMinutes === null ? 'missing' : freshnessMinutes > 10 ? 'critical' : freshnessMinutes > 5 ? 'watch' : 'nominal';
+
+  return [
+    {
+      id: 'memory.used_percent',
+      category: 'Compute',
+      label: 'Memory Used',
+      value: metricValue(detail, 'memory.used_percent'),
+      status: metricStatus(detail, 'memory.used_percent'),
+      summary: '프로세스 압박이나 swap 가능성을 판단하는 보조 신호입니다. (memory pressure)',
+      Icon: MemoryStick,
+    },
+    {
+      id: 'network.events',
+      category: 'Network',
+      label: 'Network Events',
+      value: eventSignalValue(networkEvents),
+      status: networkEvents.length > 0 ? 'watch' : 'nominal',
+      summary: 'reconnect, carrier loss, NetworkManager warning이 조사 흐름에 포함됐는지 봅니다.',
+      Icon: Network,
+    },
+    {
+      id: 'kernel.warnings',
+      category: 'Reliability',
+      label: 'Kernel Warnings',
+      value: eventSignalValue(kernelWarnings),
+      status: kernelWarnings.length > 0 ? 'watch' : 'nominal',
+      summary: 'thermal, storage, graphics 같은 kernel warning이 재발했는지 확인합니다.',
+      Icon: ServerCrash,
+    },
+    {
+      id: 'agent.freshness',
+      category: 'Telemetry',
+      label: 'Agent Freshness',
+      value: freshnessMinutes === null ? 'Unavailable' : freshnessMinutes <= 0 ? 'just now' : `${freshnessMinutes} min ago`,
+      status: freshnessStatus,
+      summary: '데이터가 오래되면 현재 상태 판단보다 collector/agent 복구가 먼저입니다.',
+      Icon: Clock3,
+    },
+  ];
 }
 
 function priorityClass(priority: InvestigationItem['priority']): string {
@@ -125,9 +277,10 @@ function VerificationResultView({ result }: { result: VerificationResult }) {
   );
 }
 
-function MetricCard({ detail, metric }: { detail: InvestigationDetail; metric: (typeof keyMetrics)[number] }) {
+function MetricCard({ detail, metric }: { detail: InvestigationDetail; metric: MetricDefinition }) {
+  const status = metricStatus(detail, metric.name);
   return (
-    <div className="metric-card">
+    <div className={`metric-card metric-${metric.tone} signal-${status}`}>
       <div className="metric-topline">
         <dt className="metric-name">
           <metric.Icon aria-hidden="true" />
@@ -147,8 +300,58 @@ function MetricCard({ detail, metric }: { detail: InvestigationDetail; metric: (
         </div>
       </div>
       <dd>{metricValue(detail, metric.name)}</dd>
-      <span className="metric-observed">{metric.shortLabel} / observed {observedTime(detail, metric.name)}</span>
+      <span className="metric-observed">{metric.shortLabel} / {statusLabel(status)} / observed {observedTime(detail, metric.name)}</span>
     </div>
+  );
+}
+
+function SignalConsole({ detail }: { detail: InvestigationDetail | null }) {
+  if (!detail) return null;
+  return (
+    <div className="signal-console" aria-label="First glance telemetry signals">
+      {keyMetrics.map((metric) => {
+        const status = metricStatus(detail, metric.name);
+        return (
+          <div className={`signal-chip signal-${status}`} key={metric.name}>
+            <span>
+              <metric.Icon aria-hidden="true" />
+              {metric.shortLabel}
+            </span>
+            <strong>{metricValue(detail, metric.name)}</strong>
+            <em>{statusLabel(status)}</em>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function TelemetryMatrix({ detail, overview }: { detail: InvestigationDetail | null; overview: FleetOverview | null }) {
+  if (!detail) return null;
+  const tiles = buildTelemetryTiles(detail, overview);
+  return (
+    <section className="telemetry-matrix" aria-label="Telemetry coverage matrix">
+      <div className="matrix-head">
+        <div>
+          <h3>Telemetry Matrix</h3>
+          <p>Core metric 밖의 Wi-Fi, memory, network, kernel, agent freshness를 한 번에 확인합니다.</p>
+        </div>
+        <span>{tiles.filter((tile) => tile.status !== 'missing').length}/{tiles.length} signals</span>
+      </div>
+      <div className="telemetry-grid">
+        {tiles.map((tile) => (
+          <article className={`telemetry-tile signal-${tile.status}`} key={tile.id}>
+            <span className="telemetry-category">{tile.category}</span>
+            <div className="telemetry-value">
+              <tile.Icon aria-hidden="true" />
+              <strong>{tile.value}</strong>
+            </div>
+            <h4>{tile.label}</h4>
+            <p>{tile.summary}</p>
+          </article>
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -280,7 +483,7 @@ export default function App() {
   }
 
   return (
-    <main className="page">
+    <main className="page page-command-dark">
       <header className="topbar">
         <div>
           <p className="eyebrow">Team workstation health investigator</p>
@@ -341,6 +544,8 @@ export default function App() {
             <p>{proofSummary}</p>
           </article>
         </div>
+
+        <SignalConsole detail={detail} />
 
         <div className="command-actions" aria-label="Primary investigation actions">
           <button onClick={() => scrollToPanel('evidence-panel')} type="button">
@@ -419,6 +624,7 @@ export default function App() {
                 ))}
               </dl>
             )}
+            <TelemetryMatrix detail={detail} overview={overview} />
           </article>
 
           <article className="panel collapsible-panel" id="evidence-panel" tabIndex={-1}>

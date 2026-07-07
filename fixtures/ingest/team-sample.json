@@ -1,6 +1,6 @@
 [
   {
-    "batch_id": "dev-p1-20260707T030000Z",
+    "batch_id": "dev-p1-20260707T030000Z-v033",
     "observed_at": "2026-07-07T03:00:00+00:00",
     "device": {
       "device_id": "thinkpad-p1",
@@ -12,7 +12,9 @@
     "metrics": [
       { "name": "cpu.package_temp_c", "value": 62.5, "unit": "celsius", "observed_at": "2026-07-07T03:00:00+00:00" },
       { "name": "cpu.load_1m", "value": 0.91, "unit": "load", "observed_at": "2026-07-07T03:00:00+00:00" },
-      { "name": "nvme.temp_c", "value": 42.9, "unit": "celsius", "observed_at": "2026-07-07T03:00:00+00:00" }
+      { "name": "nvme.temp_c", "value": 42.9, "unit": "celsius", "observed_at": "2026-07-07T03:00:00+00:00" },
+      { "name": "memory.used_percent", "value": 43.6, "unit": "percent", "observed_at": "2026-07-07T03:00:00+00:00" },
+      { "name": "wifi.signal_dbm", "value": -43, "unit": "dbm", "observed_at": "2026-07-07T03:00:00+00:00" }
     ],
     "events": [
       {
@@ -27,7 +29,7 @@
     ]
   },
   {
-    "batch_id": "xps-13-20260707T030000Z",
+    "batch_id": "xps-13-20260707T030000Z-v033",
     "observed_at": "2026-07-07T03:00:00+00:00",
     "device": {
       "device_id": "xps-13",
@@ -39,6 +41,8 @@
     "metrics": [
       { "name": "cpu.package_temp_c", "value": 86.4, "unit": "celsius", "observed_at": "2026-07-07T03:00:00+00:00" },
       { "name": "cpu.load_1m", "value": 3.7, "unit": "load", "observed_at": "2026-07-07T03:00:00+00:00" },
+      { "name": "nvme.temp_c", "value": 42.9, "unit": "celsius", "observed_at": "2026-07-07T03:00:00+00:00" },
+      { "name": "memory.used_percent", "value": 62.0, "unit": "percent", "observed_at": "2026-07-07T03:00:00+00:00" },
       { "name": "wifi.signal_dbm", "value": -67, "unit": "dbm", "observed_at": "2026-07-07T03:00:00+00:00" }
     ],
     "events": [
@@ -63,7 +67,7 @@
     ]
   },
   {
-    "batch_id": "framework-20260707T030000Z",
+    "batch_id": "framework-20260707T030000Z-v033",
     "observed_at": "2026-07-07T03:00:00+00:00",
     "device": {
       "device_id": "framework-13",
@@ -75,6 +79,9 @@
     "metrics": [
       { "name": "cpu.package_temp_c", "value": 58.1, "unit": "celsius", "observed_at": "2026-07-07T03:00:00+00:00" },
       { "name": "cpu.load_1m", "value": 0.42, "unit": "load", "observed_at": "2026-07-07T03:00:00+00:00" },
+      { "name": "nvme.temp_c", "value": 39.8, "unit": "celsius", "observed_at": "2026-07-07T03:00:00+00:00" },
+      { "name": "memory.used_percent", "value": 51.4, "unit": "percent", "observed_at": "2026-07-07T03:00:00+00:00" },
+      { "name": "wifi.signal_dbm", "value": -55, "unit": "dbm", "observed_at": "2026-07-07T03:00:00+00:00" },
       { "name": "disk.root_used_percent", "value": 78.2, "unit": "percent", "observed_at": "2026-07-07T03:00:00+00:00" }
     ],
     "events": [

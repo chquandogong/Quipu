@@ -1,6 +1,6 @@
 # Quipu Project Dashboard
 
-> Status: v0.3.2 command-center release track
+> Status: v0.3.3 dark telemetry expansion release track
 > Date: 2026-07-07
 > Owner: chquan
 
@@ -48,6 +48,7 @@ The second valuable question is:
 | Done | Investigation Lens UI polish | Stronger first viewport, CTA routing, hover/focus expansion panels |
 | Done | Metric explanation tooltips | CPU package, 1-minute load average, and NVMe cards explain definition/window/reading/next check |
 | Done | Command Center redesign | One first viewport answers inspect/why/action/proof and removes reference image drawer |
+| Done | Dark telemetry expansion | Dark command theme, core signal console, Wi-Fi core metric, and Telemetry Matrix |
 | Done | Visible metadata chips | Made by, About, and Version remain visible without dominating the first viewport |
 | Approved | Private remote push and release | User requested commit, tag, push, and release on 2026-07-07 |
 | Approved | Public repository visibility after audit | User approved public visibility on 2026-07-07 |

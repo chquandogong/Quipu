@@ -2,6 +2,33 @@
 
 All notable changes to Quipu are documented in this file.
 
+## v0.3.3 - 2026-07-07
+
+Dark telemetry expansion release.
+
+### Changed
+
+- Reworked the first viewport into a high-contrast dark command theme so the
+  active case, risk, action, and proof surfaces stand out more clearly.
+- Promoted Wi-Fi signal strength into the core metric set alongside CPU
+  package temperature, 1-minute load average, and NVMe temperature.
+- Added a first-glance signal console for core telemetry.
+- Added a `Telemetry Matrix` for Memory Used, Network Events, Kernel Warnings,
+  and Agent Freshness so the UI shows which categories are covered and which
+  signals can expand next.
+- Updated sample team fixture data with memory, Wi-Fi, and NVMe readings across
+  the demo fleet.
+- Updated package and app versions to `0.3.3`.
+
+### Verified
+
+- Server test suite: 21 tests passed.
+- Collector test suite: 1 test passed.
+- Web test suite: 1 test passed.
+- Web production build succeeded.
+- Browser screenshot confirmed the dark command theme, signal console, and
+  Telemetry Matrix render in the running app.
+
 ## v0.3.2 - 2026-07-07
 
 Command-center UI redesign.

@@ -24,8 +24,22 @@ const fleetResponse = {
       },
       latest_metrics: {
         'cpu.package_temp_c': { value: 86.4, unit: 'celsius', observed_at: '2026-07-07T03:00:00+00:00' },
+        'cpu.load_1m': { value: 3.7, unit: 'load', observed_at: '2026-07-07T03:00:00+00:00' },
+        'nvme.temp_c': { value: 42.9, unit: 'celsius', observed_at: '2026-07-07T03:00:00+00:00' },
+        'memory.used_percent': { value: 62.0, unit: 'percent', observed_at: '2026-07-07T03:00:00+00:00' },
+        'wifi.signal_dbm': { value: -43.0, unit: 'dbm', observed_at: '2026-07-07T03:00:00+00:00' },
       },
-      recent_events: [],
+      recent_events: [
+        {
+          category: 'network',
+          severity: 'warning',
+          source: 'NetworkManager',
+          message_summary: 'Wi-Fi reconnect observed within the incident window.',
+          raw_ref: 'journalctl -u NetworkManager',
+          observed_at: '2026-07-07T02:57:20+00:00',
+          fingerprint: 'xps-wifi-reconnect',
+        },
+      ],
       risk_level: 'warning',
       findings: [
         {
@@ -69,6 +83,14 @@ const detailResponse = {
       source: 'kernel',
       summary: 'CPU thermal threshold event reported during compile workload.',
       raw_ref: 'journalctl -k',
+    },
+    {
+      observed_at: '2026-07-07T02:57:20+00:00',
+      category: 'network',
+      severity: 'warning',
+      source: 'NetworkManager',
+      summary: 'Wi-Fi reconnect observed within the incident window.',
+      raw_ref: 'journalctl -u NetworkManager',
     },
   ],
   hypotheses: [
@@ -161,9 +183,10 @@ describe('App', () => {
       fetchMock,
     );
 
-    render(<App />);
+    const { container } = render(<App />);
 
     await waitFor(() => expect(screen.getByText('Investigation Queue')).toBeInTheDocument());
+    expect(container.querySelector('.page-command-dark')).toBeInTheDocument();
     expect(screen.getByRole('region', { name: 'Investigation command center' })).toBeInTheDocument();
     expect(screen.getByText('Inspect now')).toBeInTheDocument();
     expect(screen.getByText('지금 확인')).toBeInTheDocument();
@@ -176,12 +199,22 @@ describe('App', () => {
     expect(screen.queryByText('Creator and visual references')).not.toBeInTheDocument();
     expect(screen.queryByText('Dogu Robotics · Dogu X · Physical AI')).not.toBeInTheDocument();
     expect(screen.getByText('About: workstation health investigation')).toBeInTheDocument();
-    expect(screen.getByText('Version v0.3.2')).toBeInTheDocument();
+    expect(screen.getByText('Version v0.3.3')).toBeInTheDocument();
     await waitFor(() => expect(screen.getByRole('button', { name: 'Explain CPU package temperature metric' })).toBeInTheDocument());
     expect(screen.getByText('정의: 선택한 장비의 CPU 패키지 센서 온도입니다. (CPU package temperature)')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Explain 1 minute load average metric' })).toBeInTheDocument();
     expect(screen.getByText('정의: 최근 1분 동안 실행 중이거나 대기 중인 작업 평균입니다. (1-minute load average)')).toBeInTheDocument();
     expect(screen.getByText('해석: CPU 코어 수와 온도 추세를 함께 봐야 과부하인지 판단할 수 있습니다.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Explain Wi-Fi signal strength metric' })).toBeInTheDocument();
+    expect(screen.getByText('정의: 무선 연결의 수신 신호 강도입니다. (Wi-Fi signal strength, dBm)')).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Telemetry coverage matrix' })).toBeInTheDocument();
+    expect(screen.getAllByText('Wi-Fi Signal').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('-43 dBm').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Memory Used').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('62.0%').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Network Events').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('1 warning').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Kernel Warnings').length).toBeGreaterThan(0);
     expect(screen.getAllByText('build-xps').length).toBeGreaterThan(0);
     expect(screen.getByText('Top hypotheses')).toBeInTheDocument();
     expect(screen.getByText('Action plan')).toBeInTheDocument();

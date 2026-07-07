@@ -39,6 +39,10 @@ Implemented:
 - Report draft.
 - Investigation Lens focus board.
 - Command Center first viewport with inspect/why/action/proof answers.
+- High-contrast dark command theme.
+- Core signal console for CPU, Load, NVMe, and Wi-Fi.
+- Telemetry Matrix for Memory, Network Events, Kernel Warnings, and Agent
+  Freshness.
 - Metric help tooltips for definition, time window, reading guidance, and next
   check.
 - CTA routing to evidence, action recording, and verification.

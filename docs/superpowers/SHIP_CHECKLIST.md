@@ -3,7 +3,7 @@
 > Status: release candidate approved for GitHub release and public visibility after audit
 > Date: 2026-07-07
 > Owner: chquan
-> Release: v0.3.2
+> Release: v0.3.3
 
 ## Scope
 
@@ -24,8 +24,13 @@ Included:
 - Before/after intervention verification.
 - Verification result UI.
 - Command Center first viewport and hover/focus expansion panels.
+- High-contrast dark command theme.
+- Core signal console for CPU package temperature, 1-minute load average, NVMe
+  temperature, and Wi-Fi signal.
+- Telemetry Matrix for Memory Used, Network Events, Kernel Warnings, and Agent
+  Freshness.
 - Hover/focus metric explanations for CPU package temperature, 1-minute load
-  average, and NVMe temperature.
+  average, NVMe temperature, and Wi-Fi signal.
 - Removed duplicate creator/reference image drawer from the working UI.
 - Visible Made by, About, and Version metadata chips.
 - Project docs, GitHub templates, contribution notes, and security policy.
@@ -82,7 +87,7 @@ Unapproved risks:
 Rollback method:
 
 - Delete or supersede the private GitHub release if the release note is wrong.
-- Move forward with a patch tag such as `v0.3.2` for code or documentation fixes.
+- Move forward with a patch tag such as `v0.3.3` for code or documentation fixes.
 - Avoid force-push and history rewrite.
 
 Rollback owner:
@@ -101,8 +106,8 @@ Check after release:
 
 - GitHub repository URL resolves.
 - `main` branch is pushed.
-- `v0.3.2` tag exists locally and remotely.
-- GitHub release exists for `v0.3.2`.
+- `v0.3.3` tag exists locally and remotely.
+- GitHub release exists for `v0.3.3`.
 - Repository visibility is public after audit.
 
 ## Documents
@@ -110,12 +115,12 @@ Check after release:
 - README: current.
 - Dashboard: current release state recorded.
 - Roadmap: intervention verification slice recorded.
-- Changelog: `v0.3.2` prepared.
+- Changelog: `v0.3.3` prepared.
 - Security policy: present.
 
 ## Final Judgment
 
-GitHub release is allowed for `v0.3.2`.
+GitHub release is allowed for `v0.3.3`.
 
 Public repository visibility is allowed after sensitive-content audit.
 Package publishing, production deployment, destructive git operations, and

@@ -1,6 +1,6 @@
 # Quipu Project Dashboard
 
-> Status: investigation-first slice implemented
+> Status: v0.1.0 release candidate
 > Date: 2026-07-07
 > Owner: chquan
 
@@ -38,7 +38,8 @@ The second valuable question is:
 | Done | First vertical slice execution | Server ingest, SQLite, fixtures, fleet overview UI |
 | Done | Problem-solving UX redefinition | `docs/superpowers/specs/2026-07-07-problem-solving-flow-ux-design.md` |
 | Done | Investigation-first UI implementation | Queue, incident detail, hypotheses, action, verification, report |
-| Pending | Remote push | User said later; no remote configured yet |
+| Done | Release prep | `CHANGELOG.md`, `docs/superpowers/SHIP_CHECKLIST.md`, `docs/superpowers/RETRO.md` |
+| Approved | Private remote push and release | User requested commit, tag, push, and release on 2026-07-07 |
 
 ## Open Decisions
 
@@ -52,5 +53,6 @@ The second valuable question is:
 
 ## Gate
 
-Native Linux collectors, persistent intervention records, remote push, and any
-public release remain gated.
+Native Linux collectors, persistent intervention records, public release,
+package publishing, production deployment, destructive git operations, and any
+remote repair capability remain gated.

@@ -1,6 +1,6 @@
 # Quipu Project Dashboard
 
-> Status: first vertical slice implemented
+> Status: investigation-first slice implemented
 > Date: 2026-07-07
 > Owner: chquan
 
@@ -37,7 +37,7 @@ The second valuable question is:
 | Done | Implementation plan | `docs/superpowers/plans/2026-07-07-team-ingest-vertical-slice.md` |
 | Done | First vertical slice execution | Server ingest, SQLite, fixtures, fleet overview UI |
 | Done | Problem-solving UX redefinition | `docs/superpowers/specs/2026-07-07-problem-solving-flow-ux-design.md` |
-| Pending | Investigation-first UI implementation | Queue, incident detail, hypotheses, action, verification, report |
+| Done | Investigation-first UI implementation | Queue, incident detail, hypotheses, action, verification, report |
 | Pending | Remote push | User said later; no remote configured yet |
 
 ## Open Decisions
@@ -52,5 +52,5 @@ The second valuable question is:
 
 ## Gate
 
-Native Linux collectors, remote push, and any public release remain gated.
-The first vertical slice can be executed from the written plan.
+Native Linux collectors, persistent intervention records, remote push, and any
+public release remain gated.

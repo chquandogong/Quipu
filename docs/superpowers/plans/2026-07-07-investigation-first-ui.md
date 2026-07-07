@@ -42,12 +42,13 @@ Deferred:
 - Modify: `apps/web/src/styles.css`
 - Modify: `README.md`
 - Modify: `docs/superpowers/DASHBOARD.md`
+- Modify: `docs/superpowers/ROADMAP.md`
 
 ---
 
 ### Task 1: Server Investigation Projection
 
-- [ ] **Step 1: Write failing server tests**
+- [x] **Step 1: Write failing server tests**
 
 Create `apps/server/tests/test_investigations.py` with tests that:
 
@@ -79,7 +80,7 @@ pytest tests/test_investigations.py -v
 
 Expected: FAIL because `build_investigation_queue` is not defined.
 
-- [ ] **Step 2: Implement server projection functions**
+- [x] **Step 2: Implement server projection functions**
 
 Modify `apps/server/src/quipu_server/analysis.py`:
 
@@ -94,7 +95,7 @@ Modify `apps/server/src/quipu_server/analysis.py`:
   - healthy -> Low
 - Generate action text and deterministic verification summaries from the category.
 
-- [ ] **Step 3: Run server projection tests**
+- [x] **Step 3: Run server projection tests**
 
 Run:
 
@@ -106,7 +107,7 @@ pytest tests/test_investigations.py -v
 
 Expected: PASS.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add apps/server/src/quipu_server/analysis.py apps/server/tests/test_investigations.py
@@ -117,7 +118,7 @@ git commit -m "feat(server): project investigation workflow"
 
 ### Task 2: Investigation API Endpoints
 
-- [ ] **Step 1: Write failing API tests**
+- [x] **Step 1: Write failing API tests**
 
 Modify `apps/server/tests/test_api.py` or add new tests to
 `apps/server/tests/test_investigations.py`:
@@ -137,7 +138,7 @@ pytest tests/test_investigations.py -v
 
 Expected: FAIL because the API routes do not exist.
 
-- [ ] **Step 2: Implement routes**
+- [x] **Step 2: Implement routes**
 
 Modify `apps/server/src/quipu_server/app.py`:
 
@@ -146,7 +147,7 @@ Modify `apps/server/src/quipu_server/app.py`:
 - Reuse `list_device_snapshots(db)`.
 - Return `404` when detail is unavailable.
 
-- [ ] **Step 3: Run server tests**
+- [x] **Step 3: Run server tests**
 
 Run:
 
@@ -158,7 +159,7 @@ pytest -v
 
 Expected: PASS.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add apps/server/src/quipu_server/app.py apps/server/tests/test_investigations.py
@@ -169,7 +170,7 @@ git commit -m "feat(server): expose investigation api"
 
 ### Task 3: Investigation-First React UI
 
-- [ ] **Step 1: Write failing UI test**
+- [x] **Step 1: Write failing UI test**
 
 Modify `apps/web/src/App.test.tsx` so the mocked API provides:
 
@@ -196,7 +197,7 @@ npm test
 
 Expected: FAIL because the current UI has no investigation flow sections.
 
-- [ ] **Step 2: Update web contracts and API client**
+- [x] **Step 2: Update web contracts and API client**
 
 Modify `apps/web/src/types.ts`:
 
@@ -212,7 +213,7 @@ Modify `apps/web/src/api.ts`:
 - Add `fetchInvestigationQueue()`.
 - Add `fetchInvestigationDetail(itemId)`.
 
-- [ ] **Step 3: Implement the new UI**
+- [x] **Step 3: Implement the new UI**
 
 Modify `apps/web/src/App.tsx`:
 
@@ -235,7 +236,7 @@ Modify `apps/web/src/styles.css`:
 - Keep cards shallow and not nested.
 - Make text fit on desktop and mobile.
 
-- [ ] **Step 4: Run web tests and build**
+- [x] **Step 4: Run web tests and build**
 
 Run:
 
@@ -247,7 +248,7 @@ npm run build
 
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add apps/web/src/types.ts apps/web/src/api.ts apps/web/src/App.test.tsx apps/web/src/App.tsx apps/web/src/styles.css
@@ -258,12 +259,13 @@ git commit -m "feat(web): make investigation queue the primary surface"
 
 ### Task 4: Docs And Final Verification
 
-- [ ] **Step 1: Update docs**
+- [x] **Step 1: Update docs**
 
 Modify:
 
 - `README.md`
 - `docs/superpowers/DASHBOARD.md`
+- `docs/superpowers/ROADMAP.md`
 
 Record that the UI now has an implemented investigation-first slice.
 
@@ -293,7 +295,7 @@ Expected:
 - [ ] **Step 3: Commit**
 
 ```bash
-git add README.md docs/superpowers/DASHBOARD.md
+git add README.md docs/superpowers/DASHBOARD.md docs/superpowers/ROADMAP.md docs/superpowers/plans/2026-07-07-investigation-first-ui.md
 git commit -m "docs: mark investigation-first ui implemented"
 ```
 

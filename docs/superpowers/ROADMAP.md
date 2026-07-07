@@ -24,14 +24,25 @@ Status: implemented.
 
 ## Phase 2: Investigation-First UI
 
+Status: first slice implemented.
+
 Goal: make the product feel like a guided diagnostic workflow.
 
+Implemented:
+
 - Investigation Queue.
-- Incident detail page.
+- Incident detail surface.
 - Evidence timeline.
 - Hypothesis board.
-- Action recording.
-- Verification placeholder.
+- Suggested actions.
+- Verification summary.
+- Report draft.
+
+Remaining:
+
+- Persistent action recording.
+- Before/after verification windows.
+- Assignee, owner, and team handoff states.
 
 ## Phase 3: Native Read-Only Agent
 

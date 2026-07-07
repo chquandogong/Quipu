@@ -21,14 +21,17 @@ Implemented:
 - SQLite persistence.
 - Rule-based fleet overview.
 - Deterministic three-device sample data.
-- Vite React team dashboard.
+- Investigation queue and detail API.
+- Vite React investigation-first UI with queue, timeline, hypotheses, actions,
+  verification, and report sections.
 
 Next product direction:
 
-- Replace the generic fleet-first UI with an investigation-first workflow.
-- Make the first screen an Investigation Queue.
-- Add incident timeline, hypothesis board, intervention tracking, and
-  before/after verification.
+- Persist intervention records and before/after comparison windows.
+- Add a native read-only Linux collector.
+- Add team pattern exploration across models, kernels, drivers, storage, Wi-Fi,
+  workloads, and physical setups.
+- Add role-aware team workflows, redaction controls, and retention policy.
 
 ## Why Quipu Exists
 
@@ -103,7 +106,7 @@ The primary UI/UX flow is DTIHAVR:
 
 ## Investigation Queue
 
-The first screen should become an investigation queue, not a generic dashboard.
+The first screen is now an investigation queue, not a generic dashboard.
 
 Example queue items:
 
@@ -113,8 +116,8 @@ Example queue items:
 | Medium | `dev-p1` unclean shutdown | Previous boot ended without clean shutdown marker | Inspect pre-reboot graphics, thermal, and storage evidence |
 | Medium | `ops-framework` graphics warning | Kernel graphics warning before visible stutter | Check i915/session timeline and repeated signatures |
 
-Each queue item should open into an incident detail view with timeline, evidence,
-hypotheses, actions, verification, and report sections.
+Each queue item opens into an incident detail view with timeline, evidence,
+hypotheses, suggested actions, verification, and report sections.
 
 ## Architecture
 

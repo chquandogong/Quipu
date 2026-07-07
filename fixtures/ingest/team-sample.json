@@ -1,0 +1,110 @@
+[
+  {
+    "batch_id": "dev-p1-20260707T030000Z",
+    "observed_at": "2026-07-07T03:00:00+00:00",
+    "device": {
+      "device_id": "thinkpad-p1",
+      "hostname": "dev-p1",
+      "model": "ThinkPad P1",
+      "os_name": "Ubuntu 24.04",
+      "kernel_version": "6.14.0"
+    },
+    "metrics": [
+      { "name": "cpu.package_temp_c", "value": 62.5, "unit": "celsius", "observed_at": "2026-07-07T03:00:00+00:00" },
+      { "name": "cpu.load_1m", "value": 0.91, "unit": "load", "observed_at": "2026-07-07T03:00:00+00:00" },
+      { "name": "nvme.temp_c", "value": 42.9, "unit": "celsius", "observed_at": "2026-07-07T03:00:00+00:00" }
+    ],
+    "events": [
+      {
+        "category": "reboot",
+        "severity": "warning",
+        "source": "journalctl",
+        "message_summary": "Previous boot ended without a clean shutdown marker.",
+        "raw_ref": "journalctl --list-boots",
+        "observed_at": "2026-07-07T02:59:28+00:00",
+        "fingerprint": "dev-p1-unclean-shutdown"
+      }
+    ]
+  },
+  {
+    "batch_id": "xps-13-20260707T030000Z",
+    "observed_at": "2026-07-07T03:00:00+00:00",
+    "device": {
+      "device_id": "xps-13",
+      "hostname": "build-xps",
+      "model": "Dell XPS 13",
+      "os_name": "Fedora 42",
+      "kernel_version": "6.14.4"
+    },
+    "metrics": [
+      { "name": "cpu.package_temp_c", "value": 86.4, "unit": "celsius", "observed_at": "2026-07-07T03:00:00+00:00" },
+      { "name": "cpu.load_1m", "value": 3.7, "unit": "load", "observed_at": "2026-07-07T03:00:00+00:00" },
+      { "name": "wifi.signal_dbm", "value": -67, "unit": "dbm", "observed_at": "2026-07-07T03:00:00+00:00" }
+    ],
+    "events": [
+      {
+        "category": "thermal",
+        "severity": "warning",
+        "source": "kernel",
+        "message_summary": "CPU thermal threshold event reported during compile workload.",
+        "raw_ref": "journalctl -k --since '2026-07-07 11:55:00'",
+        "observed_at": "2026-07-07T02:58:40+00:00",
+        "fingerprint": "xps-thermal-threshold"
+      },
+      {
+        "category": "network",
+        "severity": "warning",
+        "source": "NetworkManager",
+        "message_summary": "Wi-Fi reconnect observed within the incident window.",
+        "raw_ref": "journalctl -u NetworkManager",
+        "observed_at": "2026-07-07T02:57:20+00:00",
+        "fingerprint": "xps-wifi-reconnect"
+      }
+    ]
+  },
+  {
+    "batch_id": "framework-20260707T030000Z",
+    "observed_at": "2026-07-07T03:00:00+00:00",
+    "device": {
+      "device_id": "framework-13",
+      "hostname": "ops-framework",
+      "model": "Framework Laptop 13",
+      "os_name": "Ubuntu 24.04",
+      "kernel_version": "6.14.0"
+    },
+    "metrics": [
+      { "name": "cpu.package_temp_c", "value": 58.1, "unit": "celsius", "observed_at": "2026-07-07T03:00:00+00:00" },
+      { "name": "cpu.load_1m", "value": 0.42, "unit": "load", "observed_at": "2026-07-07T03:00:00+00:00" },
+      { "name": "disk.root_used_percent", "value": 78.2, "unit": "percent", "observed_at": "2026-07-07T03:00:00+00:00" }
+    ],
+    "events": [
+      {
+        "category": "graphics",
+        "severity": "warning",
+        "source": "kernel",
+        "message_summary": "Graphics session warning reported before user-visible stutter.",
+        "raw_ref": "journalctl -k --grep i915",
+        "observed_at": "2026-07-07T02:56:00+00:00",
+        "fingerprint": "framework-graphics-warning"
+      },
+      {
+        "category": "storage",
+        "severity": "info",
+        "source": "kernel",
+        "message_summary": "NVMe temperature remained inside expected range.",
+        "raw_ref": "journalctl -k --grep nvme",
+        "observed_at": "2026-07-07T02:55:00+00:00",
+        "fingerprint": "framework-nvme-normal"
+      },
+      {
+        "category": "update",
+        "severity": "info",
+        "source": "apt",
+        "message_summary": "Package update completed before the observation window.",
+        "raw_ref": "/var/log/apt/history.log",
+        "observed_at": "2026-07-07T02:40:00+00:00",
+        "fingerprint": "framework-package-update"
+      }
+    ]
+  }
+]

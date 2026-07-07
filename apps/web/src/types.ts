@@ -102,11 +102,31 @@ export type VerificationSummary = {
   signals: string[];
 };
 
+export type InterventionRecord = {
+  id: number;
+  investigation_id: string;
+  device_id: string;
+  category: string;
+  label: string;
+  description: string;
+  expected_effect: string | null;
+  recorded_at: string;
+  verification_status: string;
+};
+
+export type InterventionCreate = {
+  label: string;
+  description: string;
+  expected_effect?: string | null;
+  recorded_at?: string;
+};
+
 export type InvestigationDetail = {
   item: InvestigationItem;
   timeline: TimelineEvent[];
   hypotheses: Hypothesis[];
   actions: ActionSuggestion[];
+  interventions: InterventionRecord[];
   verification: VerificationSummary;
   report: {
     summary: string;

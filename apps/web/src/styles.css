@@ -152,7 +152,9 @@ h2 {
 .queue-list,
 .detail-grid,
 .timeline,
-.signal-list {
+.signal-list,
+.intervention-form,
+.intervention-list {
   display: grid;
   gap: 10px;
 }
@@ -275,7 +277,8 @@ dd {
 
 .timeline-row,
 .hypothesis,
-.action {
+.action,
+.intervention {
   padding: 12px;
   border: 1px solid #e4e7ec;
   border-radius: 8px;
@@ -283,7 +286,8 @@ dd {
 }
 
 .timeline-row time,
-.hypothesis span {
+.hypothesis span,
+.intervention span {
   display: block;
   margin-bottom: 6px;
   color: #667085;
@@ -293,6 +297,7 @@ dd {
 .timeline-row p,
 .hypothesis p,
 .action p,
+.intervention p,
 .next-step {
   margin-bottom: 0;
   color: #475467;
@@ -311,6 +316,50 @@ code {
 
 .counter {
   margin-top: 8px;
+}
+
+.intervention-form {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #e4e7ec;
+}
+
+.intervention-form label {
+  display: grid;
+  gap: 6px;
+  color: #344054;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.intervention-form input,
+.intervention-form textarea {
+  width: 100%;
+  border: 1px solid #d8dde6;
+  border-radius: 7px;
+  padding: 9px 10px;
+  color: #162033;
+  font: inherit;
+}
+
+.intervention-form textarea {
+  min-height: 74px;
+  resize: vertical;
+}
+
+.intervention-form button {
+  min-height: 36px;
+  border: 0;
+  border-radius: 7px;
+  background: #0f766e;
+  color: #ffffff;
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.intervention-form button:disabled {
+  background: #98a2b3;
+  cursor: wait;
 }
 
 .signal-list {

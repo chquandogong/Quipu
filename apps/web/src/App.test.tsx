@@ -1,5 +1,5 @@
 import '@testing-library/jest-dom/vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import App from './App';
@@ -87,6 +87,7 @@ const detailResponse = {
       description: 'Record physical cooling changes and compare load-adjusted temperatures.',
     },
   ],
+  interventions: [],
   verification: {
     status: 'Needs before/after data',
     summary: 'Record an intervention and compare the next observation window.',
@@ -101,21 +102,37 @@ const detailResponse = {
 
 describe('App', () => {
   it('renders the investigation workflow as the primary surface', async () => {
+    const createdIntervention = {
+      id: 1,
+      investigation_id: 'xps-13:thermal',
+      device_id: 'xps-13',
+      category: 'thermal',
+      label: 'Raised rear edge',
+      description: 'Lifted one side of the laptop to improve bottom airflow.',
+      expected_effect: 'Temperature should drop in the next observation window.',
+      recorded_at: '2026-07-07T03:05:00+00:00',
+      verification_status: 'pending',
+    };
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.endsWith('/api/fleet/overview')) {
+        return { ok: true, json: async () => fleetResponse };
+      }
+      if (url.endsWith('/api/investigations/queue')) {
+        return { ok: true, json: async () => queueResponse };
+      }
+      if (url.endsWith('/api/investigations/xps-13%3Athermal/interventions') && init?.method === 'POST') {
+        return { ok: true, json: async () => createdIntervention };
+      }
+      if (url.endsWith('/api/investigations/xps-13%3Athermal')) {
+        return { ok: true, json: async () => detailResponse };
+      }
+      throw new Error(`unexpected URL ${url}`);
+    });
+
     vi.stubGlobal(
       'fetch',
-      vi.fn(async (input: RequestInfo | URL) => {
-        const url = String(input);
-        if (url.endsWith('/api/fleet/overview')) {
-          return { ok: true, json: async () => fleetResponse };
-        }
-        if (url.endsWith('/api/investigations/queue')) {
-          return { ok: true, json: async () => queueResponse };
-        }
-        if (url.endsWith('/api/investigations/xps-13%3Athermal')) {
-          return { ok: true, json: async () => detailResponse };
-        }
-        throw new Error(`unexpected URL ${url}`);
-      }),
+      fetchMock,
     );
 
     render(<App />);
@@ -125,7 +142,20 @@ describe('App', () => {
     expect(screen.getByText('build-xps')).toBeInTheDocument();
     expect(screen.getByText('Top hypotheses')).toBeInTheDocument();
     expect(screen.getByText('Action plan')).toBeInTheDocument();
+    expect(screen.getByText('Recorded interventions')).toBeInTheDocument();
     expect(screen.getByText('Verification')).toBeInTheDocument();
     expect(screen.getAllByText('Report').length).toBeGreaterThan(0);
+    await waitFor(() => expect(screen.getByText('Check cooling and workload')).toBeInTheDocument());
+
+    fireEvent.change(screen.getByLabelText('Intervention label'), { target: { value: 'Raised rear edge' } });
+    fireEvent.change(screen.getByLabelText('Intervention description'), {
+      target: { value: 'Lifted one side of the laptop to improve bottom airflow.' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Record intervention' }));
+
+    await waitFor(() => expect(screen.getByText('Raised rear edge')).toBeInTheDocument());
+    const postCall = fetchMock.mock.calls.find(([input, init]) => String(input).includes('/interventions') && init?.method === 'POST');
+    expect(postCall).toBeDefined();
+    expect(JSON.parse(String(postCall?.[1]?.body)).label).toBe('Raised rear edge');
   });
 });

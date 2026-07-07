@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
+import type { FormEvent } from 'react';
 
-import { fetchFleetOverview, fetchInvestigationDetail, fetchInvestigationQueue } from './api';
+import { fetchFleetOverview, fetchInvestigationDetail, fetchInvestigationQueue, recordIntervention } from './api';
 import type { FleetOverview, InvestigationDetail, InvestigationItem, RiskLevel } from './types';
 import './styles.css';
 
@@ -35,6 +36,9 @@ export default function App() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detail, setDetail] = useState<InvestigationDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [interventionLabel, setInterventionLabel] = useState('');
+  const [interventionDescription, setInterventionDescription] = useState('');
+  const [recordingIntervention, setRecordingIntervention] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -80,6 +84,35 @@ export default function App() {
     () => queue.find((item) => item.id === selectedId) ?? queue[0] ?? null,
     [queue, selectedId],
   );
+
+  async function handleRecordIntervention(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!selectedId || !detail || !interventionLabel.trim() || !interventionDescription.trim()) return;
+    setRecordingIntervention(true);
+    try {
+      const created = await recordIntervention(selectedId, {
+        label: interventionLabel,
+        description: interventionDescription,
+        expected_effect: detail.actions[0]?.description ?? null,
+        recorded_at: new Date().toISOString(),
+      });
+      setDetail({
+        ...detail,
+        interventions: [...detail.interventions, created],
+        verification: {
+          ...detail.verification,
+          status: 'Waiting for after window',
+          summary: 'Intervention recorded. Compare the next observation window before concluding it helped.',
+        },
+      });
+      setInterventionLabel('');
+      setInterventionDescription('');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Unknown intervention API error');
+    } finally {
+      setRecordingIntervention(false);
+    }
+  }
 
   if (loading) {
     return (
@@ -216,6 +249,50 @@ export default function App() {
                 <p>{action.description}</p>
               </div>
             ))}
+            {detail && (
+              <form className="intervention-form" onSubmit={handleRecordIntervention}>
+                <label>
+                  Intervention label
+                  <input
+                    onChange={(event) => setInterventionLabel(event.target.value)}
+                    placeholder="Raised rear edge"
+                    value={interventionLabel}
+                  />
+                </label>
+                <label>
+                  Intervention description
+                  <textarea
+                    onChange={(event) => setInterventionDescription(event.target.value)}
+                    placeholder="Describe the human action taken"
+                    value={interventionDescription}
+                  />
+                </label>
+                <button disabled={recordingIntervention} type="submit">
+                  {recordingIntervention ? 'Recording...' : 'Record intervention'}
+                </button>
+              </form>
+            )}
+          </article>
+
+          <article className="panel">
+            <div className="panel-head">
+              <h2>Recorded interventions</h2>
+              <span>{detail?.interventions.length ?? 0}</span>
+            </div>
+            <div className="intervention-list">
+              {detail?.interventions.length ? (
+                detail.interventions.map((intervention) => (
+                  <div className="intervention" key={intervention.id}>
+                    <strong>{intervention.label}</strong>
+                    <span>{new Date(intervention.recorded_at).toLocaleString()} / {intervention.verification_status}</span>
+                    <p>{intervention.description}</p>
+                    {intervention.expected_effect && <p className="counter">{intervention.expected_effect}</p>}
+                  </div>
+                ))
+              ) : (
+                <p className="status">No interventions recorded yet.</p>
+              )}
+            </div>
           </article>
 
           <article className="panel">

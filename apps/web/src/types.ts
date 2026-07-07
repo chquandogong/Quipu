@@ -52,3 +52,65 @@ export type FleetOverview = {
   };
   devices: DeviceSnapshot[];
 };
+
+export type InvestigationItem = {
+  id: string;
+  priority: 'High' | 'Medium' | 'Low';
+  stage: string;
+  risk_level: RiskLevel;
+  device_id: string;
+  device_hostname: string;
+  title: string;
+  category: string;
+  confidence: string;
+  why_now: string;
+  evidence: string;
+  next_step: string;
+  updated_at: string;
+};
+
+export type InvestigationQueue = {
+  items: InvestigationItem[];
+};
+
+export type TimelineEvent = {
+  observed_at: string;
+  category: string;
+  severity: string;
+  source: string;
+  summary: string;
+  raw_ref: string | null;
+};
+
+export type Hypothesis = {
+  category: string;
+  title: string;
+  confidence: string;
+  supporting_evidence: string[];
+  contradicting_evidence: string[];
+  missing_checks: string[];
+};
+
+export type ActionSuggestion = {
+  label: string;
+  description: string;
+};
+
+export type VerificationSummary = {
+  status: string;
+  summary: string;
+  signals: string[];
+};
+
+export type InvestigationDetail = {
+  item: InvestigationItem;
+  timeline: TimelineEvent[];
+  hypotheses: Hypothesis[];
+  actions: ActionSuggestion[];
+  verification: VerificationSummary;
+  report: {
+    summary: string;
+    recommended_next_step: string;
+  };
+  fleet_context: DeviceSnapshot;
+};

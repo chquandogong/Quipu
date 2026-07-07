@@ -13,6 +13,7 @@ from quipu_server.repository import (
     ingest_batch,
     list_device_snapshots,
     list_interventions_for_item,
+    list_observations_for_intervention,
     record_intervention,
 )
 from quipu_server.settings import Settings
@@ -88,7 +89,15 @@ def create_app(
     def investigation_detail(item_id: str, db: sqlite3.Connection = Depends(get_conn)) -> dict:
         snapshots = list_device_snapshots(db)
         interventions = list_interventions_for_item(db, item_id)
-        detail = build_investigation_detail(snapshots, item_id, interventions=interventions)
+        intervention_windows = {
+            intervention["id"]: list_observations_for_intervention(db, intervention) for intervention in interventions
+        }
+        detail = build_investigation_detail(
+            snapshots,
+            item_id,
+            interventions=interventions,
+            intervention_windows=intervention_windows,
+        )
         if detail is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="investigation not found")
         return detail

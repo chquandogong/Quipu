@@ -102,6 +102,21 @@ export type VerificationSummary = {
   signals: string[];
 };
 
+export type VerificationCheck = {
+  name: string;
+  before: string | null;
+  after: string | null;
+  delta: string | null;
+  verdict: string;
+};
+
+export type VerificationResult = {
+  status: 'helped' | 'worse' | 'unclear' | 'insufficient_data';
+  summary: string;
+  window_minutes: number;
+  checks: VerificationCheck[];
+};
+
 export type InterventionRecord = {
   id: number;
   investigation_id: string;
@@ -112,6 +127,7 @@ export type InterventionRecord = {
   expected_effect: string | null;
   recorded_at: string;
   verification_status: string;
+  verification_result?: VerificationResult;
 };
 
 export type InterventionCreate = {

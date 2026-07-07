@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 
 import { fetchFleetOverview, fetchInvestigationDetail, fetchInvestigationQueue, recordIntervention } from './api';
-import type { FleetOverview, InvestigationDetail, InvestigationItem, RiskLevel } from './types';
+import type { FleetOverview, InvestigationDetail, InvestigationItem, RiskLevel, VerificationResult } from './types';
 import './styles.css';
 
 const flowStages = ['Detect', 'Triage', 'Investigate', 'Hypothesize', 'Act', 'Verify', 'Report'];
@@ -28,6 +28,40 @@ function priorityClass(priority: InvestigationItem['priority']): string {
 
 function riskClass(level: RiskLevel): string {
   return `risk risk-${level}`;
+}
+
+function verificationStatusLabel(status: VerificationResult['status']): string {
+  return {
+    helped: 'Helped',
+    worse: 'Worse',
+    unclear: 'Unclear',
+    insufficient_data: 'Needs data',
+  }[status];
+}
+
+function verificationClass(status: VerificationResult['status']): string {
+  return `verification-badge verification-${status.replace('_', '-')}`;
+}
+
+function VerificationResultView({ result }: { result: VerificationResult }) {
+  return (
+    <div className="verification-result">
+      <div className="verification-result-head">
+        <span className={verificationClass(result.status)}>{verificationStatusLabel(result.status)}</span>
+        <small>{result.window_minutes} min window</small>
+      </div>
+      <p>{result.summary}</p>
+      <div className="comparison-list">
+        {result.checks.map((check) => (
+          <div className="comparison-row" key={check.name}>
+            <strong>{check.name}</strong>
+            <span>{check.before ?? 'Missing'} {'->'} {check.after ?? 'Missing'}</span>
+            <em>{check.delta ?? check.verdict}</em>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 export default function App() {
@@ -84,6 +118,7 @@ export default function App() {
     () => queue.find((item) => item.id === selectedId) ?? queue[0] ?? null,
     [queue, selectedId],
   );
+  const latestVerificationResult = detail?.interventions[detail.interventions.length - 1]?.verification_result;
 
   async function handleRecordIntervention(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -287,6 +322,7 @@ export default function App() {
                     <span>{new Date(intervention.recorded_at).toLocaleString()} / {intervention.verification_status}</span>
                     <p>{intervention.description}</p>
                     {intervention.expected_effect && <p className="counter">{intervention.expected_effect}</p>}
+                    {intervention.verification_result && <VerificationResultView result={intervention.verification_result} />}
                   </div>
                 ))
               ) : (
@@ -304,6 +340,7 @@ export default function App() {
             <div className="signal-list">
               {detail?.verification.signals.map((signal) => <span key={signal}>{signal}</span>)}
             </div>
+            {latestVerificationResult && <VerificationResultView result={latestVerificationResult} />}
           </article>
 
           <article className="panel">

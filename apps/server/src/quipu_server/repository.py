@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import hashlib
 import sqlite3
 from typing import Any
@@ -18,6 +18,13 @@ def _iso(value: datetime) -> str:
     if value.tzinfo is None:
         value = value.replace(tzinfo=timezone.utc)
     return value.astimezone(timezone.utc).isoformat()
+
+
+def _parse_time(value: str) -> datetime:
+    parsed = datetime.fromisoformat(value)
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc)
 
 
 def _event_fingerprint(event: EventIn) -> str:
@@ -251,3 +258,62 @@ def list_interventions_for_item(conn: sqlite3.Connection, investigation_id: str)
         (investigation_id,),
     ).fetchall()
     return [_intervention_row_to_dict(row) for row in rows]
+
+
+def list_observations_for_intervention(
+    conn: sqlite3.Connection,
+    intervention: dict[str, Any],
+    *,
+    window_minutes: int = 30,
+) -> dict[str, Any]:
+    recorded_at = _parse_time(intervention["recorded_at"])
+    before_start = recorded_at - timedelta(minutes=window_minutes)
+    after_end = recorded_at + timedelta(minutes=window_minutes)
+    device_id = intervention["device_id"]
+    category = intervention["category"]
+
+    def metric_rows(start: datetime, end: datetime, *, include_start: bool, include_end: bool) -> list[dict[str, Any]]:
+        start_op = ">=" if include_start else ">"
+        end_op = "<=" if include_end else "<"
+        rows = conn.execute(
+            f"""
+            SELECT name, value, unit, observed_at
+            FROM metric_samples
+            WHERE device_id = ?
+              AND observed_at {start_op} ?
+              AND observed_at {end_op} ?
+            ORDER BY observed_at ASC, name ASC
+            """,
+            (device_id, _iso(start), _iso(end)),
+        ).fetchall()
+        return [dict(row) for row in rows]
+
+    def event_rows(start: datetime, end: datetime, *, include_start: bool, include_end: bool) -> list[dict[str, Any]]:
+        start_op = ">=" if include_start else ">"
+        end_op = "<=" if include_end else "<"
+        rows = conn.execute(
+            f"""
+            SELECT category, severity, source, message_summary, raw_ref, observed_at, fingerprint
+            FROM events
+            WHERE device_id = ?
+              AND category = ?
+              AND severity IN ('warning', 'critical')
+              AND observed_at {start_op} ?
+              AND observed_at {end_op} ?
+            ORDER BY observed_at ASC, fingerprint ASC
+            """,
+            (device_id, category, _iso(start), _iso(end)),
+        ).fetchall()
+        return [dict(row) for row in rows]
+
+    return {
+        "window_minutes": window_minutes,
+        "metrics": {
+            "before": metric_rows(before_start, recorded_at, include_start=True, include_end=False),
+            "after": metric_rows(recorded_at, after_end, include_start=True, include_end=True),
+        },
+        "events": {
+            "before": event_rows(before_start, recorded_at, include_start=True, include_end=False),
+            "after": event_rows(recorded_at, after_end, include_start=True, include_end=True),
+        },
+    }

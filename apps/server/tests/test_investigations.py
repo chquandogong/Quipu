@@ -43,6 +43,89 @@ def test_build_investigation_detail_contains_workflow_sections(conn, sample_batc
     assert "dev-p1" in detail["report"]["summary"]
 
 
+def test_intervention_verification_marks_thermal_improvement_helped(conn, sample_batch) -> None:
+    ingest_batch(conn, sample_batch, received_at=datetime(2026, 7, 7, 3, 1, tzinfo=timezone.utc))
+    snapshots = list_device_snapshots(conn)
+    intervention = {
+        "id": 1,
+        "investigation_id": "thinkpad-p1:thermal",
+        "device_id": "thinkpad-p1",
+        "category": "thermal",
+        "label": "Raised rear edge",
+        "description": "Lifted one side of the laptop to improve bottom airflow.",
+        "expected_effect": "CPU package temperature should drop.",
+        "recorded_at": "2026-07-07T03:05:00+00:00",
+        "verification_status": "pending",
+    }
+    window = {
+        "window_minutes": 30,
+        "metrics": {
+            "before": [
+                {"name": "cpu.package_temp_c", "value": 86.4, "unit": "celsius", "observed_at": "2026-07-07T03:00:00+00:00"},
+                {"name": "cpu.load_1m", "value": 1.2, "unit": "load", "observed_at": "2026-07-07T03:00:00+00:00"},
+            ],
+            "after": [
+                {"name": "cpu.package_temp_c", "value": 69.0, "unit": "celsius", "observed_at": "2026-07-07T03:20:00+00:00"},
+                {"name": "cpu.load_1m", "value": 1.4, "unit": "load", "observed_at": "2026-07-07T03:20:00+00:00"},
+            ],
+        },
+        "events": {"before": [], "after": []},
+    }
+
+    detail = build_investigation_detail(
+        snapshots,
+        "thinkpad-p1:thermal",
+        now=datetime(2026, 7, 7, 3, 6, tzinfo=timezone.utc),
+        interventions=[intervention],
+        intervention_windows={1: window},
+    )
+
+    assert detail is not None
+    result = detail["interventions"][0]["verification_result"]
+    assert result["status"] == "helped"
+    assert result["checks"][0]["delta"] == "-17.4C"
+    assert detail["verification"]["status"] == "Helped"
+
+
+def test_intervention_verification_requires_before_and_after_samples(conn, sample_batch) -> None:
+    ingest_batch(conn, sample_batch, received_at=datetime(2026, 7, 7, 3, 1, tzinfo=timezone.utc))
+    snapshots = list_device_snapshots(conn)
+    intervention = {
+        "id": 1,
+        "investigation_id": "thinkpad-p1:thermal",
+        "device_id": "thinkpad-p1",
+        "category": "thermal",
+        "label": "Raised rear edge",
+        "description": "Lifted one side of the laptop to improve bottom airflow.",
+        "expected_effect": None,
+        "recorded_at": "2026-07-07T03:05:00+00:00",
+        "verification_status": "pending",
+    }
+    window = {
+        "window_minutes": 30,
+        "metrics": {
+            "before": [
+                {"name": "cpu.package_temp_c", "value": 86.4, "unit": "celsius", "observed_at": "2026-07-07T03:00:00+00:00"}
+            ],
+            "after": [],
+        },
+        "events": {"before": [], "after": []},
+    }
+
+    detail = build_investigation_detail(
+        snapshots,
+        "thinkpad-p1:thermal",
+        now=datetime(2026, 7, 7, 3, 6, tzinfo=timezone.utc),
+        interventions=[intervention],
+        intervention_windows={1: window},
+    )
+
+    assert detail is not None
+    result = detail["interventions"][0]["verification_result"]
+    assert result["status"] == "insufficient_data"
+    assert result["checks"][0]["verdict"] == "missing_after"
+
+
 def test_investigation_api_returns_queue_and_detail(tmp_path: Path) -> None:
     app = create_app(database_path=tmp_path / "test.sqlite3", dev_agent_token="secret")
     client = TestClient(app)

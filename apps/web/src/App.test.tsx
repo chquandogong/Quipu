@@ -87,11 +87,37 @@ const detailResponse = {
       description: 'Record physical cooling changes and compare load-adjusted temperatures.',
     },
   ],
-  interventions: [],
+  interventions: [
+    {
+      id: 1,
+      investigation_id: 'xps-13:thermal',
+      device_id: 'xps-13',
+      category: 'thermal',
+      label: 'Raised rear edge',
+      description: 'Lifted one side of the laptop to improve bottom airflow.',
+      expected_effect: 'Temperature should drop in the next observation window.',
+      recorded_at: '2026-07-07T03:05:00+00:00',
+      verification_status: 'pending',
+      verification_result: {
+        status: 'helped',
+        summary: 'CPU package temperature fell by 17.4C after Raised rear edge.',
+        window_minutes: 30,
+        checks: [
+          {
+            name: 'CPU package temperature',
+            before: '86.4C',
+            after: '69.0C',
+            delta: '-17.4C',
+            verdict: 'improved',
+          },
+        ],
+      },
+    },
+  ],
   verification: {
-    status: 'Needs before/after data',
-    summary: 'Record an intervention and compare the next observation window.',
-    signals: ['temperature delta', 'warning recurrence', 'load context'],
+    status: 'Helped',
+    summary: 'CPU package temperature fell by 17.4C after Raised rear edge.',
+    signals: ['CPU package temperature', 'Warning recurrence', '1 minute load average'],
   },
   report: {
     summary: 'build-xps needs investigation for thermal evidence.',
@@ -103,7 +129,7 @@ const detailResponse = {
 describe('App', () => {
   it('renders the investigation workflow as the primary surface', async () => {
     const createdIntervention = {
-      id: 1,
+      id: 2,
       investigation_id: 'xps-13:thermal',
       device_id: 'xps-13',
       category: 'thermal',
@@ -144,6 +170,7 @@ describe('App', () => {
     expect(screen.getByText('Action plan')).toBeInTheDocument();
     expect(screen.getByText('Recorded interventions')).toBeInTheDocument();
     expect(screen.getByText('Verification')).toBeInTheDocument();
+    await waitFor(() => expect(screen.getAllByText('-17.4C').length).toBeGreaterThan(0));
     expect(screen.getAllByText('Report').length).toBeGreaterThan(0);
     await waitFor(() => expect(screen.getByText('Check cooling and workload')).toBeInTheDocument());
 
@@ -153,7 +180,7 @@ describe('App', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: 'Record intervention' }));
 
-    await waitFor(() => expect(screen.getByText('Raised rear edge')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getAllByText('Raised rear edge').length).toBeGreaterThan(0));
     const postCall = fetchMock.mock.calls.find(([input, init]) => String(input).includes('/interventions') && init?.method === 'POST');
     expect(postCall).toBeDefined();
     expect(JSON.parse(String(postCall?.[1]?.body)).label).toBe('Raised rear edge');

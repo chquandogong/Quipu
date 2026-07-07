@@ -20,6 +20,35 @@ def _metric_value(snapshot: dict[str, Any], name: str) -> float | None:
     return float(metric["value"])
 
 
+def _average_metric(samples: list[dict[str, Any]], name: str) -> float | None:
+    values = [float(sample["value"]) for sample in samples if sample["name"] == name]
+    if not values:
+        return None
+    return sum(values) / len(values)
+
+
+def _format_celsius(value: float | None) -> str | None:
+    if value is None:
+        return None
+    return f"{value:.1f}C"
+
+
+def _format_load(value: float | None) -> str | None:
+    if value is None:
+        return None
+    return f"{value:.2f}"
+
+
+def _format_delta(value: float | None, unit: str) -> str | None:
+    if value is None:
+        return None
+    if unit == "C":
+        return f"{value:+.1f}C"
+    if unit == "load":
+        return f"{value:+.2f}"
+    return f"{value:+.1f}"
+
+
 def _finding(category: str, title: str, evidence: str, confidence: str) -> dict[str, str]:
     return {
         "category": category,
@@ -205,6 +234,156 @@ def _first_finding(device_view: dict[str, Any]) -> dict[str, str] | None:
     return findings[0] if findings else None
 
 
+def _missing_metric_result(
+    *,
+    intervention: dict[str, Any],
+    window_minutes: int,
+    missing: str,
+) -> dict[str, Any]:
+    return {
+        "status": "insufficient_data",
+        "summary": f"Need {missing} observations before Quipu can verify {intervention['label']}.",
+        "window_minutes": window_minutes,
+        "checks": [
+            {
+                "name": "CPU package temperature",
+                "before": None,
+                "after": None,
+                "delta": None,
+                "verdict": f"missing_{missing}",
+            }
+        ],
+    }
+
+
+def _build_intervention_verification(
+    intervention: dict[str, Any],
+    window: dict[str, Any] | None,
+) -> dict[str, Any]:
+    if not window:
+        return {
+            "status": "insufficient_data",
+            "summary": f"Need before and after observations before Quipu can verify {intervention['label']}.",
+            "window_minutes": 30,
+            "checks": [
+                {
+                    "name": "CPU package temperature",
+                    "before": None,
+                    "after": None,
+                    "delta": None,
+                    "verdict": "missing_window",
+                }
+            ],
+        }
+
+    window_minutes = int(window["window_minutes"])
+    before_metrics = window["metrics"]["before"]
+    after_metrics = window["metrics"]["after"]
+    before_temp = _average_metric(before_metrics, "cpu.package_temp_c")
+    after_temp = _average_metric(after_metrics, "cpu.package_temp_c")
+    if before_temp is None and after_temp is None:
+        return _missing_metric_result(intervention=intervention, window_minutes=window_minutes, missing="before_and_after")
+    if before_temp is None:
+        return _missing_metric_result(intervention=intervention, window_minutes=window_minutes, missing="before")
+    if after_temp is None:
+        return _missing_metric_result(intervention=intervention, window_minutes=window_minutes, missing="after")
+
+    temp_delta = after_temp - before_temp
+    if temp_delta <= -5:
+        temp_verdict = "improved"
+    elif temp_delta >= 5:
+        temp_verdict = "worsened"
+    else:
+        temp_verdict = "unchanged"
+
+    checks: list[dict[str, Any]] = [
+        {
+            "name": "CPU package temperature",
+            "before": _format_celsius(before_temp),
+            "after": _format_celsius(after_temp),
+            "delta": _format_delta(temp_delta, "C"),
+            "verdict": temp_verdict,
+        }
+    ]
+
+    before_load = _average_metric(before_metrics, "cpu.load_1m")
+    after_load = _average_metric(after_metrics, "cpu.load_1m")
+    load_note = "Load context was unavailable."
+    if before_load is not None and after_load is not None:
+        load_delta = after_load - before_load
+        if abs(load_delta) <= 0.5:
+            load_verdict = "similar"
+            load_note = "Load was similar, so the temperature change is stronger cooling evidence."
+        elif load_delta > 0.5:
+            load_verdict = "higher"
+            load_note = "Load was higher after the intervention, so a temperature drop is stronger cooling evidence."
+        else:
+            load_verdict = "lower"
+            load_note = "Load was lower after the intervention, so part of the temperature drop may be workload-driven."
+        checks.append(
+            {
+                "name": "1 minute load average",
+                "before": _format_load(before_load),
+                "after": _format_load(after_load),
+                "delta": _format_delta(load_delta, "load"),
+                "verdict": load_verdict,
+            }
+        )
+
+    before_events = len(window["events"]["before"])
+    after_events = len(window["events"]["after"])
+    if after_events < before_events:
+        event_verdict = "improved"
+    elif after_events > before_events:
+        event_verdict = "worsened"
+    else:
+        event_verdict = "unchanged"
+    checks.append(
+        {
+            "name": "Warning recurrence",
+            "before": str(before_events),
+            "after": str(after_events),
+            "delta": str(after_events - before_events),
+            "verdict": event_verdict,
+        }
+    )
+
+    verdicts = {check["verdict"] for check in checks}
+    if "worsened" in verdicts:
+        status = "worse"
+        summary = f"Evidence worsened after {intervention['label']}; inspect the window before repeating the action."
+    elif "improved" in verdicts:
+        status = "helped"
+        summary = (
+            f"CPU package temperature fell by {abs(temp_delta):.1f}C after {intervention['label']}. "
+            f"{load_note}"
+        )
+    else:
+        status = "unclear"
+        summary = f"Evidence changed too little to verify whether {intervention['label']} helped."
+
+    return {
+        "status": status,
+        "summary": summary,
+        "window_minutes": window_minutes,
+        "checks": checks,
+    }
+
+
+def _verification_panel_from_result(result: dict[str, Any]) -> dict[str, Any]:
+    status_labels = {
+        "helped": "Helped",
+        "worse": "Worse",
+        "unclear": "Unclear",
+        "insufficient_data": "Needs after data",
+    }
+    return {
+        "status": status_labels.get(result["status"], "Waiting for after window"),
+        "summary": result["summary"],
+        "signals": [check["name"] for check in result["checks"]],
+    }
+
+
 def _queue_item(device_view: dict[str, Any], *, now: datetime) -> dict[str, Any] | None:
     finding = _first_finding(device_view)
     if not finding:
@@ -252,6 +431,7 @@ def build_investigation_detail(
     *,
     now: datetime | None = None,
     interventions: list[dict[str, Any]] | None = None,
+    intervention_windows: dict[int, dict[str, Any]] | None = None,
 ) -> dict[str, Any] | None:
     queue = build_investigation_queue(snapshots, now=now)
     item = next((candidate for candidate in queue if candidate["id"] == item_id), None)
@@ -285,7 +465,17 @@ def build_investigation_detail(
             }
         ]
 
-    recorded_interventions = interventions or []
+    intervention_windows = intervention_windows or {}
+    recorded_interventions = [
+        {
+            **intervention,
+            "verification_result": _build_intervention_verification(
+                intervention,
+                intervention_windows.get(intervention["id"]),
+            ),
+        }
+        for intervention in (interventions or [])
+    ]
     contradiction = (
         "An intervention is recorded; after-window evidence has not been compared yet."
         if recorded_interventions
@@ -300,19 +490,14 @@ def build_investigation_detail(
         "missing_checks": [item["next_step"]],
     }
     action = _action_for_category(item["category"])
-    verification = (
-        {
-            "status": "Waiting for after window",
-            "summary": "Intervention recorded. Compare the next observation window before concluding it helped.",
-            "signals": ["temperature delta", "warning recurrence", "load context"],
-        }
-        if recorded_interventions
-        else {
+    if recorded_interventions:
+        verification = _verification_panel_from_result(recorded_interventions[-1]["verification_result"])
+    else:
+        verification = {
             "status": "Needs before/after data",
             "summary": "Record an intervention and compare the next observation window.",
             "signals": ["temperature delta", "warning recurrence", "load context"],
         }
-    )
     return {
         "item": item,
         "timeline": timeline,

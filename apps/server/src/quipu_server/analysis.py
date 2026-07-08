@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+import re
 from typing import Any
 
 
@@ -169,6 +170,7 @@ def classify_snapshot(snapshot: dict[str, Any], *, now: datetime) -> dict[str, A
         risk_level = "stale"
 
     package_temp = _metric_value(snapshot, "cpu.package_temp_c")
+    fan_rpm = _metric_value(snapshot, "fan.rpm")
     if package_temp is not None and package_temp >= 90:
         findings.append(
             _finding(
@@ -180,14 +182,24 @@ def classify_snapshot(snapshot: dict[str, Any], *, now: datetime) -> dict[str, A
         )
         risk_level = "critical"
     elif package_temp is not None and package_temp >= 78 and risk_level != "stale":
-        findings.append(
-            _finding(
-                "thermal",
-                "CPU package temperature is elevated",
-                f"Latest CPU package temperature is {package_temp:.1f}C.",
-                "medium",
+        if fan_rpm is not None and fan_rpm <= 200:
+            findings.append(
+                _finding(
+                    "thermal",
+                    "Cooling response needs inspection",
+                    f"CPU package is {package_temp:.1f}C while fan RPM is {fan_rpm:.0f}.",
+                    "medium",
+                )
             )
-        )
+        else:
+            findings.append(
+                _finding(
+                    "thermal",
+                    "CPU package temperature is elevated",
+                    f"Latest CPU package temperature is {package_temp:.1f}C.",
+                    "medium",
+                )
+            )
         risk_level = "warning"
 
     load_1m = _metric_value(snapshot, "cpu.load_1m")
@@ -389,6 +401,12 @@ def _next_step_for_category(category: str) -> str:
     }.get(category, "Inspect the evidence timeline and collect missing signals.")
 
 
+def _next_step_for_finding(finding: dict[str, str]) -> str:
+    if finding["title"] == "Cooling response needs inspection":
+        return "Check fan readings, airflow clearance, and workload before repeating load."
+    return _next_step_for_category(finding["category"])
+
+
 def _action_for_category(category: str) -> dict[str, str]:
     actions = {
         "thermal": {
@@ -431,6 +449,15 @@ def _action_for_category(category: str) -> dict[str, str]:
             "description": "Review the timeline and gather missing signals before acting.",
         },
     )
+
+
+def _action_for_item(item: dict[str, Any]) -> dict[str, str]:
+    if item["title"] == "Cooling response needs inspection":
+        return {
+            "label": "Check fan, airflow, and load",
+            "description": "Confirm fan reading validity, improve bottom clearance, and compare the next load-adjusted thermal window.",
+        }
+    return _action_for_category(item["category"])
 
 
 def _first_finding(device_view: dict[str, Any]) -> dict[str, str] | None:
@@ -608,7 +635,7 @@ def _queue_item(device_view: dict[str, Any], *, now: datetime) -> dict[str, Any]
         "confidence": finding["confidence"],
         "why_now": finding["title"],
         "evidence": finding["evidence"],
-        "next_step": _next_step_for_category(category),
+        "next_step": _next_step_for_finding(finding),
         "updated_at": now.isoformat(),
     }
 
@@ -693,7 +720,7 @@ def build_investigation_detail(
         "contradicting_evidence": [contradiction],
         "missing_checks": [item["next_step"]],
     }
-    action = _action_for_category(item["category"])
+    action = _action_for_item(item)
     if recorded_interventions:
         verification = _verification_panel_from_result(recorded_interventions[-1]["verification_result"])
     else:
@@ -766,10 +793,36 @@ def _finalize_groups(groups: dict[str, dict[str, Any]], key_name: str) -> list[d
     return finalized
 
 
+def _component_for_event(event: dict[str, Any]) -> str | None:
+    text = f"{event['source']} {event['message_summary']}".lower()
+    if event["category"] == "graphics":
+        for component in ("i915", "amdgpu", "nvidia", "nouveau", "drm", "gnome-shell", "kwin", "xorg", "wayland"):
+            if component in text:
+                return f"gpu:{component}"
+        return "gpu:unknown"
+    if event["category"] == "network":
+        interface = re.search(r"\b(wl[a-z0-9]+|wlan\d+)\b", text)
+        if interface:
+            return f"wifi:{interface.group(1)}"
+        if "networkmanager" in text:
+            return "wifi:networkmanager"
+        return "wifi:unknown"
+    if event["category"] == "storage":
+        nvme_device = re.search(r"\b(nvme\d+n\d+|nvme\d+)\b", text)
+        if nvme_device:
+            return f"nvme:{nvme_device.group(1)}"
+        if "smart" in text:
+            return "storage:smart"
+        if "ext4" in text:
+            return "storage:ext4"
+    return None
+
+
 def build_pattern_overview(snapshots: list[dict[str, Any]]) -> dict[str, Any]:
     category_groups: dict[str, dict[str, Any]] = {}
     model_groups: dict[str, dict[str, Any]] = {}
     kernel_groups: dict[str, dict[str, Any]] = {}
+    component_groups: dict[str, dict[str, Any]] = {}
 
     for snapshot in snapshots:
         device = snapshot["device"]
@@ -784,9 +837,17 @@ def build_pattern_overview(snapshots: list[dict[str, Any]]) -> dict[str, Any]:
             )
             for group in groups:
                 _add_pattern_event(group, event, device)
+            component = _component_for_event(event)
+            if component:
+                _add_pattern_event(
+                    component_groups.setdefault(component, _empty_group("component", component, event)),
+                    event,
+                    device,
+                )
 
     return {
         "category_groups": _finalize_groups(category_groups, "category"),
         "model_groups": _finalize_groups(model_groups, "model"),
         "kernel_groups": _finalize_groups(kernel_groups, "kernel_version"),
+        "component_groups": _finalize_groups(component_groups, "component"),
     }

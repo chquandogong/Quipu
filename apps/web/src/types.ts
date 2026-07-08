@@ -159,6 +159,7 @@ export type PatternGroup = {
   category?: string;
   model?: string;
   kernel_version?: string;
+  component?: string;
   count: number;
   device_count: number;
   severities: {
@@ -179,6 +180,7 @@ export type PatternOverview = {
   category_groups: PatternGroup[];
   model_groups: PatternGroup[];
   kernel_groups: PatternGroup[];
+  component_groups?: PatternGroup[];
 };
 
 export type InvestigationDetail = {

@@ -42,8 +42,10 @@ Detect -> Triage -> Investigate -> Hypothesize -> Act -> Verify -> Report
 
 Quipu does not open every log and metric at once. After comparing current
 dashboard, design-system, and progressive-disclosure patterns, Quipu uses a
-dark `Command Center`: one incident stays central while four answers and a
-core signal console remain visible:
+dark `Command Center`. The first visual anchor is not a wide metric card; it is
+a compact `Problem Guide` that answers what is wrong, which evidence to inspect
+first, and what to do next. CPU/Load/NVMe/Wi-Fi move into a denser instrument
+strip as supporting signals:
 
 - What should we inspect now?
 - Why does it matter?
@@ -69,14 +71,16 @@ CPU, Load, and NVMe are useful for thermal triage, but they are not enough for
 team-level root-cause work. Quipu now promotes Wi-Fi signal into the core
 signals and uses a `Telemetry Matrix` for Memory, Fan RPM, NVMe Health, Disk
 Health, Battery Power, Network Events, Reconnect History, Thermal Throttling,
-Kernel Warnings, and Agent Freshness. Deeper SMART/NVMe health and fan-context
-analysis can expand through the same matrix structure later.
+Kernel Warnings, and Agent Freshness. Quipu now raises hot-CPU plus low-fan-RPM
+as a cooling-response finding and groups component signatures such as
+`gpu:i915`, `wifi:wlp0s20f3`, and `nvme:nvme0n1` in Pattern Explorer. Deeper
+SMART/NVMe health can expand through the same rule-based structure later.
 
 v0.9.0 adds an `Operations Rail`, `Team Handoff`, and `Pattern Explorer`.
 The operations rail surfaces agent freshness, offline buffering, enrollment
 guardrails, and pattern radar; handoff notes attach team context to each
-investigation; pattern exploration groups repeated signals by category, model,
-and kernel.
+investigation; pattern exploration groups repeated signals by category,
+component, model, and kernel.
 
 Creator and version information stays as compact header metadata. The large
 creator/reference image drawer was removed because it did not help the
@@ -150,12 +154,12 @@ Implemented:
 - Device enrollment, per-device ingest tokens, token rotation, and token
   revocation APIs
 - Schema version endpoint and team handoff notes per investigation
-- Pattern Explorer API grouped by category, model, and kernel
+- Pattern Explorer API grouped by category, component, model, and kernel
 - Intervention records for investigation items
 - Before/after verification results for interventions
 - Vite React investigation-first UI
-- High-contrast dark Command Center, core signal console, and hover/focus
-  expansion panels
+- High-contrast dark Command Center, Problem Guide, dense signal console, and
+  hover/focus expansion panels
 - Per-metric Korean explanation, English technical term, time window, reading
   guidance, and next-check tooltip for CPU, Load, NVMe, and Wi-Fi
 - Telemetry Matrix for Memory, Fan RPM, NVMe Health, Disk Health, Battery Power,
@@ -163,6 +167,9 @@ Implemented:
   Agent Freshness
 - Operations Rail, Team Handoff, and Pattern Explorer UI
 - Compact Made by, About, and Version metadata chips
+- Product hardening roadmap for collector rollout, retention, backup/restore,
+  RBAC, package publishing, production deployment, Postgres, analytics, and AI
+  layer
 - GitHub Actions CI for server, collector, and web checks
 
 Next direction:

@@ -254,14 +254,14 @@ h2 {
 .answer-grid {
   display: grid;
   grid-template-columns: 1.2fr repeat(3, minmax(0, 1fr));
-  gap: 10px;
+  gap: 8px;
 }
 
 .answer-card {
   display: grid;
-  gap: 8px;
-  min-height: 160px;
-  padding: 13px;
+  gap: 6px;
+  min-height: 108px;
+  padding: 10px;
   border: 1px solid rgba(148, 163, 184, 0.24);
   border-radius: 8px;
   background: rgba(15, 23, 42, 0.72);
@@ -307,7 +307,7 @@ h2 {
 
 .answer-card strong {
   color: #ffffff;
-  font-size: 17px;
+  font-size: 14px;
   line-height: 1.28;
   overflow-wrap: anywhere;
 }
@@ -315,22 +315,67 @@ h2 {
 .answer-card p {
   margin-bottom: 0;
   color: #b6c4d7;
-  font-size: 13px;
+  font-size: 12px;
   line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.problem-guide {
+  display: grid;
+  grid-template-columns: 1.25fr 1fr 1fr;
+  gap: 8px;
+}
+
+.problem-guide > div {
+  display: grid;
+  gap: 6px;
+  min-height: 112px;
+  padding: 12px;
+  border: 1px solid rgba(34, 211, 238, 0.24);
+  border-radius: 8px;
+  background: rgba(2, 6, 23, 0.66);
+}
+
+.problem-guide .guide-primary {
+  border-color: rgba(45, 212, 191, 0.62);
+  background: rgba(13, 31, 38, 0.86);
+  box-shadow: inset 4px 0 0 #2dd4bf;
+}
+
+.problem-guide span {
+  color: #5eead4;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.problem-guide strong {
+  color: #ffffff;
+  font-size: 16px;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.problem-guide p {
+  margin-bottom: 0;
+  color: #b6c4d7;
+  font-size: 12px;
+  line-height: 1.4;
   overflow-wrap: anywhere;
 }
 
 .signal-console {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 10px;
+  gap: 8px;
 }
 
 .signal-chip {
   display: grid;
-  gap: 6px;
-  min-height: 92px;
-  padding: 12px;
+  grid-template-columns: minmax(72px, 0.9fr) minmax(64px, auto) auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 8px 10px;
   border: 1px solid rgba(148, 163, 184, 0.24);
   border-radius: 8px;
   background: rgba(2, 6, 23, 0.68);
@@ -354,7 +399,7 @@ h2 {
 
 .signal-chip strong {
   color: #ffffff;
-  font-size: 24px;
+  font-size: 18px;
   line-height: 1;
 }
 
@@ -462,15 +507,15 @@ h2 {
 .operations-rail {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 10px;
-  margin-bottom: 18px;
+  gap: 8px;
+  margin-bottom: 14px;
 }
 
 .ops-card {
   display: grid;
-  gap: 8px;
-  min-height: 132px;
-  padding: 13px;
+  gap: 6px;
+  min-height: 104px;
+  padding: 10px 12px;
   border: 1px solid rgba(148, 163, 184, 0.22);
   border-radius: 8px;
   background: rgba(10, 16, 30, 0.82);
@@ -493,7 +538,7 @@ h2 {
 
 .ops-card strong {
   color: #ffffff;
-  font-size: 22px;
+  font-size: 19px;
   line-height: 1.05;
 }
 
@@ -713,16 +758,16 @@ h2 {
 .metric-strip {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 10px;
-  margin: 14px 0 0;
+  gap: 8px;
+  margin: 12px 0 0;
 }
 
 .metric-card {
   position: relative;
   display: grid;
   align-content: space-between;
-  min-height: 132px;
-  padding: 12px;
+  min-height: 96px;
+  padding: 10px;
   border: 1px solid rgba(148, 163, 184, 0.22);
   border-radius: 8px;
   background: rgba(2, 6, 23, 0.58);
@@ -833,7 +878,7 @@ h2 {
 .metric-card dd {
   margin: 2px 0 0;
   color: #ffffff;
-  font-size: 25px;
+  font-size: 21px;
   font-weight: 800;
 }
 
@@ -879,14 +924,14 @@ h2 {
 .telemetry-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 10px;
+  gap: 8px;
 }
 
 .telemetry-tile {
   display: grid;
-  gap: 8px;
-  min-height: 150px;
-  padding: 12px;
+  gap: 6px;
+  min-height: 116px;
+  padding: 10px;
   border: 1px solid rgba(148, 163, 184, 0.22);
   border-radius: 8px;
   background: rgba(2, 6, 23, 0.5);
@@ -912,7 +957,7 @@ h2 {
 
 .telemetry-value strong {
   color: #ffffff;
-  font-size: 24px;
+  font-size: 20px;
   line-height: 1;
 }
 
@@ -1023,7 +1068,7 @@ h2 {
 }
 
 .pattern-grid {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .pattern-column {
@@ -1189,6 +1234,7 @@ code {
   .investigation-layout,
   .detail-grid,
   .metric-strip,
+  .problem-guide,
   .signal-console,
   .telemetry-grid,
   .operations-rail,
@@ -1230,6 +1276,7 @@ code {
   .stage-strip,
   .answer-grid,
   .metric-strip,
+  .problem-guide,
   .signal-console,
   .telemetry-grid,
   .operations-rail,

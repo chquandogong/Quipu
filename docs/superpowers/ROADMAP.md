@@ -39,8 +39,10 @@ Implemented:
 - Report draft.
 - Investigation Lens focus board.
 - Command Center first viewport with inspect/why/action/proof answers.
+- Problem Guide that highlights what is wrong, first evidence, and the next
+  action before raw metrics.
 - High-contrast dark command theme.
-- Core signal console for CPU, Load, NVMe, and Wi-Fi.
+- Dense signal console for CPU, Load, NVMe, and Wi-Fi.
 - Telemetry Matrix for Memory, Fan RPM, NVMe Health, Network Events,
   Reconnect History, Thermal Throttling, Disk Health, Battery Power, Kernel
   Warnings, and Agent Freshness.
@@ -53,7 +55,7 @@ Implemented:
 - Operations Rail for agent freshness, offline buffering, enrollment guard,
   and pattern radar.
 - Team Handoff notes attached to each investigation item.
-- Pattern Explorer grouped by category, model, and kernel.
+- Pattern Explorer grouped by category, component, model, and kernel.
 
 Remaining:
 
@@ -93,7 +95,7 @@ Implemented:
 Remaining:
 
 - CPU/core/package thermals with richer sensor naming.
-- Richer multi-fan naming and fan-context analysis.
+- Richer multi-fan naming.
 - Deeper SMART/NVMe health where available without external dependencies.
 
 ## Phase 4: Intervention Verification
@@ -128,20 +130,23 @@ Goal: identify repeated signatures across a fleet.
 Implemented:
 
 - API grouping repeated events by category.
+- API grouping repeated events by component signature.
 - API grouping repeated events by model.
 - API grouping repeated events by kernel.
 - React Pattern Explorer compact panel.
 
 Remaining:
 
-- Same GPU driver.
-- Same SSD or Wi-Fi device.
+- Better GPU driver and Wi-Fi device extraction where logs expose driver names.
+- Same SSD or Wi-Fi hardware identity when the collector can expose it without
+  elevated privileges.
 - Same workload window.
 - Same physical setup.
 
 ## Phase 6: Hardening
 
-Status: first hardening slice implemented.
+Status: first hardening slice implemented; product hardening roadmap drafted in
+`docs/superpowers/PRODUCT_HARDENING.md`.
 
 Goal: make Quipu trustworthy for real team use.
 

@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from quipu_server.analysis import build_fleet_overview, build_investigation_queue
+from quipu_server.analysis import build_fleet_overview, build_investigation_queue, build_pattern_overview
 
 
 def test_fleet_overview_marks_hot_device_warning() -> None:
@@ -314,3 +314,93 @@ def test_low_nvme_available_spare_gets_storage_warning() -> None:
     assert overview["devices"][0]["findings"][0]["title"] == "NVMe available spare is low"
     assert overview["devices"][0]["findings"][0]["evidence"] == "Latest NVMe available spare is 15.0%."
     assert queue[0]["id"] == "spare:storage"
+
+
+def test_hot_cpu_with_idle_fan_prioritizes_cooling_response() -> None:
+    now = datetime(2026, 7, 7, 3, 5, tzinfo=timezone.utc)
+    snapshots = [
+        {
+            "device": {
+                "device_id": "fan",
+                "hostname": "fan-dev",
+                "model": "Thin Laptop",
+                "os_name": "Ubuntu",
+                "kernel_version": "6.14.0",
+                "first_seen_at": "2026-07-07T02:55:00+00:00",
+                "last_seen_at": "2026-07-07T03:04:00+00:00",
+            },
+            "latest_metrics": {
+                "cpu.package_temp_c": {
+                    "value": 84.0,
+                    "unit": "celsius",
+                    "observed_at": "2026-07-07T03:04:00+00:00",
+                },
+                "fan.rpm": {
+                    "value": 0.0,
+                    "unit": "rpm",
+                    "observed_at": "2026-07-07T03:04:00+00:00",
+                },
+            },
+            "recent_events": [],
+        }
+    ]
+
+    overview = build_fleet_overview(snapshots, now=now)
+    queue = build_investigation_queue(snapshots, now=now)
+
+    assert overview["summary"]["warning"] == 1
+    assert overview["devices"][0]["findings"][0]["title"] == "Cooling response needs inspection"
+    assert overview["devices"][0]["findings"][0]["evidence"] == "CPU package is 84.0C while fan RPM is 0."
+    assert queue[0]["why_now"] == "Cooling response needs inspection"
+    assert queue[0]["next_step"] == "Check fan readings, airflow clearance, and workload before repeating load."
+
+
+def test_pattern_overview_groups_gpu_wifi_and_nvme_components() -> None:
+    snapshots = [
+        {
+            "device": {
+                "device_id": "dev-a",
+                "hostname": "dev-a",
+                "model": "Laptop",
+                "os_name": "Ubuntu",
+                "kernel_version": "6.14.0",
+                "first_seen_at": "2026-07-07T02:55:00+00:00",
+                "last_seen_at": "2026-07-07T03:04:00+00:00",
+            },
+            "latest_metrics": {},
+            "recent_events": [
+                {
+                    "category": "graphics",
+                    "severity": "warning",
+                    "source": "kernel",
+                    "message_summary": "i915 0000:00:02.0: [drm] *ERROR* Atomic update failure",
+                    "raw_ref": "journalctl -k",
+                    "observed_at": "2026-07-07T03:00:00+00:00",
+                    "fingerprint": "graphics-dev-a",
+                },
+                {
+                    "category": "network",
+                    "severity": "warning",
+                    "source": "NetworkManager",
+                    "message_summary": "wlp0s20f3: state change: activated -> disconnected",
+                    "raw_ref": "journalctl -u NetworkManager",
+                    "observed_at": "2026-07-07T03:01:00+00:00",
+                    "fingerprint": "network-dev-a",
+                },
+                {
+                    "category": "storage",
+                    "severity": "warning",
+                    "source": "kernel",
+                    "message_summary": "nvme0n1: I/O timeout, reset controller",
+                    "raw_ref": "journalctl -k",
+                    "observed_at": "2026-07-07T03:02:00+00:00",
+                    "fingerprint": "storage-dev-a",
+                },
+            ],
+        }
+    ]
+
+    overview = build_pattern_overview(snapshots)
+
+    components = {group["component"] for group in overview["component_groups"]}
+    assert {"gpu:i915", "wifi:wlp0s20f3", "nvme:nvme0n1"}.issubset(components)

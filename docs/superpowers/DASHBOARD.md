@@ -61,6 +61,9 @@ The second valuable question is:
 | Done | Team workflow notes | investigation handoff note API and UI |
 | Done | Pattern Explorer | category/model/kernel overview API and compact UI |
 | Done | Visible metadata chips | Made by, About, and Version remain visible without dominating the first viewport |
+| Done | Guided dense analysis UI | Problem Guide first, compact signal strip, smaller metric/telemetry tiles |
+| Done | Component pattern grouping | `gpu:*`, `wifi:*`, and `nvme:*` signatures added to Pattern Explorer |
+| Done | Product hardening roadmap | Collector rollout, retention, backup/restore, RBAC, packaging, production, Postgres, analytics, AI |
 | Approved | Private remote push and release | User requested commit, tag, push, and release on 2026-07-07 |
 | Approved | Public repository visibility after audit | User approved public visibility on 2026-07-07 |
 

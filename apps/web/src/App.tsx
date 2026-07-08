@@ -665,7 +665,40 @@ function TeamHandoff({
   );
 }
 
-function groupTitle(group: PatternGroup, keyName: 'category' | 'model' | 'kernel_version'): string {
+function GuidanceStrip({
+  actionLabel,
+  actionSummary,
+  caseTitle,
+  primaryEvidence,
+  whyDetail,
+}: {
+  actionLabel: string;
+  actionSummary: string;
+  caseTitle: string;
+  primaryEvidence: string;
+  whyDetail: string;
+}) {
+  return (
+    <section className="problem-guide" aria-label="Problem guide">
+      <div className="guide-primary">
+        <span>뭐가 문제지?</span>
+        <strong>{caseTitle}</strong>
+        <p>{primaryEvidence}</p>
+      </div>
+      <div>
+        <span>먼저 볼 근거</span>
+        <strong>{whyDetail}</strong>
+      </div>
+      <div>
+        <span>그래서 뭘 해야 하지?</span>
+        <strong>{actionLabel}</strong>
+        <p>{actionSummary}</p>
+      </div>
+    </section>
+  );
+}
+
+function groupTitle(group: PatternGroup, keyName: 'category' | 'model' | 'kernel_version' | 'component'): string {
   return group[keyName] ?? 'Unknown';
 }
 
@@ -676,7 +709,7 @@ function PatternGroupList({
 }: {
   title: string;
   groups: PatternGroup[];
-  keyName: 'category' | 'model' | 'kernel_version';
+  keyName: 'category' | 'model' | 'kernel_version' | 'component';
 }) {
   return (
     <div className="pattern-column">
@@ -694,19 +727,23 @@ function PatternGroupList({
 }
 
 function PatternExplorer({ patterns }: { patterns: PatternOverview | null }) {
+  const componentGroups = patterns?.component_groups ?? [];
   return (
     <article className="panel collapsible-panel pattern-panel" id="pattern-panel" tabIndex={-1}>
       <div className="panel-head">
         <h2>Pattern Explorer</h2>
-        <span>{patterns?.category_groups.length ?? 0} groups</span>
+        <span>{(patterns?.category_groups.length ?? 0) + componentGroups.length} groups</span>
       </div>
       <p className="panel-summary">
-        {patterns?.category_groups[0]
-          ? `${patterns.category_groups[0].category} leads with ${patterns.category_groups[0].count} grouped event(s).`
+        {componentGroups[0]
+          ? `${componentGroups[0].component} is the leading component signature.`
+          : patterns?.category_groups[0]
+            ? `${patterns.category_groups[0].category} leads with ${patterns.category_groups[0].count} grouped event(s).`
           : 'No grouped pattern yet.'}
       </p>
       <div className="panel-body pattern-grid">
         <PatternGroupList title="By category" groups={patterns?.category_groups ?? []} keyName="category" />
+        <PatternGroupList title="By component" groups={componentGroups} keyName="component" />
         <PatternGroupList title="By model" groups={patterns?.model_groups ?? []} keyName="model" />
         <PatternGroupList title="By kernel" groups={patterns?.kernel_groups ?? []} keyName="kernel_version" />
       </div>
@@ -928,6 +965,14 @@ export default function App() {
             />
           </div>
         </div>
+
+        <GuidanceStrip
+          actionLabel={actionLabel}
+          actionSummary={actionSummary}
+          caseTitle={caseTitle}
+          primaryEvidence={primaryEvidence}
+          whyDetail={whyDetail}
+        />
 
         <div className="answer-grid">
           <article className="answer-card answer-primary">

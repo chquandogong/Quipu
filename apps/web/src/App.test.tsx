@@ -203,6 +203,16 @@ const patternResponse = {
       examples: [],
     },
   ],
+  component_groups: [
+    {
+      component: 'gpu:i915',
+      count: 2,
+      device_count: 1,
+      severities: { info: 0, warning: 2, critical: 0 },
+      latest_observed_at: '2026-07-07T03:00:00+00:00',
+      examples: [],
+    },
+  ],
 };
 
 const notesResponse = {
@@ -283,6 +293,10 @@ describe('App', () => {
     expect(screen.getByText('다음 행동')).toBeInTheDocument();
     expect(screen.getByText('Proof needed')).toBeInTheDocument();
     expect(screen.getByText('검증 조건')).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Problem guide' })).toBeInTheDocument();
+    expect(screen.getByText('뭐가 문제지?')).toBeInTheDocument();
+    expect(screen.getByText('그래서 뭘 해야 하지?')).toBeInTheDocument();
+    expect(screen.getByText('먼저 볼 근거')).toBeInTheDocument();
     expect(screen.queryByText('Creator and visual references')).not.toBeInTheDocument();
     expect(screen.queryByText('Dogu Robotics · Dogu X · Physical AI')).not.toBeInTheDocument();
     expect(screen.getByText('About: workstation health investigation')).toBeInTheDocument();
@@ -328,6 +342,8 @@ describe('App', () => {
     expect(screen.getByText('Recorded interventions')).toBeInTheDocument();
     expect(screen.getByText('Team Handoff')).toBeInTheDocument();
     expect(screen.getByText('Pattern Explorer')).toBeInTheDocument();
+    expect(screen.getByText('By component')).toBeInTheDocument();
+    expect(screen.getByText('gpu:i915')).toBeInTheDocument();
     expect(screen.getAllByText('Raised the rear edge and will compare the next two batches.').length).toBeGreaterThan(0);
     expect(screen.getByText('By category')).toBeInTheDocument();
     expect(screen.getAllByText('Verification').length).toBeGreaterThan(0);

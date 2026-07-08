@@ -29,6 +29,14 @@ def test_collect_observation_reads_linux_signals_without_raw_machine_id(tmp_path
     _write(root / "sys/class/thermal/thermal_zone0/temp", "63000\n")
     _write(root / "sys/class/hwmon/hwmon0/name", "nvme\n")
     _write(root / "sys/class/hwmon/hwmon0/temp1_input", "42000\n")
+    _write(
+        root / "var/log/quipu/kernel.log",
+        "2026-07-07T05:22:10+00:00 kernel: CPU0: Core temperature above threshold, cpu clock throttled\n",
+    )
+    _write(
+        root / "var/log/quipu/networkmanager.log",
+        "2026-07-07T05:24:00+00:00 NetworkManager: wlp0s20f3: state change: activated -> disconnected (reason 'supplicant-disconnect')\n",
+    )
 
     observed_at = datetime(2026, 7, 7, 5, 30, tzinfo=timezone.utc)
     batch = collect_observation(root=root, observed_at=observed_at)
@@ -47,4 +55,12 @@ def test_collect_observation_reads_linux_signals_without_raw_machine_id(tmp_path
     assert metrics["cpu.package_temp_c"]["value"] == 63.0
     assert metrics["nvme.temp_c"]["value"] == 42.0
     assert metrics["wifi.signal_dbm"]["value"] == -43.0
-    assert batch["events"] == []
+    events = {(event["category"], event["source"]): event for event in batch["events"]}
+    assert events[("thermal", "kernel")]["severity"] == "warning"
+    assert "cpu clock throttled" in events[("thermal", "kernel")]["message_summary"]
+    assert events[("thermal", "kernel")]["raw_ref"] == "var/log/quipu/kernel.log"
+    assert events[("thermal", "kernel")]["fingerprint"].startswith("thermal-kernel-")
+    assert events[("network", "NetworkManager")]["severity"] == "warning"
+    assert "disconnected" in events[("network", "NetworkManager")]["message_summary"]
+    assert events[("network", "NetworkManager")]["raw_ref"] == "var/log/quipu/networkmanager.log"
+    assert events[("network", "NetworkManager")]["fingerprint"].startswith("network-networkmanager-")

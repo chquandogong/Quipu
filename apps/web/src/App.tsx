@@ -30,7 +30,7 @@ import type { FleetOverview, InvestigationDetail, InvestigationItem, MetricSampl
 import './styles.css';
 
 const flowStages = ['Detect', 'Triage', 'Investigate', 'Hypothesize', 'Act', 'Verify', 'Report'];
-const appVersion = 'v0.3.3';
+const appVersion = 'v0.4.0';
 
 const riskLabels: Record<RiskLevel, string> = {
   healthy: 'Healthy',
@@ -179,6 +179,11 @@ function eventSignalValue(events: InvestigationDetail['timeline']): string {
   return `${events.length} events`;
 }
 
+function eventMatches(event: InvestigationDetail['timeline'][number], patterns: string[]): boolean {
+  const text = `${event.summary} ${event.source} ${event.category}`.toLowerCase();
+  return patterns.some((pattern) => text.includes(pattern));
+}
+
 function minutesSince(laterIso: string | undefined, earlierIso: string | undefined): number | null {
   if (!laterIso || !earlierIso) return null;
   const later = new Date(laterIso).getTime();
@@ -189,6 +194,8 @@ function minutesSince(laterIso: string | undefined, earlierIso: string | undefin
 
 function buildTelemetryTiles(detail: InvestigationDetail | null, overview: FleetOverview | null): TelemetryTile[] {
   const networkEvents = detail?.timeline.filter((event) => event.category === 'network') ?? [];
+  const reconnectEvents = networkEvents.filter((event) => eventMatches(event, ['disconnect', 'reconnect', 'carrier', 'supplicant', 'dhcp', 'state change']));
+  const throttlingEvents = detail?.timeline.filter((event) => event.category === 'thermal' && eventMatches(event, ['throttl', 'above threshold', 'critical temperature'])) ?? [];
   const kernelWarnings = detail?.timeline.filter(
     (event) => event.source.toLowerCase().includes('kernel') && (event.severity === 'warning' || event.severity === 'critical'),
   ) ?? [];
@@ -213,6 +220,24 @@ function buildTelemetryTiles(detail: InvestigationDetail | null, overview: Fleet
       status: networkEvents.length > 0 ? 'watch' : 'nominal',
       summary: 'reconnect, carrier loss, NetworkManager warning이 조사 흐름에 포함됐는지 봅니다.',
       Icon: Network,
+    },
+    {
+      id: 'network.reconnects',
+      category: 'Network',
+      label: 'Reconnect History',
+      value: eventSignalValue(reconnectEvents),
+      status: reconnectEvents.length > 0 ? 'watch' : 'nominal',
+      summary: 'Wi-Fi disconnect/reconnect 흐름이 반복되는지 직접 확인합니다. (reconnect history)',
+      Icon: Wifi,
+    },
+    {
+      id: 'thermal.throttling',
+      category: 'Thermal',
+      label: 'Thermal Throttling',
+      value: eventSignalValue(throttlingEvents),
+      status: throttlingEvents.length > 0 ? 'watch' : 'nominal',
+      summary: 'kernel thermal throttling이나 threshold event가 실제로 발생했는지 봅니다.',
+      Icon: Thermometer,
     },
     {
       id: 'kernel.warnings',

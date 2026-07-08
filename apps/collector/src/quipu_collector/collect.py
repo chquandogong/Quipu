@@ -7,8 +7,32 @@ from pathlib import Path
 import platform
 import re
 import socket
-from typing import Any
+import subprocess
+from typing import Any, Callable
 from urllib import request
+
+
+CommandRunner = Callable[[list[str]], str | None]
+
+THERMAL_EVENT_PATTERNS = (
+    "thermal thrott",
+    "clock throttled",
+    "above threshold",
+    "critical temperature",
+    "temperature above threshold",
+)
+
+NETWORK_EVENT_PATTERNS = (
+    "disconnect",
+    "reconnect",
+    "carrier",
+    "supplicant",
+    "deauth",
+    "dhcp",
+    "link is down",
+    "link is up",
+    "state change",
+)
 
 
 def _utc(value: datetime | None = None) -> datetime:
@@ -72,6 +96,160 @@ def _metric(name: str, value: float, unit: str, observed_at: str) -> dict[str, A
         "unit": unit,
         "observed_at": observed_at,
     }
+
+
+def _event(
+    *,
+    category: str,
+    severity: str,
+    source: str,
+    message_summary: str,
+    raw_ref: str,
+    observed_at: str,
+) -> dict[str, Any]:
+    clean_summary = " ".join(message_summary.split())[:260]
+    fingerprint_seed = f"{category}:{source}:{clean_summary}:{observed_at}"
+    fingerprint = hashlib.sha256(fingerprint_seed.encode("utf-8")).hexdigest()[:12]
+    return {
+        "category": category,
+        "severity": severity,
+        "source": source,
+        "message_summary": clean_summary,
+        "raw_ref": raw_ref,
+        "observed_at": observed_at,
+        "fingerprint": f"{category}-{_safe_metric_part(source)}-{fingerprint}",
+    }
+
+
+def _line_time_and_message(line: str, fallback_observed_at: str) -> tuple[str, str]:
+    stripped = line.strip()
+    match = re.match(r"^(\d{4}-\d{2}-\d{2}T\S+)\s+(.*)$", stripped)
+    if not match:
+        return fallback_observed_at, stripped
+    try:
+        observed = _utc(datetime.fromisoformat(match.group(1))).isoformat()
+    except ValueError:
+        observed = fallback_observed_at
+    return observed, match.group(2)
+
+
+def _strip_source_prefix(message: str, source: str) -> str:
+    return re.sub(rf"^{re.escape(source)}:\s*", "", message, flags=re.IGNORECASE)
+
+
+def _classify_event_line(
+    line: str,
+    *,
+    default_source: str,
+    raw_ref: str,
+    fallback_observed_at: str,
+) -> dict[str, Any] | None:
+    observed_at, message = _line_time_and_message(line, fallback_observed_at)
+    lower = message.lower()
+    if default_source == "kernel" and any(pattern in lower for pattern in THERMAL_EVENT_PATTERNS):
+        summary = _strip_source_prefix(message, "kernel")
+        severity = "critical" if "critical" in lower else "warning"
+        return _event(
+            category="thermal",
+            severity=severity,
+            source="kernel",
+            message_summary=summary,
+            raw_ref=raw_ref,
+            observed_at=observed_at,
+        )
+    if default_source == "NetworkManager" and any(pattern in lower for pattern in NETWORK_EVENT_PATTERNS):
+        summary = _strip_source_prefix(message, "NetworkManager")
+        return _event(
+            category="network",
+            severity="warning",
+            source="NetworkManager",
+            message_summary=summary,
+            raw_ref=raw_ref,
+            observed_at=observed_at,
+        )
+    return None
+
+
+def _events_from_text(
+    text: str | None,
+    *,
+    default_source: str,
+    raw_ref: str,
+    fallback_observed_at: str,
+) -> list[dict[str, Any]]:
+    if not text:
+        return []
+    events: list[dict[str, Any]] = []
+    for line in text.splitlines()[-120:]:
+        event = _classify_event_line(
+            line,
+            default_source=default_source,
+            raw_ref=raw_ref,
+            fallback_observed_at=fallback_observed_at,
+        )
+        if event:
+            events.append(event)
+    return events[-20:]
+
+
+def _run_command(args: list[str]) -> str | None:
+    try:
+        completed = subprocess.run(
+            args,
+            capture_output=True,
+            check=False,
+            text=True,
+            timeout=2,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    if completed.returncode != 0:
+        return None
+    return completed.stdout
+
+
+def _event_logs(root: Path, observed_at: str, command_runner: CommandRunner | None) -> list[dict[str, Any]]:
+    sources = [
+        ("kernel", "var/log/quipu/kernel.log"),
+        ("kernel", "var/log/kern.log"),
+        ("kernel", "var/log/messages"),
+        ("NetworkManager", "var/log/quipu/networkmanager.log"),
+        ("NetworkManager", "var/log/syslog"),
+    ]
+    events: list[dict[str, Any]] = []
+    for source, relative_path in sources:
+        events.extend(
+            _events_from_text(
+                _read_text(root / relative_path),
+                default_source=source,
+                raw_ref=relative_path,
+                fallback_observed_at=observed_at,
+            )
+        )
+
+    if root == Path("/"):
+        runner = command_runner or _run_command
+        events.extend(
+            _events_from_text(
+                runner(["journalctl", "--since", "-60min", "--no-pager", "-o", "short-iso", "-k"]),
+                default_source="kernel",
+                raw_ref="journalctl -k --since -60min",
+                fallback_observed_at=observed_at,
+            )
+        )
+        events.extend(
+            _events_from_text(
+                runner(["journalctl", "--since", "-60min", "--no-pager", "-o", "short-iso", "-u", "NetworkManager"]),
+                default_source="NetworkManager",
+                raw_ref="journalctl -u NetworkManager --since -60min",
+                fallback_observed_at=observed_at,
+            )
+        )
+
+    unique: dict[str, dict[str, Any]] = {}
+    for event in events:
+        unique[event["fingerprint"]] = event
+    return sorted(unique.values(), key=lambda event: event["observed_at"])[-20:]
 
 
 def _load_metric(root: Path, observed_at: str) -> dict[str, Any] | None:
@@ -164,6 +342,7 @@ def collect_observation(
     root: Path | str = Path("/"),
     observed_at: datetime | None = None,
     device_id: str | None = None,
+    command_runner: CommandRunner | None = None,
 ) -> dict[str, Any]:
     root_path = Path(root)
     observed = _utc(observed_at)
@@ -180,8 +359,9 @@ def collect_observation(
     ]
     metrics.extend(_thermal_metrics(root_path, observed_iso))
     metrics.extend(_nvme_metrics(root_path, observed_iso))
+    events = _event_logs(root_path, observed_iso, command_runner)
 
-    if not metrics:
+    if not metrics and not events:
         raise RuntimeError("no readable Linux signals found")
 
     batch_seed = f"{collected_device_id}:{observed_iso}"
@@ -197,7 +377,7 @@ def collect_observation(
             "kernel_version": platform.release(),
         },
         "metrics": metrics,
-        "events": [],
+        "events": events,
     }
 
 

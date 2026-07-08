@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "quipu-collector"
-version = "0.3.3"
+version = "0.4.0"
 description = "Read-only one-shot Linux signal collector for Quipu"
 requires-python = ">=3.11"
 dependencies = []

@@ -1,6 +1,6 @@
 [
   {
-    "batch_id": "dev-p1-20260707T030000Z-v033",
+    "batch_id": "dev-p1-20260707T030000Z-v040",
     "observed_at": "2026-07-07T03:00:00+00:00",
     "device": {
       "device_id": "thinkpad-p1",
@@ -29,7 +29,7 @@
     ]
   },
   {
-    "batch_id": "xps-13-20260707T030000Z-v033",
+    "batch_id": "xps-13-20260707T030000Z-v040",
     "observed_at": "2026-07-07T03:00:00+00:00",
     "device": {
       "device_id": "xps-13",
@@ -50,24 +50,24 @@
         "category": "thermal",
         "severity": "warning",
         "source": "kernel",
-        "message_summary": "CPU thermal threshold event reported during compile workload.",
-        "raw_ref": "journalctl -k --since '2026-07-07 11:55:00'",
+        "message_summary": "CPU0: Core temperature above threshold, cpu clock throttled during compile workload.",
+        "raw_ref": "journalctl -k --since -60min",
         "observed_at": "2026-07-07T02:58:40+00:00",
-        "fingerprint": "xps-thermal-threshold"
+        "fingerprint": "xps-thermal-throttling-v040"
       },
       {
         "category": "network",
         "severity": "warning",
         "source": "NetworkManager",
-        "message_summary": "Wi-Fi reconnect observed within the incident window.",
-        "raw_ref": "journalctl -u NetworkManager",
+        "message_summary": "wlp0s20f3: state change: activated -> disconnected (reason 'supplicant-disconnect')",
+        "raw_ref": "journalctl -u NetworkManager --since -60min",
         "observed_at": "2026-07-07T02:57:20+00:00",
-        "fingerprint": "xps-wifi-reconnect"
+        "fingerprint": "xps-wifi-reconnect-v040"
       }
     ]
   },
   {
-    "batch_id": "framework-20260707T030000Z-v033",
+    "batch_id": "framework-20260707T030000Z-v040",
     "observed_at": "2026-07-07T03:00:00+00:00",
     "device": {
       "device_id": "framework-13",

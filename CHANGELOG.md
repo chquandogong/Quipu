@@ -2,6 +2,38 @@
 
 All notable changes to Quipu are documented in this file.
 
+## v0.4.0 - 2026-07-08
+
+Thermal and network event collection release.
+
+### Added
+
+- Best-effort read-only collector parsing for kernel thermal throttling,
+  package threshold, CPU clock throttling, and critical thermal messages.
+- Best-effort read-only collector parsing for NetworkManager reconnect,
+  disconnect, carrier, supplicant, DHCP, and link-state events.
+- Compact event summaries with source, observed time, raw reference, and stable
+  fingerprints; raw logs are not uploaded.
+- Rule-based analysis for `Thermal throttling reported` and
+  `Network reconnect reported` findings.
+- Telemetry Matrix tiles for `Thermal Throttling` and `Reconnect History`.
+- v0.4.0 design and implementation plan documents.
+
+### Changed
+
+- Updated sample team fixture events to use realistic thermal throttling and
+  NetworkManager reconnect signatures.
+- Updated package and app versions to `0.4.0`.
+
+### Verified
+
+- Server test suite: 23 tests passed.
+- Collector test suite: 1 test passed.
+- Web focused test: 1 test passed.
+- Web production build succeeded.
+- Browser screenshot confirmed `Version v0.4.0`, `Reconnect History`,
+  `Thermal Throttling`, and `6/6 signals` in the running app.
+
 ## v0.3.3 - 2026-07-07
 
 Dark telemetry expansion release.

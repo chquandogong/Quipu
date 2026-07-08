@@ -2,7 +2,7 @@
 
 <p align="center">
   <img alt="CI" src="https://github.com/chquandogong/Quipu/actions/workflows/ci.yml/badge.svg">
-  <img alt="Version" src="https://img.shields.io/badge/version-v0.3.3-2f6f7e">
+  <img alt="Version" src="https://img.shields.io/badge/version-v0.4.0-2f6f7e">
   <img alt="Status" src="https://img.shields.io/badge/status-local--first%20prototype-5b6b73">
   <img alt="License" src="https://img.shields.io/badge/license-not%20selected-lightgrey">
 </p>
@@ -62,9 +62,9 @@ and next check. For example, Load is explicitly described as the Linux
 
 CPU, Load, and NVMe are useful for thermal triage, but they are not enough for
 team-level root-cause work. Quipu now promotes Wi-Fi signal into the core
-signals and uses a `Telemetry Matrix` for Memory, Network Events, Kernel
-Warnings, and Agent Freshness. Battery, fan, disk health, reconnect history,
-and thermal-throttling events can be added through the same matrix structure.
+signals and uses a `Telemetry Matrix` for Memory, Network Events, Reconnect
+History, Thermal Throttling, Kernel Warnings, and Agent Freshness. Battery,
+fan, and disk health can be added through the same matrix structure.
 
 Creator and version information stays as compact header metadata. The large
 creator/reference image drawer was removed because it did not help the
@@ -122,6 +122,8 @@ Implemented:
 - Deterministic sample fleet data
 - Investigation queue/detail API
 - Read-only one-shot Linux collector
+- Best-effort collector summaries for kernel thermal throttling and
+  NetworkManager reconnect events
 - Intervention records for investigation items
 - Before/after verification results for interventions
 - Vite React investigation-first UI
@@ -129,8 +131,8 @@ Implemented:
   expansion panels
 - Per-metric Korean explanation, English technical term, time window, reading
   guidance, and next-check tooltip for CPU, Load, NVMe, and Wi-Fi
-- Telemetry Matrix for Memory, Network Events, Kernel Warnings, and Agent
-  Freshness
+- Telemetry Matrix for Memory, Network Events, Reconnect History, Thermal
+  Throttling, Kernel Warnings, and Agent Freshness
 - Compact Made by, About, and Version metadata chips
 - GitHub Actions CI for server, collector, and web checks
 

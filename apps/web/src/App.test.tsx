@@ -81,7 +81,7 @@ const detailResponse = {
       category: 'thermal',
       severity: 'warning',
       source: 'kernel',
-      summary: 'CPU thermal threshold event reported during compile workload.',
+      summary: 'CPU0: Core temperature above threshold, cpu clock throttled during compile workload.',
       raw_ref: 'journalctl -k',
     },
     {
@@ -199,7 +199,7 @@ describe('App', () => {
     expect(screen.queryByText('Creator and visual references')).not.toBeInTheDocument();
     expect(screen.queryByText('Dogu Robotics · Dogu X · Physical AI')).not.toBeInTheDocument();
     expect(screen.getByText('About: workstation health investigation')).toBeInTheDocument();
-    expect(screen.getByText('Version v0.3.3')).toBeInTheDocument();
+    expect(screen.getByText('Version v0.4.0')).toBeInTheDocument();
     await waitFor(() => expect(screen.getByRole('button', { name: 'Explain CPU package temperature metric' })).toBeInTheDocument());
     expect(screen.getByText('정의: 선택한 장비의 CPU 패키지 센서 온도입니다. (CPU package temperature)')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Explain 1 minute load average metric' })).toBeInTheDocument();
@@ -215,6 +215,8 @@ describe('App', () => {
     expect(screen.getAllByText('Network Events').length).toBeGreaterThan(0);
     expect(screen.getAllByText('1 warning').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Kernel Warnings').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Thermal Throttling').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Reconnect History').length).toBeGreaterThan(0);
     expect(screen.getAllByText('build-xps').length).toBeGreaterThan(0);
     expect(screen.getByText('Top hypotheses')).toBeInTheDocument();
     expect(screen.getByText('Action plan')).toBeInTheDocument();

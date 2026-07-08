@@ -4,6 +4,8 @@ from typing import Any
 
 RISK_ORDER = {"healthy": 0, "warning": 1, "critical": 2, "stale": 3}
 PRIORITY_ORDER = {"High": 3, "Medium": 2, "Low": 1}
+THERMAL_EVENT_PATTERNS = ("thermal thrott", "clock throttled", "above threshold", "critical temperature")
+NETWORK_EVENT_PATTERNS = ("disconnect", "reconnect", "carrier", "supplicant", "deauth", "dhcp", "state change")
 
 
 def _parse_time(value: str) -> datetime:
@@ -56,6 +58,27 @@ def _finding(category: str, title: str, evidence: str, confidence: str) -> dict[
         "evidence": evidence,
         "confidence": confidence,
     }
+
+
+def _specific_event_finding(event: dict[str, Any]) -> dict[str, str] | None:
+    summary = event["message_summary"]
+    lower = summary.lower()
+    if event["category"] == "thermal" and any(pattern in lower for pattern in THERMAL_EVENT_PATTERNS):
+        confidence = "high" if event["severity"] in {"warning", "critical"} else "medium"
+        return _finding(
+            "thermal",
+            "Thermal throttling reported",
+            summary,
+            confidence,
+        )
+    if event["category"] == "network" and any(pattern in lower for pattern in NETWORK_EVENT_PATTERNS):
+        return _finding(
+            "network",
+            "Network reconnect reported",
+            summary,
+            "medium",
+        )
+    return None
 
 
 def classify_snapshot(snapshot: dict[str, Any], *, now: datetime) -> dict[str, Any]:
@@ -111,9 +134,11 @@ def classify_snapshot(snapshot: dict[str, Any], *, now: datetime) -> dict[str, A
         risk_level = "warning"
 
     for event in snapshot["recent_events"]:
+        specific_finding = _specific_event_finding(event)
         if event["severity"] == "critical" and risk_level != "stale":
             findings.append(
-                _finding(
+                specific_finding
+                or _finding(
                     event["category"],
                     "Critical event reported",
                     event["message_summary"],
@@ -122,16 +147,18 @@ def classify_snapshot(snapshot: dict[str, Any], *, now: datetime) -> dict[str, A
             )
             risk_level = "critical"
             break
-        if event["severity"] == "warning" and risk_level == "healthy":
+        if event["severity"] == "warning" and risk_level != "stale":
             findings.append(
-                _finding(
+                specific_finding
+                or _finding(
                     event["category"],
                     "Warning event reported",
                     event["message_summary"],
                     "medium",
                 )
             )
-            risk_level = "warning"
+            if risk_level == "healthy":
+                risk_level = "warning"
 
     return {
         "device": device,

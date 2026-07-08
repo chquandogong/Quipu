@@ -1,7 +1,7 @@
 # Quipu Project Dashboard
 
-> Status: v0.3.3 dark telemetry expansion release track
-> Date: 2026-07-07
+> Status: v0.4.0 thermal/network event collection release track
+> Date: 2026-07-08
 > Owner: chquan
 
 ## Current Decision
@@ -49,6 +49,7 @@ The second valuable question is:
 | Done | Metric explanation tooltips | CPU package, 1-minute load average, and NVMe cards explain definition/window/reading/next check |
 | Done | Command Center redesign | One first viewport answers inspect/why/action/proof and removes reference image drawer |
 | Done | Dark telemetry expansion | Dark command theme, core signal console, Wi-Fi core metric, and Telemetry Matrix |
+| Done | Thermal/network event collection | Collector summaries, event-specific findings, throttling/reconnect matrix tiles |
 | Done | Visible metadata chips | Made by, About, and Version remain visible without dominating the first viewport |
 | Approved | Private remote push and release | User requested commit, tag, push, and release on 2026-07-07 |
 | Approved | Public repository visibility after audit | User approved public visibility on 2026-07-07 |

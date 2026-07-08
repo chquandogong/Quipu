@@ -1,9 +1,9 @@
 # Quipu Ship Checklist
 
 > Status: release candidate approved for GitHub release and public visibility after audit
-> Date: 2026-07-07
+> Date: 2026-07-08
 > Owner: chquan
-> Release: v0.3.3
+> Release: v0.4.0
 
 ## Scope
 
@@ -27,10 +27,13 @@ Included:
 - High-contrast dark command theme.
 - Core signal console for CPU package temperature, 1-minute load average, NVMe
   temperature, and Wi-Fi signal.
-- Telemetry Matrix for Memory Used, Network Events, Kernel Warnings, and Agent
-  Freshness.
+- Telemetry Matrix for Memory Used, Network Events, Reconnect History, Thermal
+  Throttling, Kernel Warnings, and Agent Freshness.
 - Hover/focus metric explanations for CPU package temperature, 1-minute load
   average, NVMe temperature, and Wi-Fi signal.
+- Best-effort collector summaries for kernel thermal throttling and
+  NetworkManager reconnect/disconnect events.
+- Event-specific findings for thermal throttling and network reconnects.
 - Removed duplicate creator/reference image drawer from the working UI.
 - Visible Made by, About, and Version metadata chips.
 - Project docs, GitHub templates, contribution notes, and security policy.
@@ -45,7 +48,7 @@ Excluded:
 
 ## Tests
 
-- Server tests: `pytest -v` -> 21 passed, 1 Starlette deprecation warning.
+- Server tests: `pytest -v` -> 23 passed, 1 Starlette deprecation warning.
 - Collector tests: `pytest -v` -> 1 passed.
 - Web tests: `npm test` -> 1 passed.
 - Web build: `npm run build` -> succeeded.
@@ -72,7 +75,8 @@ Known risks:
 
 Approved risks:
 
-- User explicitly requested commit, tag, push, and release on 2026-07-07.
+- User explicitly requested autonomous continuation; this release follows the
+  approved commit, tag, push, and release flow.
 - GitHub release is approved for this release cycle.
 - Public repository visibility is approved after sensitive-content audit.
 
@@ -87,7 +91,7 @@ Unapproved risks:
 Rollback method:
 
 - Delete or supersede the private GitHub release if the release note is wrong.
-- Move forward with a patch tag such as `v0.3.3` for code or documentation fixes.
+- Move forward with a patch tag such as `v0.4.0` for code or documentation fixes.
 - Avoid force-push and history rewrite.
 
 Rollback owner:
@@ -106,21 +110,21 @@ Check after release:
 
 - GitHub repository URL resolves.
 - `main` branch is pushed.
-- `v0.3.3` tag exists locally and remotely.
-- GitHub release exists for `v0.3.3`.
+- `v0.4.0` tag exists locally and remotely.
+- GitHub release exists for `v0.4.0`.
 - Repository visibility is public after audit.
 
 ## Documents
 
 - README: current.
 - Dashboard: current release state recorded.
-- Roadmap: intervention verification slice recorded.
-- Changelog: `v0.3.3` prepared.
+- Roadmap: thermal/network event collection recorded.
+- Changelog: `v0.4.0` prepared.
 - Security policy: present.
 
 ## Final Judgment
 
-GitHub release is allowed for `v0.3.3`.
+GitHub release is allowed for `v0.4.0`.
 
 Public repository visibility is allowed after sensitive-content audit.
 Package publishing, production deployment, destructive git operations, and

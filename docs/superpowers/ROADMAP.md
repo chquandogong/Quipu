@@ -83,10 +83,11 @@ Goal: collect real Linux workstation signals safely.
 Implemented:
 
 - One-shot Python collector.
-- Load and memory pressure.
+- Load and memory pressure, including Linux 1/5/15-minute load windows.
 - CPU/package thermal metrics when exposed by sysfs.
-- NVMe temperature when exposed by hwmon.
-- Wi-Fi signal level when exposed by `/proc/net/wireless`.
+- Per-core CPU temperature metrics when exposed by hwmon CPU sensors.
+- Representative and per-device NVMe temperature when exposed by hwmon.
+- Representative and per-interface Wi-Fi signal level when exposed by `/proc/net/wireless`.
 - Best-effort kernel thermal throttling event summaries.
 - Best-effort NetworkManager reconnect/disconnect event summaries.
 - Root filesystem usage.
@@ -103,6 +104,8 @@ Implemented:
 - Dry-run install and uninstall scripts.
 - Offline local ring buffer for temporary server or network outage.
 - Flush-before-current-send path with bounded spool depth.
+- UI metric breakdown rows for CPU cores, load windows, NVMe devices, and Wi-Fi interfaces.
+- Telemetry Matrix coverage wording that separates observed-signal coverage from risk status.
 - Best-effort graphics/session, memory, update, and reboot markers.
 
 Remaining:

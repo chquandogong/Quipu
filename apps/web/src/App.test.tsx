@@ -25,9 +25,17 @@ const fleetResponse = {
       latest_metrics: {
         'cpu.package_temp_c': { value: 86.4, unit: 'celsius', observed_at: '2026-07-07T03:00:00+00:00' },
         'cpu.load_1m': { value: 3.7, unit: 'load', observed_at: '2026-07-07T03:00:00+00:00' },
+        'cpu.load_5m': { value: 2.1, unit: 'load', observed_at: '2026-07-07T03:00:00+00:00' },
+        'cpu.load_15m': { value: 0.9, unit: 'load', observed_at: '2026-07-07T03:00:00+00:00' },
+        'cpu.core_0.temp_c': { value: 84.0, unit: 'celsius', observed_at: '2026-07-07T03:00:00+00:00' },
+        'cpu.core_1.temp_c': { value: 82.5, unit: 'celsius', observed_at: '2026-07-07T03:00:00+00:00' },
         'nvme.temp_c': { value: 42.9, unit: 'celsius', observed_at: '2026-07-07T03:00:00+00:00' },
+        'nvme.nvme0.temp_c': { value: 42.9, unit: 'celsius', observed_at: '2026-07-07T03:00:00+00:00' },
+        'nvme.nvme1.temp_c': { value: 44.2, unit: 'celsius', observed_at: '2026-07-07T03:00:00+00:00' },
         'memory.used_percent': { value: 62.0, unit: 'percent', observed_at: '2026-07-07T03:00:00+00:00' },
         'wifi.signal_dbm': { value: -43.0, unit: 'dbm', observed_at: '2026-07-07T03:00:00+00:00' },
+        'wifi.wlp0s20f3.signal_dbm': { value: -43.0, unit: 'dbm', observed_at: '2026-07-07T03:00:00+00:00' },
+        'wifi.wlan0.signal_dbm': { value: -61.0, unit: 'dbm', observed_at: '2026-07-07T03:00:00+00:00' },
         'disk.root_used_percent': { value: 78.2, unit: 'percent', observed_at: '2026-07-07T03:00:00+00:00' },
         'battery.capacity_percent': { value: 37.0, unit: 'percent', observed_at: '2026-07-07T03:00:00+00:00' },
         'battery.ac_online': { value: 0.0, unit: 'boolean', observed_at: '2026-07-07T03:00:00+00:00' },
@@ -315,7 +323,14 @@ describe('App', () => {
     expect(within(stageList).getByText('Report')).toBeInTheDocument();
     expect(container.querySelector('.stage-strip')).not.toBeInTheDocument();
     expect(screen.getByRole('region', { name: 'Fleet Brief' })).toBeInTheDocument();
+    const fleetBrief = screen.getByRole('region', { name: 'Fleet Brief' });
     expect(screen.getByText('Fleet Brief')).toBeInTheDocument();
+    expect(within(fleetBrief).getByLabelText('Total devices: 1')).toBeInTheDocument();
+    expect(within(fleetBrief).getByLabelText('Critical devices: 0')).toBeInTheDocument();
+    expect(within(fleetBrief).getByLabelText('Warning devices: 1')).toBeInTheDocument();
+    expect(within(fleetBrief).getByLabelText('Queue cases: 1')).toBeInTheDocument();
+    expect(within(fleetBrief).getByText('Total은 현재 fleet에서 관측된 장비 수입니다.')).toBeInTheDocument();
+    expect(within(fleetBrief).getByText('Queue는 지금 조사 queue에 올라온 case 수입니다. 장비 수와 다를 수 있습니다.')).toBeInTheDocument();
     expect(screen.getByText('Warning source')).toBeInTheDocument();
     expect(screen.getByText('build-xps / thermal')).toBeInTheDocument();
     expect(container.querySelector('.health-strip')).not.toBeInTheDocument();
@@ -342,13 +357,28 @@ describe('App', () => {
     expect(screen.getByText('Pattern Radar')).toBeInTheDocument();
     await waitFor(() => expect(screen.getByRole('button', { name: 'Explain CPU package temperature metric' })).toBeInTheDocument());
     expect(screen.getByText('정의: 선택한 장비의 CPU 패키지 센서 온도입니다. (CPU package temperature)')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Explain 1 minute load average metric' })).toBeInTheDocument();
-    expect(screen.getByText('정의: 최근 1분 동안 실행 중이거나 대기 중인 작업 평균입니다. (1-minute load average)')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Explain Linux load average windows metric' })).toBeInTheDocument();
+    expect(screen.getByText('정의: 최근 1/5/15분 동안 실행 중이거나 대기 중인 작업 평균입니다. (Linux load average)')).toBeInTheDocument();
     expect(screen.getByText('해석: CPU 코어 수와 온도 추세를 함께 봐야 과부하인지 판단할 수 있습니다.')).toBeInTheDocument();
+    expect(screen.queryByText('Cores: core 0 84.0C · core 1 82.5C')).not.toBeInTheDocument();
+    const cpuCore0 = screen.getByLabelText('CPU core 0 temperature: 84.0C');
+    const cpuCore1 = screen.getByLabelText('CPU core 1 temperature: 82.5C');
+    expect(cpuCore0).toHaveClass('core-watch');
+    expect(cpuCore1).toHaveClass('core-watch');
+    expect(cpuCore0).toHaveTextContent('0');
+    expect(cpuCore0).toHaveTextContent('84.0C');
+    expect(cpuCore1).toHaveTextContent('1');
+    expect(cpuCore1).toHaveTextContent('82.5C');
+    expect(screen.getByText('Windows: 1m 3.70 · 5m 2.10 · 15m 0.90')).toBeInTheDocument();
+    expect(screen.getByText('Devices: nvme0 42.9C · nvme1 44.2C')).toBeInTheDocument();
+    expect(screen.getByText('Interfaces: wlp0s20f3 -43 dBm · wlan0 -61 dBm')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Explain Wi-Fi signal strength metric' })).toBeInTheDocument();
     expect(screen.getByText('정의: 무선 연결의 수신 신호 강도입니다. (Wi-Fi signal strength, dBm)')).toBeInTheDocument();
     expect(screen.getByRole('region', { name: 'Telemetry coverage matrix' })).toBeInTheDocument();
     const telemetryMatrix = screen.getByRole('region', { name: 'Telemetry coverage matrix' });
+    expect(within(telemetryMatrix).getByText('10/10 observed')).toBeInTheDocument();
+    expect(within(telemetryMatrix).getByText('관측된 범주 수입니다. 위험 점수가 아니라, 조사에 필요한 자료가 얼마나 들어왔는지 보여줍니다.')).toBeInTheDocument();
+    expect(within(telemetryMatrix).getByText('Missing: none')).toBeInTheDocument();
     expect(screen.getAllByText('Wi-Fi Signal').length).toBeGreaterThan(0);
     expect(screen.getAllByText('-43 dBm').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Memory Used').length).toBeGreaterThan(0);

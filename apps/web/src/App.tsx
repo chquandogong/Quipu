@@ -91,10 +91,10 @@ const keyMetrics: MetricDefinition[] = [
     name: 'cpu.load_1m',
     label: 'Load Average',
     shortLabel: 'Load',
-    ariaLabel: '1 minute load average',
+    ariaLabel: 'Linux load average windows',
     Icon: Cpu,
-    definition: '최근 1분 동안 실행 중이거나 대기 중인 작업 평균입니다. (1-minute load average)',
-    window: 'Linux 1분 load average이며, 순간 CPU percent가 아닙니다.',
+    definition: '최근 1/5/15분 동안 실행 중이거나 대기 중인 작업 평균입니다. (Linux load average)',
+    window: 'Linux 표준 load average window입니다. 10분 값은 기본 제공되지 않으므로 임의 계산하지 않습니다.',
     reading: 'CPU 코어 수와 온도 추세를 함께 봐야 과부하인지 판단할 수 있습니다.',
     nextCheck: 'load와 온도가 같이 오르면 실행 중인 작업과 냉각 조건을 같이 봅니다.',
     tone: 'compute',
@@ -135,12 +135,17 @@ type TelemetryTile = {
   Icon: typeof Activity;
 };
 
+type CoreTemperature = {
+  index: string;
+  sample: MetricSample;
+  status: SignalStatus;
+};
+
 function latestMetric(detail: InvestigationDetail | null, name: string): MetricSample | undefined {
   return detail?.fleet_context.latest_metrics[name];
 }
 
-function metricValue(detail: InvestigationDetail | null, name: string): string {
-  const metric = latestMetric(detail, name);
+function metricSampleValue(metric: MetricSample | undefined): string {
   if (!metric) return 'Unavailable';
   if (metric.unit === 'celsius') return `${metric.value.toFixed(1)}C`;
   if (metric.unit === 'percent') return `${metric.value.toFixed(1)}%`;
@@ -151,10 +156,69 @@ function metricValue(detail: InvestigationDetail | null, name: string): string {
   return `${metric.value}`;
 }
 
+function metricValue(detail: InvestigationDetail | null, name: string): string {
+  return metricSampleValue(latestMetric(detail, name));
+}
+
 function observedTime(detail: InvestigationDetail | null, name: string): string {
   const observedAt = latestMetric(detail, name)?.observed_at;
   if (!observedAt) return 'No sample time';
   return new Date(observedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+function compareLabel(left: string, right: string): number {
+  return left.localeCompare(right, undefined, { numeric: true, sensitivity: 'base' });
+}
+
+function coreTemperatureStatus(sample: MetricSample): SignalStatus {
+  if (sample.value >= 90) return 'critical';
+  if (sample.value >= 78) return 'watch';
+  return 'nominal';
+}
+
+function cpuCoreBreakdown(detail: InvestigationDetail): CoreTemperature[] {
+  return Object.entries(detail.fleet_context.latest_metrics)
+    .map(([metricName, sample]) => {
+      const match = metricName.match(/^cpu\.core_(\d+)\.temp_c$/);
+      return match ? { index: match[1], sample, status: coreTemperatureStatus(sample) } : null;
+    })
+    .filter((core): core is CoreTemperature => core !== null)
+    .sort((left, right) => compareLabel(left.index, right.index));
+}
+
+function metricBreakdown(detail: InvestigationDetail, name: string): string | null {
+  const latestMetrics = detail.fleet_context.latest_metrics;
+  if (name === 'cpu.load_1m') {
+    const windows = [
+      ['1m', latestMetrics['cpu.load_1m']],
+      ['5m', latestMetrics['cpu.load_5m']],
+      ['15m', latestMetrics['cpu.load_15m']],
+    ].filter((entry): entry is [string, MetricSample] => entry[1] !== undefined);
+    if (windows.length <= 1) return null;
+    return `Windows: ${windows.map(([label, sample]) => `${label} ${sample.value.toFixed(2)}`).join(' · ')}`;
+  }
+  if (name === 'nvme.temp_c') {
+    const devices = Object.entries(latestMetrics)
+      .map(([metricName, sample]) => {
+        const match = metricName.match(/^nvme\.([^.]+)\.temp_c$/);
+        return match ? { label: match[1], sample } : null;
+      })
+      .filter((device): device is { label: string; sample: MetricSample } => device !== null)
+      .sort((left, right) => compareLabel(left.label, right.label));
+    if (devices.length === 0) return null;
+    return `Devices: ${devices.map((device) => `${device.label} ${metricSampleValue(device.sample)}`).join(' · ')}`;
+  }
+  if (name === 'wifi.signal_dbm') {
+    const interfaces = Object.entries(latestMetrics)
+      .map(([metricName, sample]) => {
+        const match = metricName.match(/^wifi\.([^.]+)\.signal_dbm$/);
+        return match ? { label: match[1], sample } : null;
+      })
+      .filter((iface): iface is { label: string; sample: MetricSample } => iface !== null);
+    if (interfaces.length === 0) return null;
+    return `Interfaces: ${interfaces.map((iface) => `${iface.label} ${metricSampleValue(iface.sample)}`).join(' · ')}`;
+  }
+  return null;
 }
 
 function metricStatus(detail: InvestigationDetail | null, name: string): SignalStatus {
@@ -532,6 +596,8 @@ function VerificationResultView({ result }: { result: VerificationResult }) {
 
 function MetricRow({ detail, metric }: { detail: InvestigationDetail; metric: MetricDefinition }) {
   const status = metricStatus(detail, metric.name);
+  const coreBreakdown = metric.name === 'cpu.package_temp_c' ? cpuCoreBreakdown(detail) : [];
+  const breakdown = metricBreakdown(detail, metric.name);
   return (
     <div className={`metric-row metric-${metric.tone} signal-${status}`}>
       <div className="metric-topline">
@@ -554,6 +620,25 @@ function MetricRow({ detail, metric }: { detail: InvestigationDetail; metric: Me
       </div>
       <dd>{metricValue(detail, metric.name)}</dd>
       <span className="metric-observed">{metric.shortLabel} / {statusLabel(status)} / observed {observedTime(detail, metric.name)}</span>
+      {coreBreakdown.length > 0 && (
+        <span
+          aria-label={`CPU core temperatures: ${coreBreakdown.map((core) => `${core.index} ${metricSampleValue(core.sample)}`).join(', ')}`}
+          className="metric-breakdown metric-core-breakdown"
+        >
+          <span className="metric-breakdown-title">Cores</span>
+          {coreBreakdown.map((core) => (
+            <span
+              aria-label={`CPU core ${core.index} temperature: ${metricSampleValue(core.sample)}`}
+              className={`core-chip core-${core.status}`}
+              key={core.index}
+            >
+              <strong>{core.index}</strong>
+              <span>{metricSampleValue(core.sample)}</span>
+            </span>
+          ))}
+        </span>
+      )}
+      {breakdown && <span className="metric-breakdown">{breakdown}</span>}
     </div>
   );
 }
@@ -593,6 +678,8 @@ function TelemetryBrief({ detail }: { detail: InvestigationDetail | null }) {
 function TelemetryMatrix({ detail, overview }: { detail: InvestigationDetail | null; overview: FleetOverview | null }) {
   if (!detail) return null;
   const tiles = buildTelemetryTiles(detail, overview);
+  const observedCount = tiles.filter((tile) => tile.status !== 'missing').length;
+  const missingLabels = tiles.filter((tile) => tile.status === 'missing').map((tile) => tile.label);
   return (
     <section className="telemetry-matrix" aria-label="Telemetry coverage matrix">
       <div className="matrix-head">
@@ -600,7 +687,18 @@ function TelemetryMatrix({ detail, overview }: { detail: InvestigationDetail | n
           <h3>Telemetry Matrix</h3>
           <p>Core metric 밖의 fan, NVMe health, disk, battery, Wi-Fi, memory, network, kernel, agent freshness를 한 번에 확인합니다.</p>
         </div>
-        <span>{tiles.filter((tile) => tile.status !== 'missing').length}/{tiles.length} signals</span>
+        <span
+          aria-describedby="telemetry-coverage-help"
+          className="coverage-chip"
+          tabIndex={0}
+        >
+          {observedCount}/{tiles.length} observed
+          <span className="coverage-tooltip" id="telemetry-coverage-help" role="tooltip">
+            <strong>Telemetry coverage</strong>
+            <span>관측된 범주 수입니다. 위험 점수가 아니라, 조사에 필요한 자료가 얼마나 들어왔는지 보여줍니다.</span>
+            <span>{missingLabels.length > 0 ? `Missing: ${missingLabels.join(', ')}` : 'Missing: none'}</span>
+          </span>
+        </span>
       </div>
       <div className="telemetry-grid">
         {tiles.map((tile) => (
@@ -824,10 +922,42 @@ function FleetBrief({ overview, queue }: { overview: FleetOverview | null; queue
     ?? queue[0]
     ?? null;
   const stats = [
-    { label: 'Total', value: summary?.total ?? 0, tone: 'neutral' },
-    { label: 'Critical', value: summary?.critical ?? 0, tone: 'critical' },
-    { label: 'Warning', value: summary?.warning ?? 0, tone: 'warning' },
-    { label: 'Queue', value: queue.length, tone: 'queue' },
+    {
+      description: 'Total은 현재 fleet에서 관측된 장비 수입니다.',
+      label: 'Total',
+      metricLabel: 'devices',
+      singularUnit: 'device',
+      pluralUnit: 'devices',
+      value: summary?.total ?? 0,
+      tone: 'neutral',
+    },
+    {
+      description: 'Critical은 즉시 대응이 필요한 risk 상태의 장비 수입니다.',
+      label: 'Critical',
+      metricLabel: 'devices',
+      singularUnit: 'device',
+      pluralUnit: 'devices',
+      value: summary?.critical ?? 0,
+      tone: 'critical',
+    },
+    {
+      description: 'Warning은 확인이 필요한 risk 상태의 장비 수입니다.',
+      label: 'Warning',
+      metricLabel: 'devices',
+      singularUnit: 'device',
+      pluralUnit: 'devices',
+      value: summary?.warning ?? 0,
+      tone: 'warning',
+    },
+    {
+      description: 'Queue는 지금 조사 queue에 올라온 case 수입니다. 장비 수와 다를 수 있습니다.',
+      label: 'Queue',
+      metricLabel: 'cases',
+      singularUnit: 'case',
+      pluralUnit: 'cases',
+      value: queue.length,
+      tone: 'queue',
+    },
   ];
   const sourceTone = leadingSource?.risk_level === 'critical'
     ? 'critical'
@@ -840,9 +970,19 @@ function FleetBrief({ overview, queue }: { overview: FleetOverview | null; queue
       <span className="brief-title">Fleet Brief</span>
       <div className="fleet-readings">
         {stats.map((stat) => (
-          <span className={`fleet-reading fleet-${stat.tone}`} key={stat.label}>
+          <span
+            aria-describedby={`fleet-${stat.label.toLowerCase()}-help`}
+            aria-label={`${stat.label} ${stat.metricLabel}: ${stat.value}`}
+            className={`fleet-reading fleet-${stat.tone}`}
+            key={stat.label}
+            tabIndex={0}
+          >
             <strong>{stat.value}</strong>
             <span>{stat.label}</span>
+            <small>{stat.value === 1 ? stat.singularUnit : stat.pluralUnit}</small>
+            <span className="fleet-tooltip" id={`fleet-${stat.label.toLowerCase()}-help`} role="tooltip">
+              {stat.description}
+            </span>
           </span>
         ))}
       </div>

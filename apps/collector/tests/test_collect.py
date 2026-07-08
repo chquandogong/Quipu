@@ -23,14 +23,33 @@ def test_collect_observation_reads_linux_signals_without_raw_machine_id(tmp_path
             ]
         ),
     )
-    _write(root / "proc/net/wireless", "Inter-| sta\nwlp0s20f3: 0000   64.  -43.  -256        0      0      0      0      0        0\n")
+    _write(
+        root / "proc/net/wireless",
+        "\n".join(
+            [
+                "Inter-| sta",
+                "wlp0s20f3: 0000   64.  -43.  -256        0      0      0      0      0        0",
+                "wlan0: 0000   50.  -61.  -256        0      0      0      0      0        0",
+            ]
+        )
+        + "\n",
+    )
     _write(root / "sys/devices/virtual/dmi/id/product_name", "XPS 13\n")
     _write(root / "sys/class/thermal/thermal_zone0/type", "x86_pkg_temp\n")
     _write(root / "sys/class/thermal/thermal_zone0/temp", "63000\n")
     _write(root / "sys/class/hwmon/hwmon0/name", "nvme\n")
     _write(root / "sys/class/hwmon/hwmon0/temp1_input", "42000\n")
-    _write(root / "sys/class/hwmon/hwmon1/name", "thinkpad\n")
-    _write(root / "sys/class/hwmon/hwmon1/fan1_input", "2840\n")
+    _write(root / "sys/class/hwmon/hwmon1/name", "nvme\n")
+    _write(root / "sys/class/hwmon/hwmon1/temp1_input", "44000\n")
+    _write(root / "sys/class/hwmon/hwmon2/name", "coretemp\n")
+    _write(root / "sys/class/hwmon/hwmon2/temp1_label", "Package id 0\n")
+    _write(root / "sys/class/hwmon/hwmon2/temp1_input", "63000\n")
+    _write(root / "sys/class/hwmon/hwmon2/temp2_label", "Core 0\n")
+    _write(root / "sys/class/hwmon/hwmon2/temp2_input", "61000\n")
+    _write(root / "sys/class/hwmon/hwmon2/temp3_label", "Core 1\n")
+    _write(root / "sys/class/hwmon/hwmon2/temp3_input", "62000\n")
+    _write(root / "sys/class/hwmon/hwmon3/name", "thinkpad\n")
+    _write(root / "sys/class/hwmon/hwmon3/fan1_input", "2840\n")
     _write(
         root / "sys/class/nvme/nvme0/smart_log",
         "\n".join(
@@ -91,10 +110,18 @@ def test_collect_observation_reads_linux_signals_without_raw_machine_id(tmp_path
 
     metrics = {metric["name"]: metric for metric in batch["metrics"]}
     assert metrics["cpu.load_1m"]["value"] == 0.47
+    assert metrics["cpu.load_5m"]["value"] == 0.66
+    assert metrics["cpu.load_15m"]["value"] == 0.91
     assert metrics["memory.used_percent"]["value"] == 25.0
     assert metrics["cpu.package_temp_c"]["value"] == 63.0
+    assert metrics["cpu.core_0.temp_c"]["value"] == 61.0
+    assert metrics["cpu.core_1.temp_c"]["value"] == 62.0
     assert metrics["nvme.temp_c"]["value"] == 42.0
+    assert metrics["nvme.nvme0.temp_c"]["value"] == 42.0
+    assert metrics["nvme.nvme1.temp_c"]["value"] == 44.0
     assert metrics["wifi.signal_dbm"]["value"] == -43.0
+    assert metrics["wifi.wlp0s20f3.signal_dbm"]["value"] == -43.0
+    assert metrics["wifi.wlan0.signal_dbm"]["value"] == -61.0
     assert metrics["battery.capacity_percent"]["value"] == 37.0
     assert metrics["battery.capacity_percent"]["unit"] == "percent"
     assert metrics["battery.ac_online"]["value"] == 0.0

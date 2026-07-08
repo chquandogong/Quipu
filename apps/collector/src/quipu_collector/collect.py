@@ -384,14 +384,17 @@ def _event_logs(root: Path, observed_at: str, command_runner: CommandRunner | No
     return sorted(unique.values(), key=lambda event: event["observed_at"])[-20:]
 
 
-def _load_metric(root: Path, observed_at: str) -> dict[str, Any] | None:
+def _load_metrics(root: Path, observed_at: str) -> list[dict[str, Any]]:
     loadavg = _read_text(_root_path(root, "/proc/loadavg"))
     if not loadavg:
-        return None
-    try:
-        return _metric("cpu.load_1m", float(loadavg.split()[0]), "load", observed_at)
-    except (IndexError, ValueError):
-        return None
+        return []
+    metrics: list[dict[str, Any]] = []
+    for metric_name, index in (("cpu.load_1m", 0), ("cpu.load_5m", 1), ("cpu.load_15m", 2)):
+        try:
+            metrics.append(_metric(metric_name, float(loadavg.split()[index]), "load", observed_at))
+        except (IndexError, ValueError):
+            continue
+    return metrics
 
 
 def _memory_metric(root: Path, observed_at: str) -> dict[str, Any] | None:
@@ -444,7 +447,7 @@ def _parse_metric_number(value: str) -> float | None:
 
 def _thermal_metrics(root: Path, observed_at: str) -> list[dict[str, Any]]:
     base = _root_path(root, "/sys/class/thermal")
-    metrics: list[dict[str, Any]] = []
+    metrics_by_name: dict[str, dict[str, Any]] = {}
     for zone in sorted(base.glob("thermal_zone*")):
         raw_temp = _read_text(zone / "temp")
         if not raw_temp:
@@ -456,8 +459,34 @@ def _thermal_metrics(root: Path, observed_at: str) -> list[dict[str, Any]]:
         sensor_type = _read_text(zone / "type") or zone.name
         metric_name = "cpu.package_temp_c" if "pkg" in sensor_type or "package" in sensor_type else None
         metric_name = metric_name or f"thermal.{_safe_metric_part(sensor_type)}.temp_c"
-        metrics.append(_metric(metric_name, celsius, "celsius", observed_at))
-    return metrics
+        metrics_by_name.setdefault(metric_name, _metric(metric_name, celsius, "celsius", observed_at))
+
+    hwmon_base = _root_path(root, "/sys/class/hwmon")
+    cpu_sensor_names = {"coretemp", "k10temp", "zenpower", "cpu_thermal"}
+    for hwmon in sorted(hwmon_base.glob("hwmon*")):
+        sensor_name = (_read_text(hwmon / "name") or "").strip().lower()
+        if sensor_name not in cpu_sensor_names:
+            continue
+        for temp_input in sorted(hwmon.glob("temp*_input")):
+            raw_temp = _read_text(temp_input)
+            if not raw_temp:
+                continue
+            try:
+                celsius = float(raw_temp) / 1000
+            except ValueError:
+                continue
+            label_name = temp_input.name.replace("_input", "_label")
+            label = (_read_text(hwmon / label_name) or temp_input.stem).strip()
+            lower_label = label.lower()
+            core_match = re.search(r"core\s*(\d+)", lower_label)
+            if core_match:
+                metric_name = f"cpu.core_{core_match.group(1)}.temp_c"
+            elif any(token in lower_label for token in ("package", "tctl", "tdie")):
+                metric_name = "cpu.package_temp_c"
+            else:
+                continue
+            metrics_by_name.setdefault(metric_name, _metric(metric_name, celsius, "celsius", observed_at))
+    return list(metrics_by_name.values())
 
 
 def _fan_metrics(root: Path, observed_at: str) -> list[dict[str, Any]]:
@@ -476,20 +505,41 @@ def _fan_metrics(root: Path, observed_at: str) -> list[dict[str, Any]]:
 def _nvme_metrics(root: Path, observed_at: str) -> list[dict[str, Any]]:
     base = _root_path(root, "/sys/class/hwmon")
     metrics: list[dict[str, Any]] = []
+    generic_recorded = False
+    nvme_index = 0
     for hwmon in sorted(base.glob("hwmon*")):
         name = (_read_text(hwmon / "name") or "").lower()
         if "nvme" not in name:
             continue
+        device_name = _nvme_device_name(hwmon, nvme_index)
+        nvme_index += 1
         for temp_input in sorted(hwmon.glob("temp*_input")):
             raw_temp = _read_text(temp_input)
             if not raw_temp:
                 continue
             try:
-                metrics.append(_metric("nvme.temp_c", float(raw_temp) / 1000, "celsius", observed_at))
+                celsius = float(raw_temp) / 1000
+                if not generic_recorded:
+                    metrics.append(_metric("nvme.temp_c", celsius, "celsius", observed_at))
+                    generic_recorded = True
+                metrics.append(_metric(f"nvme.{device_name}.temp_c", celsius, "celsius", observed_at))
                 break
             except ValueError:
                 continue
     return metrics
+
+
+def _nvme_device_name(hwmon: Path, fallback_index: int) -> str:
+    candidates: list[str] = []
+    for path in (hwmon / "device", hwmon):
+        try:
+            candidates.extend(path.resolve(strict=False).parts)
+        except OSError:
+            continue
+    for part in reversed(candidates):
+        if re.fullmatch(r"nvme\d+", part):
+            return _safe_metric_part(part)
+    return f"nvme{fallback_index}"
 
 
 def _nvme_health_values(controller: Path) -> dict[str, float]:
@@ -544,21 +594,28 @@ def _nvme_health_metrics(root: Path, observed_at: str) -> list[dict[str, Any]]:
     return list(metrics_by_name.values())
 
 
-def _wifi_metric(root: Path, observed_at: str) -> dict[str, Any] | None:
+def _wifi_metrics(root: Path, observed_at: str) -> list[dict[str, Any]]:
     wireless = _read_text(_root_path(root, "/proc/net/wireless"))
     if not wireless:
-        return None
+        return []
+    metrics: list[dict[str, Any]] = []
+    generic_recorded = False
     for line in wireless.splitlines():
         if ":" not in line:
             continue
+        interface = _safe_metric_part(line.split(":", 1)[0])
         parts = line.split()
         if len(parts) < 4:
             continue
         try:
-            return _metric("wifi.signal_dbm", float(parts[3].rstrip(".")), "dbm", observed_at)
+            signal = float(parts[3].rstrip("."))
         except ValueError:
             continue
-    return None
+        if not generic_recorded:
+            metrics.append(_metric("wifi.signal_dbm", signal, "dbm", observed_at))
+            generic_recorded = True
+        metrics.append(_metric(f"wifi.{interface}.signal_dbm", signal, "dbm", observed_at))
+    return metrics
 
 
 def _power_supply_metrics(root: Path, observed_at: str) -> list[dict[str, Any]]:
@@ -599,16 +656,16 @@ def collect_observation(
     observed = _utc(observed_at)
     observed_iso = observed.isoformat()
     collected_device_id = _device_id(root_path, device_id)
-    metrics = [
+    metrics = _load_metrics(root_path, observed_iso)
+    metrics.extend(
         metric
         for metric in [
-            _load_metric(root_path, observed_iso),
             _memory_metric(root_path, observed_iso),
             _disk_metric(root_path, observed_iso),
-            _wifi_metric(root_path, observed_iso),
         ]
         if metric is not None
-    ]
+    )
+    metrics.extend(_wifi_metrics(root_path, observed_iso))
     metrics.extend(_thermal_metrics(root_path, observed_iso))
     metrics.extend(_nvme_metrics(root_path, observed_iso))
     metrics.extend(_fan_metrics(root_path, observed_iso))

@@ -76,7 +76,10 @@ do not stand alone as unexplained numbers. The detailed `Metric Ledger` keeps
 core metrics in one row-based box, and each help button explains the Korean
 meaning together with the English technical term, time window, reading guidance,
 and next check. For example, Load is explicitly described as the Linux
-1-minute load average, not instant CPU utilization.
+1/5/15-minute load average, not instant CPU utilization. The CPU package row
+shows per-core temperatures as numbered chips instead of repeated text, the
+Load row shows 1/5/15-minute windows, and the NVMe and Wi-Fi rows show
+per-device or per-interface readings next to the representative value.
 
 CPU, Load, and NVMe are useful for thermal triage, but they are not enough for
 team-level root-cause work. Quipu now promotes Wi-Fi signal into the core
@@ -86,6 +89,9 @@ Kernel Warnings, and Agent Freshness. Quipu now raises hot-CPU plus low-fan-RPM
 as a cooling-response finding and groups component signatures such as
 `gpu:i915`, `wifi:wlp0s20f3`, and `nvme:nvme0n1` in Pattern Explorer. Deeper
 SMART/NVMe health can expand through the same rule-based structure later.
+The `Telemetry Matrix` coverage chip is not a risk score. `9/10 observed`
+means 9 of the 10 investigation categories have usable telemetry and one is
+missing.
 
 v0.9.0 adds an `Operations Rail`, `Team Handoff`, and `Pattern Explorer`.
 The operations rail surfaces agent freshness, offline buffering, enrollment
@@ -219,16 +225,16 @@ repair commands and does not upload full raw logs.
 
 Current key signals:
 
-- `cpu.load_1m`: Linux 1-minute load average
+- `cpu.load_1m`, `cpu.load_5m`, `cpu.load_15m`: Linux 1/5/15-minute load averages
 - `memory.used_percent`: memory usage derived from `/proc/meminfo`
 - `disk.root_used_percent`: root filesystem usage
-- `cpu.package_temp_c`, `thermal.*.temp_c`: sysfs thermal zone temperatures
-- `nvme.temp_c`: NVMe temperature exposed through hwmon
+- `cpu.package_temp_c`, `cpu.core_<n>.temp_c`, `thermal.*.temp_c`: sysfs thermal zone and hwmon CPU/core temperatures
+- `nvme.temp_c`, `nvme.<device>.temp_c`: representative and per-device NVMe temperatures exposed through hwmon
 - `fan.rpm`: first fan RPM exposed through hwmon
 - `nvme.critical_warning`, `nvme.available_spare_percent`,
   `nvme.percentage_used_percent`, `nvme.media_errors`: NVMe SMART-lite health
   exposed through sysfs-style files
-- `wifi.signal_dbm`: Wi-Fi signal from `/proc/net/wireless`
+- `wifi.signal_dbm`, `wifi.<interface>.signal_dbm`: representative and per-interface Wi-Fi signal from `/proc/net/wireless`
 - `battery.capacity_percent`, `battery.ac_online`: battery and AC state from
   `/sys/class/power_supply`
 - Kernel thermal, storage, power, graphics, and memory warning summaries,

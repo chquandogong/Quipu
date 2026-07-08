@@ -211,16 +211,9 @@ function statusLabel(status: SignalStatus): string {
   }[status];
 }
 
-function warningCountText(count: number): string {
-  if (count === 1) return '1 warning';
-  return `${count} warnings`;
-}
-
-function eventSignalValue(events: InvestigationDetail['timeline']): string {
-  const warningCount = events.filter((event) => event.severity === 'warning' || event.severity === 'critical').length;
-  if (warningCount > 0) return warningCountText(warningCount);
-  if (events.length === 1) return '1 event';
-  return `${events.length} events`;
+function eventCountValue(events: InvestigationDetail['timeline'], scope: string): string {
+  if (events.length === 1) return `1 ${scope} event`;
+  return `${events.length} ${scope} events`;
 }
 
 function eventMatches(event: InvestigationDetail['timeline'][number], patterns: string[]): boolean {
@@ -311,7 +304,7 @@ function buildTelemetryTiles(detail: InvestigationDetail | null, overview: Fleet
       id: 'disk.health',
       category: 'Storage',
       label: 'Disk Health',
-      value: latestMetric(detail, 'disk.root_used_percent') ? metricValue(detail, 'disk.root_used_percent') : eventSignalValue(storageEvents),
+      value: latestMetric(detail, 'disk.root_used_percent') ? metricValue(detail, 'disk.root_used_percent') : eventCountValue(storageEvents, 'storage'),
       status: storageStatus,
       summary: 'root filesystem 사용률과 kernel storage warning을 함께 봅니다. (disk fullness and I/O stalls)',
       Icon: HardDrive,
@@ -347,7 +340,7 @@ function buildTelemetryTiles(detail: InvestigationDetail | null, overview: Fleet
       id: 'network.events',
       category: 'Network',
       label: 'Network Events',
-      value: eventSignalValue(networkEvents),
+      value: eventCountValue(networkEvents, 'network'),
       status: networkEvents.length > 0 ? 'watch' : 'nominal',
       summary: 'reconnect, carrier loss, NetworkManager warning이 조사 흐름에 포함됐는지 봅니다.',
       Icon: Network,
@@ -356,7 +349,7 @@ function buildTelemetryTiles(detail: InvestigationDetail | null, overview: Fleet
       id: 'network.reconnects',
       category: 'Network',
       label: 'Reconnect History',
-      value: eventSignalValue(reconnectEvents),
+      value: eventCountValue(reconnectEvents, 'reconnect'),
       status: reconnectEvents.length > 0 ? 'watch' : 'nominal',
       summary: 'Wi-Fi disconnect/reconnect 흐름이 반복되는지 직접 확인합니다. (reconnect history)',
       Icon: Wifi,
@@ -365,7 +358,7 @@ function buildTelemetryTiles(detail: InvestigationDetail | null, overview: Fleet
       id: 'thermal.throttling',
       category: 'Thermal',
       label: 'Thermal Throttling',
-      value: eventSignalValue(throttlingEvents),
+      value: eventCountValue(throttlingEvents, 'thermal'),
       status: throttlingEvents.length > 0 ? 'watch' : 'nominal',
       summary: 'kernel thermal throttling이나 threshold event가 실제로 발생했는지 봅니다.',
       Icon: Thermometer,
@@ -374,7 +367,7 @@ function buildTelemetryTiles(detail: InvestigationDetail | null, overview: Fleet
       id: 'kernel.warnings',
       category: 'Reliability',
       label: 'Kernel Warnings',
-      value: eventSignalValue(kernelWarnings),
+      value: eventCountValue(kernelWarnings, 'kernel'),
       status: kernelWarnings.length > 0 ? 'watch' : 'nominal',
       summary: 'thermal, storage, graphics 같은 kernel warning이 재발했는지 확인합니다.',
       Icon: ServerCrash,

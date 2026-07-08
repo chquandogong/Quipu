@@ -49,7 +49,10 @@ DTIHAVR 也不再用 7 个大型固定步骤块展示，而是用轻量 `Workflo
 阶段 rail 显示，鼠标 hover 或键盘 focus 时可以看到 Detect 到 Report 的
 完整名称和含义。Fleet 的 Total/Critical/Warning/Queue 也改为紧凑
 `Fleet Brief`，不再占用大块数字区域。`Warning` 这类状态词不会孤立显示，
-而是绑定到设备、类别和调查标题，例如 `build-xps / thermal`：
+而是绑定到设备、类别和调查标题，例如 `build-xps / thermal`。`Medium`
+表示优先级，`Warning` 表示风险，含义不同，但只要都属于 caution 状态，
+就使用一致的黄色系。避免 `8 warnings` 这类模糊计数，改用
+`8 kernel events`、`4 thermal events` 这样的带范围标签：
 
 - 现在应该检查什么？
 - 为什么重要？

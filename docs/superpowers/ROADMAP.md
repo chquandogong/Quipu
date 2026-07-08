@@ -52,6 +52,9 @@ Implemented:
   compact density as Telemetry Brief.
 - Source-linked risk labels so `Warning` points to the device/category and
   selected investigation instead of standing alone.
+- Consistent caution color mapping across priority and risk chips.
+- Scoped Telemetry Matrix event counts such as `kernel events` and `thermal
+  events` instead of unqualified `warnings`.
 - Metric Ledger that keeps core metric explanations in one dense row-based box.
 - Telemetry Matrix for Memory, Fan RPM, NVMe Health, Network Events,
   Reconnect History, Thermal Throttling, Disk Health, Battery Power, Kernel

@@ -52,7 +52,10 @@ compact stage rail, with hover/focus tooltips for Detect through Report.
 Fleet Total/Critical/Warning/Queue also moves into a compact `Fleet Brief`
 instead of a large number block. Status words such as `Warning` are never left
 unattached; they are tied to a device, category, and investigation title such
-as `build-xps / thermal`.
+as `build-xps / thermal`. `Medium` is priority and `Warning` is risk, but both
+use the same warning color family when they represent a caution state. Ambiguous
+counts such as `8 warnings` are avoided in favor of scoped labels such as
+`8 kernel events` or `4 thermal events`.
 
 - What should we inspect now?
 - Why does it matter?

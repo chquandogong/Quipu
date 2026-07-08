@@ -25,6 +25,9 @@ stage, next stage, and next action instead of a seven-box step strip, while
 preserving compact `D T I H A V R` initials with hover/focus definitions.
 Risk labels are source-linked: `Warning` must name the device/category and the
 investigation title instead of appearing as an unattached status word.
+Priority and risk are different concepts, but equivalent caution states should
+share the warning color family. Telemetry event values must include scope, such
+as `8 kernel events` or `4 thermal events`, instead of unscoped `warnings`.
 Pattern Explorer also adds component signatures so repeated graphics, Wi-Fi,
 and NVMe issues are grouped by actionable subsystem, not only by
 category/model/kernel.
@@ -41,6 +44,10 @@ category/model/kernel.
   `build-xps / thermal`.
 - Selected case risk chips show both severity and category, such as
   `Warning · thermal`, with tooltip detail for the source item.
+- Priority/risk chips use consistent severity color mapping in the selected
+  case header.
+- Telemetry Matrix event counts use scoped labels such as `network event`,
+  `thermal event`, and `kernel event`.
 - DTIHAVR fixed labels become a thin `Workflow Rail` with small stage initials
   and hover/focus explanations for Detect through Report.
 - Core metric explanations become one row-based `Metric Ledger`.

@@ -1,6 +1,8 @@
 from datetime import datetime, timezone
+import sqlite3
 
 from quipu_server.contracts import DeviceIn, EventIn, MetricSampleIn, ObservationBatchIn
+from quipu_server.db import connect, initialize
 from quipu_server.repository import ingest_batch, list_device_snapshots
 
 
@@ -14,8 +16,38 @@ def test_ingest_batch_persists_device_metrics_and_events(conn, sample_batch) -> 
     snapshots = list_device_snapshots(conn)
     assert len(snapshots) == 1
     assert snapshots[0]["device"]["device_id"] == "thinkpad-p1"
+    assert snapshots[0]["device"]["display_name"] == "Dev P1"
+    assert snapshots[0]["device"]["cpu_model"] == "Intel Core Ultra 5 125H"
     assert snapshots[0]["latest_metrics"]["cpu.package_temp_c"]["value"] == 63.2
     assert snapshots[0]["recent_events"][0]["category"] == "thermal"
+
+
+def test_initialize_adds_display_name_to_existing_device_table(tmp_path) -> None:
+    db_path = tmp_path / "legacy.sqlite3"
+    legacy = sqlite3.connect(db_path)
+    legacy.execute(
+        """
+        CREATE TABLE devices (
+          device_id TEXT PRIMARY KEY,
+          hostname TEXT NOT NULL,
+          model TEXT,
+          os_name TEXT,
+          kernel_version TEXT,
+          first_seen_at TEXT NOT NULL,
+          last_seen_at TEXT NOT NULL
+        )
+        """
+    )
+    legacy.close()
+
+    migrated = initialize(connect(db_path))
+    try:
+        columns = {row["name"] for row in migrated.execute("PRAGMA table_info(devices)").fetchall()}
+    finally:
+        migrated.close()
+
+    assert "display_name" in columns
+    assert "cpu_model" in columns
 
 
 def test_ingest_batch_is_idempotent_by_device_and_batch_id(conn, sample_batch) -> None:
@@ -38,8 +70,10 @@ def test_device_snapshot_keeps_actionable_warning_when_info_events_are_newer(con
         observed_at=info_time,
         device=DeviceIn(
             device_id="local-computer",
+            display_name="Local notebook",
             hostname="local-host",
             model="Laptop",
+            cpu_model="Intel Core i7",
             os_name="Ubuntu",
             kernel_version="6.17.0",
         ),

@@ -43,7 +43,7 @@ def test_build_investigation_detail_contains_workflow_sections(conn, sample_batc
     assert detail["hypotheses"][0]["category"] == "thermal"
     assert detail["actions"][0]["label"] == "Check cooling and workload"
     assert detail["verification"]["status"] == "Needs before/after data"
-    assert "dev-p1" in detail["report"]["summary"]
+    assert "Dev P1" in detail["report"]["summary"]
 
 
 def test_intervention_verification_marks_thermal_improvement_helped(conn, sample_batch) -> None:

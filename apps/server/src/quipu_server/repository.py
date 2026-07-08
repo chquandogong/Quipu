@@ -217,20 +217,24 @@ def ingest_batch(
         conn.execute(
             """
             INSERT INTO devices (
-              device_id, hostname, model, os_name, kernel_version, first_seen_at, last_seen_at
+              device_id, display_name, hostname, model, cpu_model, os_name, kernel_version, first_seen_at, last_seen_at
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(device_id) DO UPDATE SET
+              display_name = excluded.display_name,
               hostname = excluded.hostname,
               model = excluded.model,
+              cpu_model = excluded.cpu_model,
               os_name = excluded.os_name,
               kernel_version = excluded.kernel_version,
               last_seen_at = excluded.last_seen_at
             """,
             (
                 batch.device.device_id,
+                batch.device.display_name,
                 batch.device.hostname,
                 batch.device.model,
+                batch.device.cpu_model,
                 batch.device.os_name,
                 batch.device.kernel_version,
                 received_iso,
@@ -302,9 +306,9 @@ def ingest_batch(
 def list_device_snapshots(conn: sqlite3.Connection, *, recent_event_limit: int = 8) -> list[dict[str, Any]]:
     devices = conn.execute(
         """
-        SELECT device_id, hostname, model, os_name, kernel_version, first_seen_at, last_seen_at
+        SELECT device_id, display_name, hostname, model, cpu_model, os_name, kernel_version, first_seen_at, last_seen_at
         FROM devices
-        ORDER BY hostname ASC
+        ORDER BY COALESCE(display_name, hostname) ASC, hostname ASC
         """
     ).fetchall()
 

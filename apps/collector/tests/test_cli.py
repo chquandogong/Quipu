@@ -12,8 +12,10 @@ def _batch(batch_id: str = "batch-1") -> dict:
         "observed_at": "2026-07-08T00:00:00+00:00",
         "device": {
             "device_id": "device-1",
+            "display_name": None,
             "hostname": "test-host",
             "model": None,
+            "cpu_model": None,
             "os_name": "Ubuntu",
             "kernel_version": "6.14.0",
         },
@@ -32,7 +34,37 @@ def test_main_prints_one_shot_batch_by_default(capsys) -> None:
     exit_code = main(["--root", "/tmp/quipu-test", "--device-id", "device-1"], collect=fake_collect)
 
     assert exit_code == 0
-    assert calls == [{"root": Path("/tmp/quipu-test"), "observed_at": None, "device_id": "device-1"}]
+    assert calls == [
+        {
+            "root": Path("/tmp/quipu-test"),
+            "observed_at": None,
+            "device_id": "device-1",
+            "device_alias": None,
+            "state_dir": Path("~/.local/state/quipu/collector-state"),
+        }
+    ]
+    assert json.loads(capsys.readouterr().out)["batch_id"] == "batch-1"
+
+
+def test_main_passes_device_alias_to_collector(capsys) -> None:
+    calls: list[dict] = []
+
+    def fake_collect(**kwargs):
+        calls.append(kwargs)
+        return _batch()
+
+    exit_code = main(["--device-alias", "Build laptop", "--dry-run"], collect=fake_collect)
+
+    assert exit_code == 0
+    assert calls == [
+        {
+            "root": Path("/"),
+            "observed_at": None,
+            "device_id": None,
+            "device_alias": "Build laptop",
+            "state_dir": Path("~/.local/state/quipu/collector-state"),
+        }
+    ]
     assert json.loads(capsys.readouterr().out)["batch_id"] == "batch-1"
 
 

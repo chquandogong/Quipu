@@ -16,8 +16,10 @@ const fleetResponse = {
     {
       device: {
         device_id: 'xps-13',
+        display_name: 'Build laptop',
         hostname: 'build-xps',
         model: 'Dell XPS 13',
+        cpu_model: 'Intel(R) Core(TM) Ultra 5 125H',
         os_name: 'Fedora 42',
         kernel_version: '6.14.4',
         first_seen_at: '2026-07-07T02:55:00+00:00',
@@ -28,16 +30,33 @@ const fleetResponse = {
         'cpu.load_1m': { value: 3.7, unit: 'load', observed_at: '2026-07-07T03:00:00+00:00' },
         'cpu.load_5m': { value: 2.1, unit: 'load', observed_at: '2026-07-07T03:00:00+00:00' },
         'cpu.load_15m': { value: 0.9, unit: 'load', observed_at: '2026-07-07T03:00:00+00:00' },
+        'cpu.physical_cores': { value: 14, unit: 'count', observed_at: '2026-07-07T03:00:00+00:00' },
+        'cpu.logical_threads': { value: 18, unit: 'count', observed_at: '2026-07-07T03:00:00+00:00' },
+        'cpu.performance_cores': { value: 4, unit: 'count', observed_at: '2026-07-07T03:00:00+00:00' },
+        'cpu.efficient_cores': { value: 8, unit: 'count', observed_at: '2026-07-07T03:00:00+00:00' },
+        'cpu.low_power_efficient_cores': { value: 2, unit: 'count', observed_at: '2026-07-07T03:00:00+00:00' },
         'cpu.core_0.temp_c': { value: 84.0, unit: 'celsius', observed_at: '2026-07-07T03:00:00+00:00' },
         'cpu.core_1.temp_c': { value: 82.5, unit: 'celsius', observed_at: '2026-07-07T03:00:00+00:00' },
         'cpu.core_3.temp_c': { value: 81.5, unit: 'celsius', observed_at: '2026-07-07T03:00:00+00:00' },
         'nvme.temp_c': { value: 42.9, unit: 'celsius', observed_at: '2026-07-07T03:00:00+00:00' },
         'nvme.nvme0.temp_c': { value: 42.9, unit: 'celsius', observed_at: '2026-07-07T03:00:00+00:00' },
         'nvme.nvme1.temp_c': { value: 44.2, unit: 'celsius', observed_at: '2026-07-07T03:00:00+00:00' },
+        'nvme.capacity_bytes': { value: 512110190592, unit: 'bytes', observed_at: '2026-07-07T03:00:00+00:00' },
+        'nvme.nvme0n1.capacity_bytes': { value: 512110190592, unit: 'bytes', observed_at: '2026-07-07T03:00:00+00:00' },
+        'nvme.read_bytes_per_sec': { value: 12582912, unit: 'bytes_per_sec', observed_at: '2026-07-07T03:00:00+00:00' },
+        'nvme.write_bytes_per_sec': { value: 4194304, unit: 'bytes_per_sec', observed_at: '2026-07-07T03:00:00+00:00' },
+        'nvme.nvme0n1.read_bytes_per_sec': { value: 12582912, unit: 'bytes_per_sec', observed_at: '2026-07-07T03:00:00+00:00' },
+        'nvme.nvme0n1.write_bytes_per_sec': { value: 4194304, unit: 'bytes_per_sec', observed_at: '2026-07-07T03:00:00+00:00' },
         'memory.used_percent': { value: 62.0, unit: 'percent', observed_at: '2026-07-07T03:00:00+00:00' },
         'wifi.signal_dbm': { value: -43.0, unit: 'dbm', observed_at: '2026-07-07T03:00:00+00:00' },
         'wifi.wlp0s20f3.signal_dbm': { value: -43.0, unit: 'dbm', observed_at: '2026-07-07T03:00:00+00:00' },
         'wifi.wlan0.signal_dbm': { value: -61.0, unit: 'dbm', observed_at: '2026-07-07T03:00:00+00:00' },
+        'wifi.rx_bitrate_mbps': { value: 866.7, unit: 'mbps', observed_at: '2026-07-07T03:00:00+00:00' },
+        'wifi.tx_bitrate_mbps': { value: 144.4, unit: 'mbps', observed_at: '2026-07-07T03:00:00+00:00' },
+        'wifi.wlp0s20f3.rx_bitrate_mbps': { value: 866.7, unit: 'mbps', observed_at: '2026-07-07T03:00:00+00:00' },
+        'wifi.wlp0s20f3.tx_bitrate_mbps': { value: 144.4, unit: 'mbps', observed_at: '2026-07-07T03:00:00+00:00' },
+        'wifi.wlan0.rx_bitrate_mbps': { value: 72.2, unit: 'mbps', observed_at: '2026-07-07T03:00:00+00:00' },
+        'wifi.wlan0.tx_bitrate_mbps': { value: 58.5, unit: 'mbps', observed_at: '2026-07-07T03:00:00+00:00' },
         'disk.root_used_percent': { value: 78.2, unit: 'percent', observed_at: '2026-07-07T03:00:00+00:00' },
         'battery.capacity_percent': { value: 37.0, unit: 'percent', observed_at: '2026-07-07T03:00:00+00:00' },
         'battery.ac_online': { value: 0.0, unit: 'boolean', observed_at: '2026-07-07T03:00:00+00:00' },
@@ -79,6 +98,7 @@ const queueResponse = {
       stage: 'Triage',
       risk_level: 'warning',
       device_id: 'xps-13',
+      device_display_name: 'Build laptop',
       device_hostname: 'build-xps',
       title: 'CPU package temperature is elevated',
       category: 'thermal',
@@ -176,7 +196,7 @@ const detailResponse = {
     signals: ['CPU package temperature', 'Warning recurrence', '1 minute load average'],
   },
   report: {
-    summary: 'build-xps needs investigation for thermal evidence.',
+    summary: 'Build laptop needs investigation for thermal evidence.',
     recommended_next_step: 'Inspect thermal evidence and compare cooling or workload windows.',
   },
   fleet_context: fleetResponse.devices[0],
@@ -334,14 +354,18 @@ describe('App', () => {
     expect(within(fleetBrief).getByText('Total은 현재 fleet에서 관측된 장비 수입니다.')).toBeInTheDocument();
     expect(within(fleetBrief).getByText('Queue는 지금 조사 queue에 올라온 case 수입니다. 장비 수와 다를 수 있습니다.')).toBeInTheDocument();
     expect(screen.getByText('Warning source')).toBeInTheDocument();
-    expect(screen.getByText('build-xps / thermal')).toBeInTheDocument();
+    expect(screen.getByText('Build laptop · build-xps / thermal')).toBeInTheDocument();
     expect(container.querySelector('.health-strip')).not.toBeInTheDocument();
     expect(container.querySelector('.metric-strip')).not.toBeInTheDocument();
     expect(container.querySelector('.metric-card')).not.toBeInTheDocument();
     expect(screen.queryByText('Creator and visual references')).not.toBeInTheDocument();
     expect(screen.queryByText('Dogu Robotics · Dogu X · Physical AI')).not.toBeInTheDocument();
+    expect(screen.getByText('Project info')).toBeInTheDocument();
+    expect(screen.getByText('Made by Dr. 권성호')).toBeInTheDocument();
     expect(screen.getByText('About: workstation health investigation')).toBeInTheDocument();
-    expect(screen.getByText('Version v0.10.0')).toBeInTheDocument();
+    expect(screen.getByText('Version v0.11.0')).toBeInTheDocument();
+    expect(screen.queryByText('Detect - triage - verify with evidence')).not.toBeInTheDocument();
+    expect(screen.getAllByText('Build laptop · build-xps').length).toBeGreaterThan(0);
     const selectedCaseStatus = screen.getByLabelText('Selected case status');
     expect(screen.getByText('Priority / 우선순위')).toBeInTheDocument();
     expect(within(selectedCaseStatus).getByText('Medium').closest('.status-chip')).toHaveClass('priority-medium');
@@ -350,7 +374,7 @@ describe('App', () => {
     expect(screen.getByText('Warning · thermal')).toBeInTheDocument();
     expect(within(selectedCaseStatus).getByText('Warning · thermal').closest('.status-chip')).toHaveClass('risk-warning');
     expect(screen.getByText('Warning은 경고 근거가 있어 확인이 필요하다는 뜻입니다. Critical은 더 높은 위험, Stale은 데이터가 오래됨입니다.')).toBeInTheDocument();
-    expect(screen.getByText('선택된 warning 출처: build-xps / thermal - CPU package temperature is elevated.')).toBeInTheDocument();
+    expect(screen.getByText('선택된 warning 출처: Build laptop · build-xps / thermal - CPU package temperature is elevated.')).toBeInTheDocument();
     expect(screen.getByText('Workflow stage / 진행 단계')).toBeInTheDocument();
     expect(screen.getAllByText('Triage는 감지된 근거를 분류하고 다음 조사 항목을 고르는 단계입니다.').length).toBeGreaterThan(0);
     expect(screen.getByRole('region', { name: 'Operations Rail' })).toBeInTheDocument();
@@ -381,22 +405,31 @@ describe('App', () => {
     expect(screen.getByLabelText('Load average 5m: 2.10')).toHaveClass('breakdown-nominal');
     expect(screen.getByLabelText('Load average 15m: 0.90')).toHaveClass('breakdown-nominal');
     expect(screen.queryByText('Devices: nvme0 42.9C · nvme1 44.2C')).not.toBeInTheDocument();
-    expect(screen.getByLabelText('NVMe nvme0 temperature: 42.9C')).toHaveClass('breakdown-nominal');
-    expect(screen.getByLabelText('NVMe nvme1 temperature: 44.2C')).toHaveClass('breakdown-nominal');
+    expect(screen.getByLabelText('NVMe nvme0n1: 42.9C · 477 GB · R 12 MB/s · W 4 MB/s')).toHaveClass('breakdown-nominal');
+    expect(screen.getByLabelText('NVMe nvme1: 44.2C')).toHaveClass('breakdown-nominal');
     expect(screen.queryByText('Interfaces: wlp0s20f3 -43 dBm · wlan0 -61 dBm')).not.toBeInTheDocument();
-    expect(screen.getByLabelText('Wi-Fi wlp0s20f3 signal: -43 dBm')).toHaveClass('breakdown-nominal');
-    expect(screen.getByLabelText('Wi-Fi wlan0 signal: -61 dBm')).toHaveClass('breakdown-nominal');
+    expect(screen.getByLabelText('Wi-Fi wlp0s20f3: -43 dBm · Rx 867 Mbps · Tx 144 Mbps')).toHaveClass('breakdown-nominal');
+    expect(screen.getByLabelText('Wi-Fi wlan0: -61 dBm · Rx 72.2 Mbps · Tx 58.5 Mbps')).toHaveClass('breakdown-nominal');
     expect(screen.getByRole('button', { name: 'Explain Wi-Fi signal strength metric' })).toBeInTheDocument();
     expect(screen.getByText('정의: 무선 연결의 수신 신호 강도입니다. (Wi-Fi signal strength, dBm)')).toBeInTheDocument();
     expect(screen.getByRole('region', { name: 'Telemetry coverage matrix' })).toBeInTheDocument();
     const telemetryMatrix = screen.getByRole('region', { name: 'Telemetry coverage matrix' });
-    expect(within(telemetryMatrix).getByText('10/10 observed')).toBeInTheDocument();
+    expect(within(telemetryMatrix).getByText('14/14 observed')).toBeInTheDocument();
     expect(within(telemetryMatrix).getByText('관측된 범주 수입니다. 위험 점수가 아니라, 조사에 필요한 자료가 얼마나 들어왔는지 보여줍니다.')).toBeInTheDocument();
     expect(within(telemetryMatrix).getByText('Missing: none')).toBeInTheDocument();
     expect(screen.getAllByText('Wi-Fi Signal').length).toBeGreaterThan(0);
     expect(screen.getAllByText('-43 dBm').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Memory Used').length).toBeGreaterThan(0);
     expect(screen.getAllByText('62.0%').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('CPU Profile').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('14 cores / 18 threads').length).toBeGreaterThan(0);
+    expect(screen.getByText('Intel Core Ultra 5 125H. Topology: P 4, E 8, LP-E 2.')).toBeInTheDocument();
+    expect(screen.getAllByText('Wi-Fi Link').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Rx 867 Mbps / Tx 144 Mbps').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('NVMe Capacity').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('477 GB').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('NVMe I/O').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('R 12 MB/s / W 4 MB/s').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Network Events').length).toBeGreaterThan(0);
     expect(within(telemetryMatrix).getByText('1 network event')).toBeInTheDocument();
     expect(screen.getAllByText('Kernel Warnings').length).toBeGreaterThan(0);
@@ -413,7 +446,7 @@ describe('App', () => {
     expect(screen.getAllByText('2840 rpm').length).toBeGreaterThan(0);
     expect(screen.getAllByText('NVMe Health').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Critical warning').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('build-xps').length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Build laptop · build-xps/).length).toBeGreaterThan(0);
     expect(screen.getByText('Top hypotheses')).toBeInTheDocument();
     expect(screen.getByText('Action plan')).toBeInTheDocument();
     expect(screen.getByText('Recorded interventions')).toBeInTheDocument();

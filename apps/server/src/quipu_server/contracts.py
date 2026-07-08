@@ -21,8 +21,10 @@ Severity = Literal["info", "warning", "critical"]
 
 class DeviceIn(BaseModel):
     device_id: str = Field(min_length=1, max_length=96)
+    display_name: str | None = Field(default=None, max_length=80)
     hostname: str = Field(min_length=1, max_length=128)
     model: str | None = Field(default=None, max_length=160)
+    cpu_model: str | None = Field(default=None, max_length=200)
     os_name: str | None = Field(default=None, max_length=120)
     kernel_version: str | None = Field(default=None, max_length=120)
 
@@ -33,6 +35,14 @@ class DeviceIn(BaseModel):
         if not stripped:
             raise ValueError("value must not be blank")
         return stripped
+
+    @field_validator("display_name", "cpu_model")
+    @classmethod
+    def strip_optional_text(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        stripped = value.strip()
+        return stripped or None
 
 
 class MetricSampleIn(BaseModel):

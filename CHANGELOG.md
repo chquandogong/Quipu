@@ -2,6 +2,55 @@
 
 All notable changes to Quipu are documented in this file.
 
+## v0.11.0 - 2026-07-08
+
+Multi-device naming, hardware telemetry, and consistent explanation UI release.
+
+### Added
+
+- Collector `--device-alias` option for sending a friendly device name beside
+  the stable device ID and hostname.
+- systemd collector environment variable `QUIPU_COLLECTOR_DEVICE_ALIAS`.
+- `devices.display_name` and `devices.cpu_model` persistence with migration for
+  existing SQLite databases.
+- API and UI support for device labels shown as `alias · hostname` when an
+  alias is present.
+- Documentation for connecting additional Linux notebooks/workstations to the
+  same Quipu server over a LAN.
+- Collector CPU model/topology metrics, including Intel Core Ultra 5 125H
+  4P/8E/2LP-E/18-thread topology when detected.
+- Collector Wi-Fi Rx/Tx link bitrate metrics from `iw dev <interface> link`.
+- Collector NVMe namespace capacity and read/write bytes/sec metrics. R/W
+  throughput is calculated from sector-counter deltas between collector samples.
+- Collector `--state-dir` and systemd `QUIPU_STATE_DIR` for storing previous
+  NVMe counters used by rate metrics.
+
+### Changed
+
+- Consolidated `Made by`, `About`, and `Version` into one `Project info`
+  hover/focus chip.
+- Removed the low-value top-right `Detect - triage - verify with evidence`
+  tagline; workflow explanation stays in the DTIHAVR rail.
+- Standardized status, metric, coverage, operations, telemetry, workflow, and
+  fleet explanations on one hover/focus popover pattern.
+- Updated sample fleet data with friendly device aliases and hardware
+  telemetry.
+- Telemetry Matrix now includes CPU Profile, Wi-Fi Link, NVMe Capacity, and
+  NVMe I/O tiles.
+- Metric Ledger NVMe/Wi-Fi chips now include per-device capacity/throughput and
+  per-interface link speed when the collector reports them.
+- Updated package, app, API, schema, and UI versions to `0.11.0`.
+
+### Verified
+
+- Server test suite: 36 tests passed, 1 Starlette deprecation warning.
+- Collector test suite: 19 tests passed.
+- Web test suite: 3 tests passed.
+- Web production build succeeded.
+- Browser verification covered unified `Project info`, alias display, CPU
+  Profile, Wi-Fi Link, NVMe Capacity/I/O tiles, and Metric Ledger hardware
+  details.
+
 ## v0.10.0 - 2026-07-08
 
 Hardware-aware Metric Ledger and documentation reset release.

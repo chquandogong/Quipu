@@ -26,8 +26,10 @@ def sample_batch() -> ObservationBatchIn:
         observed_at=observed_at,
         device=DeviceIn(
             device_id="thinkpad-p1",
+            display_name="Dev P1",
             hostname="dev-p1",
             model="ThinkPad P1",
+            cpu_model="Intel Core Ultra 5 125H",
             os_name="Ubuntu 24.04",
             kernel_version="6.14.0",
         ),

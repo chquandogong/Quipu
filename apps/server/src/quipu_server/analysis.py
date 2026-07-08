@@ -629,6 +629,7 @@ def _queue_item(device_view: dict[str, Any], *, now: datetime) -> dict[str, Any]
         "stage": "Triage",
         "risk_level": device_view["risk_level"],
         "device_id": device["device_id"],
+        "device_display_name": device.get("display_name"),
         "device_hostname": device["hostname"],
         "title": finding["title"],
         "category": category,
@@ -652,7 +653,13 @@ def build_investigation_queue(
         for device_view in overview["devices"]
         if (item := _queue_item(device_view, now=generated_at)) is not None
     ]
-    items.sort(key=lambda item: (-PRIORITY_ORDER[item["priority"]], item["device_hostname"]))
+    items.sort(
+        key=lambda item: (
+            -PRIORITY_ORDER[item["priority"]],
+            item.get("device_display_name") or item["device_hostname"],
+            item["device_hostname"],
+        )
+    )
     return items
 
 
@@ -737,7 +744,7 @@ def build_investigation_detail(
         "interventions": recorded_interventions,
         "verification": verification,
         "report": {
-            "summary": f"{item['device_hostname']} needs investigation for {item['category']} evidence.",
+            "summary": f"{item.get('device_display_name') or item['device_hostname']} needs investigation for {item['category']} evidence.",
             "recommended_next_step": item["next_step"],
         },
         "fleet_context": {
@@ -769,6 +776,7 @@ def _add_pattern_event(group: dict[str, Any], event: dict[str, Any], device: dic
         group["examples"].append(
             {
                 "device_id": device["device_id"],
+                "display_name": device.get("display_name"),
                 "hostname": device["hostname"],
                 "summary": event["message_summary"],
                 "observed_at": event["observed_at"],

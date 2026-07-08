@@ -49,8 +49,10 @@ def test_env_example_documents_required_and_optional_settings() -> None:
     assert "QUIPU_AGENT_TOKEN=replace-with-enrollment-token" in env_example
     assert "QUIPU_COLLECTOR_ROOT=/" in env_example
     assert "QUIPU_COLLECTOR_DEVICE_ID=" in env_example
+    assert "QUIPU_COLLECTOR_DEVICE_ALIAS=" in env_example
     assert "QUIPU_SPOOL_DIR=/var/lib/quipu/collector-spool" in env_example
     assert "QUIPU_SPOOL_MAX_BATCHES=288" in env_example
+    assert "QUIPU_STATE_DIR=/var/lib/quipu/collector-state" in env_example
     assert "dev-token" not in env_example
 
 
@@ -79,6 +81,7 @@ def test_wrapper_validates_required_config_and_builds_safe_args(tmp_path: Path) 
         "QUIPU_COLLECTOR_BIN": str(fake_collector),
         "QUIPU_COLLECTOR_ROOT": "/tmp/quipu-root",
         "QUIPU_COLLECTOR_DEVICE_ID": "device-1",
+        "QUIPU_COLLECTOR_DEVICE_ALIAS": "Build laptop",
     }
     result = subprocess.run(
         ["bash", str(wrapper)],
@@ -103,8 +106,12 @@ def test_wrapper_validates_required_config_and_builds_safe_args(tmp_path: Path) 
         "</var/lib/quipu/collector-spool>",
         "<--spool-max-batches>",
         "<288>",
+        "<--state-dir>",
+        "</var/lib/quipu/collector-state>",
         "<--device-id>",
         "<device-1>",
+        "<--device-alias>",
+        "<Build laptop>",
     ]
 
 

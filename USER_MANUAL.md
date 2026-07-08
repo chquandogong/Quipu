@@ -78,12 +78,68 @@ cd /home/chquan/Quipu/apps/collector
 python3 -m venv .venv
 . .venv/bin/activate
 pip install -e ".[test]"
-quipu-collector --server-url http://127.0.0.1:8000 --token dev-token --device-id local-computer
+quipu-collector \
+  --server-url http://127.0.0.1:8000 \
+  --token dev-token \
+  --device-id local-computer \
+  --device-alias "내 노트북"
 ```
 
 웹 UI를 새로고침하면 현재 노트북 하나만 표시됩니다.
 
-## 5. Collector 명령
+## 5. 다른 노트북/컴퓨터 연결
+
+Quipu는 여러 Linux 노트북이나 워크스테이션이 같은 서버로 관측값을 보내는
+구조입니다. 서버가 떠 있는 컴퓨터의 LAN IP를 확인합니다.
+
+```bash
+hostname -I
+```
+
+서버는 다른 장비가 접근할 수 있도록 `0.0.0.0`에 바인딩합니다.
+
+```bash
+cd /home/chquan/Quipu/apps/server
+. .venv/bin/activate
+QUIPU_DATABASE_PATH=../../data/quipu.sqlite3 uvicorn quipu_server.app:app --host 0.0.0.0 --port 8000
+```
+
+방화벽을 쓰고 있다면 TCP `8000` 접근을 허용해야 합니다.
+
+다른 Linux 노트북에서 collector를 설치하고 전송합니다.
+
+```bash
+cd /path/to/Quipu/apps/collector
+python3 -m venv .venv
+. .venv/bin/activate
+pip install -e .
+quipu-collector \
+  --server-url http://<server-ip>:8000 \
+  --token dev-token \
+  --device-id office-gram \
+  --device-alias "사무실 그램"
+```
+
+규칙:
+
+- `--device-id`는 장비마다 다르게 유지합니다. 나중에 바꾸면 새 장비처럼 보입니다.
+- `--device-alias`는 화면에 보일 별명입니다. 바꿔도 같은 `device-id`면 같은 장비로
+  업데이트됩니다.
+- 별명이 있으면 UI는 `사무실 그램 · office-hostname`처럼 표시합니다.
+- 빠른 테스트는 `dev-token`으로 가능하지만, 반복 운용은 장치별 token을 권장합니다.
+
+장치별 token을 만들려면 서버에서 다음을 실행합니다.
+
+```bash
+curl -sS -X POST http://127.0.0.1:8000/api/enrollment/tokens \
+  -H "Content-Type: application/json" \
+  -H "X-Quipu-Agent-Token: dev-token" \
+  -d '{"device_id":"office-gram","label":"Office Gram collector"}'
+```
+
+응답의 `token`을 해당 노트북 collector의 `--token`에 넣습니다.
+
+## 6. Collector 명령
 
 로컬 JSON만 보고 싶을 때:
 
@@ -94,7 +150,7 @@ quipu-collector --dry-run
 서버로 한 번 전송:
 
 ```bash
-quipu-collector --server-url http://127.0.0.1:8000 --token dev-token
+quipu-collector --server-url http://127.0.0.1:8000 --token dev-token --device-alias "내 노트북"
 ```
 
 60초 간격으로 세 번 dry-run:
@@ -110,10 +166,15 @@ quipu-collector \
   --server-url http://127.0.0.1:8000 \
   --token "$QUIPU_AGENT_TOKEN" \
   --offline-buffer \
-  --spool-dir ~/.local/state/quipu/collector-spool
+  --spool-dir ~/.local/state/quipu/collector-spool \
+  --state-dir ~/.local/state/quipu/collector-state
 ```
 
-## 6. systemd timer로 5분마다 수집
+`--state-dir`는 NVMe 읽기/쓰기 처리량을 계산하기 위한 이전 sector counter를
+저장합니다. 첫 샘플에는 비교 기준이 없어서 NVMe R/W 속도가 비어 있을 수 있고,
+같은 장비의 다음 샘플부터 초당 처리량이 계산됩니다.
+
+## 7. systemd timer로 5분마다 수집
 
 collector 실행 파일을 먼저 준비합니다.
 
@@ -145,9 +206,11 @@ QUIPU_SERVER_URL=http://127.0.0.1:8000
 QUIPU_AGENT_TOKEN=dev-token
 QUIPU_COLLECTOR_ROOT=/
 QUIPU_COLLECTOR_DEVICE_ID=local-computer
+QUIPU_COLLECTOR_DEVICE_ALIAS=내 노트북
 QUIPU_COLLECTOR_BIN=/home/chquan/Quipu/apps/collector/.venv/bin/quipu-collector
 QUIPU_SPOOL_DIR=/var/lib/quipu/collector-spool
 QUIPU_SPOOL_MAX_BATCHES=288
+QUIPU_STATE_DIR=/var/lib/quipu/collector-state
 EOF
 sudo chmod 600 /etc/quipu/collector.env
 ```
@@ -179,7 +242,7 @@ sudo systemctl disable --now quipu-collector.timer
 sudo scripts/uninstall-collector-systemd.sh
 ```
 
-## 7. 화면 읽는 법
+## 8. 화면 읽는 법
 
 ### Command Center
 
@@ -189,6 +252,9 @@ sudo scripts/uninstall-collector-systemd.sh
 - `Warning`: 위험도입니다.
 - `Triage`: 현재 DTIHAVR 단계입니다.
 - `Problem Guide`: 문제, 먼저 볼 근거, 다음 행동입니다.
+- 장비명은 별명이 있으면 `별명 · hostname`으로 표시됩니다. 별명이 없으면
+  hostname만 표시됩니다.
+- 상단 `Project info` chip에 Made by, About, Version 정보가 들어 있습니다.
 
 ### Telemetry Brief
 
@@ -200,8 +266,9 @@ CPU, Load, NVMe, Wi-Fi 대표값입니다. 이 줄은 결론이 아니라 조사
 
 - **CPU Package**: CPU package 온도와 core별 온도.
 - **Load Average**: Linux 1분, 5분, 15분 load average.
-- **NVMe SSD**: 대표 NVMe 온도와 장치별 온도.
-- **Wi-Fi Signal**: 대표 Wi-Fi 신호와 인터페이스별 신호.
+- **NVMe SSD**: 대표 NVMe 온도와 장치별 온도, namespace 용량, 샘플 간
+  읽기/쓰기 처리량.
+- **Wi-Fi Signal**: 대표 Wi-Fi 신호와 인터페이스별 신호, Rx/Tx 링크 bitrate.
 
 각 행의 `?` 버튼은 정의, 시간창, 해석 기준, 다음 확인 항목을 설명합니다.
 
@@ -240,10 +307,24 @@ uptime
 
 앞 세 값이 각각 1분, 5분, 15분 load average입니다.
 
+### CPU/Wi-Fi/NVMe 상세 정보
+
+- **CPU Profile**: CPU 모델명, core/thread 수, 확인 가능한 경우 P/E/LP-E
+  토폴로지를 표시합니다. Intel Core Ultra 5 125H는 4 P-cores, 8 E-cores,
+  2 LP E-cores, 18 threads로 표시합니다.
+- **Wi-Fi Link**: `iw dev <interface> link`의 Rx/Tx bitrate입니다. `iw`가
+  없으면 `iwconfig`의 단일 Bit Rate를 fallback으로 표시합니다. 인터넷 다운로드
+  속도 측정값이 아니라 AP와의 무선 링크 속도입니다.
+- **NVMe Capacity**: `/sys/class/block/nvme*n*/size`에서 읽은 namespace
+  용량입니다.
+- **NVMe I/O**: 같은 장비의 이전 collector 샘플과 현재 샘플의 sector counter
+  차이로 계산한 읽기/쓰기 bytes/sec입니다. 첫 샘플에는 `Needs 2 samples`처럼
+  보일 수 있습니다.
+
 ### Telemetry Matrix
 
-10개 범주의 관측 상태를 보여줍니다. `9/10 observed`는 위험 점수가 아니라
-10개 범주 중 9개가 들어왔다는 뜻입니다.
+14개 범주의 관측 상태를 보여줍니다. `13/14 observed`는 위험 점수가 아니라
+14개 범주 중 13개가 들어왔다는 뜻입니다.
 
 ### Investigation Queue
 
@@ -257,7 +338,7 @@ uptime
 - Verification: intervention 전후 비교 결과.
 - Team Handoff: 팀 인계 메모.
 
-## 8. 장치별 token
+## 9. 장치별 token
 
 개발용 `dev-token` 대신 장치별 token을 만들 수 있습니다.
 
@@ -270,7 +351,7 @@ curl -sS -X POST http://127.0.0.1:8000/api/enrollment/tokens \
 
 반환된 `token`을 collector의 `--token` 또는 `/etc/quipu/collector.env`에 넣습니다.
 
-## 9. 자주 보는 문제
+## 10. 자주 보는 문제
 
 ### 화면이 비어 있음
 
@@ -292,6 +373,25 @@ rm -f data/quipu.sqlite3 data/quipu.sqlite3-wal data/quipu.sqlite3-shm
 
 그 뒤 API 서버를 다시 시작하고 collector를 한 번 전송합니다.
 
+### 다른 노트북이 안 보임
+
+다른 노트북에서 서버에 접근 가능한지 먼저 확인합니다.
+
+```bash
+curl http://<server-ip>:8000/api/health
+```
+
+접근이 안 되면 서버가 `--host 0.0.0.0`으로 떠 있는지, 방화벽이 TCP `8000`을
+허용하는지 확인합니다. 접근은 되는데 화면에 안 보이면 collector의
+`--device-id`, `--token`, `--server-url`을 확인합니다.
+
+### 별명을 바꾸고 싶음
+
+같은 `--device-id`로 collector를 다시 보내면서 `--device-alias`만 바꾸면 됩니다.
+systemd timer를 쓰면 `/etc/quipu/collector.env`의
+`QUIPU_COLLECTOR_DEVICE_ALIAS`를 바꾼 뒤 다음 실행을 기다리거나 service를 한 번
+수동 실행합니다.
+
 ### core 번호가 띄엄띄엄임
 
 정상일 수 있습니다. Linux가 노출한 sensor/core id가 연속 번호가 아닐 수
@@ -307,9 +407,10 @@ rm -f data/quipu.sqlite3 data/quipu.sqlite3-wal data/quipu.sqlite3-shm
 노트북 firmware나 hwmon 드라이버가 fan 값을 노출하지 않거나, 팬이 멈춰 있는
 상태일 수 있습니다. `sensors` 출력과 함께 확인합니다.
 
-## 10. 안전 원칙
+## 11. 안전 원칙
 
-- collector는 읽기 전용입니다.
+- collector는 시스템 신호를 읽기 전용으로 수집합니다. NVMe R/W 계산을 위해
+  collector state directory에 이전 counter를 저장할 수 있습니다.
 - 원격 명령 실행은 없습니다.
 - 자동 수리는 없습니다.
 - raw log 전체를 장기 저장하는 제품이 아닙니다.

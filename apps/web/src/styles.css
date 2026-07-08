@@ -51,7 +51,7 @@ svg {
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 6px;
-  max-width: 720px;
+  max-width: 360px;
 }
 
 .meta-chip {
@@ -75,10 +75,90 @@ svg {
   white-space: normal;
 }
 
+.product-info-chip {
+  cursor: help;
+}
+
 .meta-chip svg {
   width: 14px;
   height: 14px;
   color: #22d3ee;
+}
+
+.explainable {
+  position: relative;
+  cursor: help;
+}
+
+.explain-popover {
+  position: absolute;
+  z-index: 12;
+  top: calc(100% + 8px);
+  right: 0;
+  display: grid;
+  gap: 6px;
+  width: min(320px, calc(100vw - 48px));
+  padding: 12px;
+  border: 1px solid rgba(34, 211, 238, 0.42);
+  border-radius: 8px;
+  background: #08111f;
+  color: #cbd5e1;
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.42;
+  opacity: 0;
+  pointer-events: none;
+  text-align: left;
+  text-transform: none;
+  transform: translateY(-4px);
+  white-space: normal;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.42);
+  transition: opacity 140ms ease, transform 140ms ease;
+}
+
+.explain-popover strong {
+  color: #ffffff;
+  font-size: 13px;
+}
+
+.explainable:hover > .explain-popover,
+.explainable:focus > .explain-popover,
+.explainable:focus-within > .explain-popover {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+.explain-right > .explain-popover {
+  right: auto;
+  left: 0;
+}
+
+.product-info-tooltip {
+  width: min(340px, calc(100vw - 48px));
+}
+
+.product-info-line {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+
+.product-info-line a,
+.product-info-line span {
+  color: #dbeafe;
+}
+
+.product-info-line a {
+  text-decoration-color: rgba(125, 211, 252, 0.55);
+  text-underline-offset: 3px;
+}
+
+.product-info-line svg {
+  width: 13px;
+  height: 13px;
+  color: #5eead4;
 }
 
 .eyebrow {
@@ -105,7 +185,6 @@ h2 {
   font-size: 17px;
 }
 
-.generated,
 .status,
 .error,
 .lead {
@@ -158,6 +237,7 @@ h2 {
   color: #ffffff;
   font-size: 30px;
   line-height: 1.1;
+  overflow-wrap: anywhere;
 }
 
 .command-head p:last-child {
@@ -165,6 +245,7 @@ h2 {
   color: #a8b6cc;
   font-size: 14px;
   line-height: 1.45;
+  overflow-wrap: anywhere;
 }
 
 .case-badges {
@@ -198,45 +279,15 @@ h2 {
 }
 
 .status-chip-label {
+  overflow-wrap: anywhere;
   white-space: nowrap;
 }
 
 .status-tooltip {
-  position: absolute;
   z-index: 8;
   top: 38px;
   right: 0;
-  display: grid;
-  gap: 6px;
   width: min(300px, calc(100vw - 48px));
-  padding: 12px;
-  border: 1px solid rgba(34, 211, 238, 0.42);
-  border-radius: 8px;
-  background: #08111f;
-  color: #cbd5e1;
-  font-size: 12px;
-  font-weight: 650;
-  line-height: 1.45;
-  opacity: 0;
-  pointer-events: none;
-  text-align: left;
-  transform: translateY(-4px);
-  white-space: normal;
-  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.42);
-  transition: opacity 140ms ease, transform 140ms ease;
-}
-
-.status-tooltip strong {
-  color: #ffffff;
-  font-size: 13px;
-}
-
-.status-chip:hover .status-tooltip,
-.status-chip:focus .status-tooltip,
-.status-chip:focus-within .status-tooltip {
-  opacity: 1;
-  pointer-events: auto;
-  transform: translateY(0);
 }
 
 .status-neutral {
@@ -287,6 +338,7 @@ h2 {
 .answer-card {
   display: grid;
   gap: 6px;
+  min-width: 0;
   min-height: 108px;
   padding: 10px;
   border: 1px solid rgba(148, 163, 184, 0.24);
@@ -333,18 +385,22 @@ h2 {
 }
 
 .answer-card strong {
+  min-width: 0;
+  max-width: 100%;
   color: #ffffff;
   font-size: 14px;
   line-height: 1.28;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
 .answer-card p {
+  min-width: 0;
+  max-width: 100%;
   margin-bottom: 0;
   color: #b6c4d7;
   font-size: 12px;
   line-height: 1.45;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
 .problem-guide {
@@ -356,6 +412,7 @@ h2 {
 .problem-guide > div {
   display: grid;
   gap: 6px;
+  min-width: 0;
   min-height: 112px;
   padding: 12px;
   border: 1px solid rgba(34, 211, 238, 0.24);
@@ -376,18 +433,22 @@ h2 {
 }
 
 .problem-guide strong {
+  min-width: 0;
+  max-width: 100%;
   color: #ffffff;
   font-size: 16px;
   line-height: 1.25;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
 .problem-guide p {
+  min-width: 0;
+  max-width: 100%;
   margin-bottom: 0;
   color: #b6c4d7;
   font-size: 12px;
   line-height: 1.4;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
 .telemetry-brief,
@@ -516,33 +577,13 @@ h2 {
 }
 
 .fleet-tooltip {
-  position: absolute;
   z-index: 6;
   top: 24px;
   left: 0;
+  right: auto;
   width: min(260px, calc(100vw - 48px));
   padding: 10px;
-  border: 1px solid rgba(34, 211, 238, 0.36);
-  border-radius: 8px;
-  background: #08111f;
-  color: #cbd5e1;
-  font-size: 12px;
   font-weight: 700;
-  line-height: 1.4;
-  opacity: 0;
-  pointer-events: none;
-  text-transform: none;
-  transform: translateY(-4px);
-  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.42);
-  transition: opacity 140ms ease, transform 140ms ease;
-}
-
-.fleet-reading:hover .fleet-tooltip,
-.fleet-reading:focus .fleet-tooltip,
-.fleet-reading:focus-within .fleet-tooltip {
-  opacity: 1;
-  pointer-events: auto;
-  transform: translateY(0);
 }
 
 .fleet-critical strong {
@@ -675,6 +716,7 @@ h2 {
 .command-actions button:focus-visible,
 .meta-chip:focus-visible,
 .status-chip:focus-visible,
+.explainable:focus-visible,
 .intervention-form button:focus-visible,
 .queue-item:focus-visible {
   outline: 3px solid rgba(15, 118, 110, 0.24);
@@ -698,14 +740,14 @@ h2 {
 .ops-card {
   display: grid;
   gap: 6px;
-  min-height: 104px;
+  min-height: 90px;
   padding: 10px 12px;
   border: 1px solid rgba(148, 163, 184, 0.22);
   border-radius: 8px;
   background: rgba(10, 16, 30, 0.82);
 }
 
-.ops-card span {
+.ops-card .ops-label {
   display: inline-flex;
   align-items: center;
   gap: 7px;
@@ -726,11 +768,9 @@ h2 {
   line-height: 1.05;
 }
 
-.ops-card p {
-  margin-bottom: 0;
-  color: #a8b6cc;
-  font-size: 12px;
-  line-height: 1.45;
+.ops-summary {
+  margin: 0;
+  width: min(300px, calc(100vw - 48px));
 }
 
 .workflow-rail {
@@ -843,32 +883,15 @@ h2 {
 }
 
 .workflow-step-tooltip {
-  position: absolute;
   z-index: 7;
+  top: auto;
   bottom: 28px;
   left: 50%;
-  display: grid;
   gap: 5px;
   width: min(260px, calc(100vw - 48px));
   padding: 10px;
-  border: 1px solid rgba(34, 211, 238, 0.42);
-  border-radius: 8px;
-  background: #08111f;
-  color: #cbd5e1;
   font-size: 11px;
-  font-weight: 650;
-  line-height: 1.4;
-  opacity: 0;
-  pointer-events: none;
-  text-transform: none;
   transform: translate(-50%, 4px);
-  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.42);
-  transition: opacity 140ms ease, transform 140ms ease;
-}
-
-.workflow-step-tooltip strong {
-  color: #ffffff;
-  font-size: 12px;
 }
 
 .workflow-step:hover .workflow-step-tooltip,
@@ -1144,37 +1167,10 @@ h2 {
 }
 
 .metric-tooltip {
-  position: absolute;
   z-index: 5;
   top: 34px;
   right: 0;
-  display: grid;
-  gap: 6px;
   width: min(320px, calc(100vw - 48px));
-  padding: 12px;
-  border: 1px solid rgba(34, 211, 238, 0.42);
-  border-radius: 8px;
-  background: #08111f;
-  color: #cbd5e1;
-  font-size: 12px;
-  line-height: 1.4;
-  opacity: 0;
-  pointer-events: none;
-  transform: translateY(-4px);
-  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.42);
-  transition: opacity 140ms ease, transform 140ms ease;
-}
-
-.metric-tooltip strong {
-  color: #ffffff;
-  font-size: 13px;
-}
-
-.metric-help:hover .metric-tooltip,
-.metric-help:focus-within .metric-tooltip {
-  opacity: 1;
-  pointer-events: auto;
-  transform: translateY(0);
 }
 
 .metric-observed {
@@ -1344,38 +1340,10 @@ h2 {
 }
 
 .coverage-tooltip {
-  position: absolute;
   z-index: 6;
   top: 32px;
   right: 0;
-  display: grid;
-  gap: 6px;
   width: min(300px, calc(100vw - 48px));
-  padding: 12px;
-  border: 1px solid rgba(34, 211, 238, 0.42);
-  border-radius: 8px;
-  background: #08111f;
-  color: #cbd5e1;
-  font-size: 12px;
-  line-height: 1.4;
-  opacity: 0;
-  pointer-events: none;
-  transform: translateY(-4px);
-  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.42);
-  transition: opacity 140ms ease, transform 140ms ease;
-}
-
-.coverage-tooltip strong {
-  color: #ffffff;
-  font-size: 13px;
-}
-
-.coverage-chip:hover .coverage-tooltip,
-.coverage-chip:focus .coverage-tooltip,
-.coverage-chip:focus-within .coverage-tooltip {
-  opacity: 1;
-  pointer-events: auto;
-  transform: translateY(0);
 }
 
 .telemetry-grid {
@@ -1387,7 +1355,7 @@ h2 {
 .telemetry-tile {
   display: grid;
   gap: 6px;
-  min-height: 116px;
+  min-height: 96px;
   padding: 10px;
   border: 1px solid rgba(148, 163, 184, 0.22);
   border-radius: 8px;
@@ -1413,9 +1381,11 @@ h2 {
 }
 
 .telemetry-value strong {
+  min-width: 0;
   color: #ffffff;
-  font-size: 20px;
-  line-height: 1;
+  font-size: 16px;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
 }
 
 .telemetry-tile h4 {
@@ -1424,11 +1394,13 @@ h2 {
   font-size: 14px;
 }
 
-.telemetry-tile p {
-  margin-bottom: 0;
-  color: #a8b6cc;
-  font-size: 12px;
-  line-height: 1.45;
+.telemetry-summary {
+  margin: 0;
+  width: min(300px, calc(100vw - 48px));
+}
+
+.telemetry-summary span {
+  color: #cbd5e1;
 }
 
 .priority,
@@ -1761,16 +1733,21 @@ code {
   }
 
   .answer-card,
-  .metric-row,
-  .telemetry-tile,
   .queue-item {
     max-width: 100%;
     overflow: hidden;
   }
 
+  .metric-row,
+  .telemetry-tile,
+  .ops-card {
+    max-width: 100%;
+    overflow: visible;
+  }
+
   .answer-card strong,
   .answer-card p,
-  .telemetry-tile p,
+  .telemetry-summary,
   .queue-item em,
   .queue-item small {
     word-break: break-word;
@@ -1782,6 +1759,18 @@ code {
 
   .case-badges {
     justify-content: flex-start;
+  }
+
+  .case-badges .status-chip {
+    max-width: 100%;
+  }
+
+  .status-chip-label {
+    white-space: normal;
+  }
+
+  .command-head h2 {
+    font-size: 28px;
   }
 
   .workflow-rail,

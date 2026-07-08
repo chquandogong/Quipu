@@ -2,7 +2,7 @@
 
 <p align="center">
   <img alt="CI" src="https://github.com/chquandogong/Quipu/actions/workflows/ci.yml/badge.svg">
-  <img alt="Version" src="https://img.shields.io/badge/version-v0.10.0-2f6f7e">
+  <img alt="Version" src="https://img.shields.io/badge/version-v0.11.0-2f6f7e">
   <img alt="Status" src="https://img.shields.io/badge/status-local--first%20workstation%20health-5b6b73">
   <img alt="License" src="https://img.shields.io/badge/license-not%20selected-lightgrey">
 </p>
@@ -31,8 +31,13 @@ Detect -> Triage -> Investigate -> Hypothesize -> Act -> Verify -> Report
 The product is not a remote repair tool. The collector is read-only and the
 server uses deterministic rule-based analysis.
 
-## v0.10.0 Highlights
+## v0.11.0 Highlights
 
+- Multiple laptops can report to the same server; use `--device-id` for a
+  stable unique ID and `--device-alias` for a friendly UI name.
+- Device labels appear as `alias · hostname` when an alias is present.
+- Header metadata is consolidated into one `Project info` hover/focus chip.
+- Explanations now use one consistent hover/focus popover pattern.
 - Documentation rewritten from the ground up.
 - New [User Manual](USER_MANUAL.md).
 - Load average is shown as `1m / 5m / 15m`.
@@ -40,6 +45,8 @@ server uses deterministic rule-based analysis.
 - Intel Core Ultra 5 125H sensor patterns are grouped as `P`, `E`, and `LP-E`.
 - NVMe and Wi-Fi always show per-device or per-interface chips, even when only
   one device is present.
+- The collector now reports CPU model/topology, Wi-Fi Rx/Tx link bitrate, NVMe
+  capacity, and NVMe read/write throughput calculated between collector samples.
 
 ## Run With Sample Data
 
@@ -84,10 +91,27 @@ pip install -e .
 quipu-collector \
   --server-url http://127.0.0.1:8000 \
   --token dev-token \
-  --device-id local-computer
+  --device-id local-computer \
+  --device-alias "My notebook"
 ```
 
 Refresh the web UI.
+
+## Connect Another Laptop
+
+Run the server on a LAN-reachable address, then send collector batches from each
+Linux laptop:
+
+```bash
+quipu-collector \
+  --server-url http://<server-ip>:8000 \
+  --token dev-token \
+  --device-id office-gram \
+  --device-alias "Office Gram"
+```
+
+Use a different `--device-id` per machine. Use enrollment tokens instead of
+`dev-token` for repeated operation.
 
 ## Main Surfaces
 
@@ -95,9 +119,20 @@ Refresh the web UI.
 - Problem Guide: what is wrong, what evidence matters, what to do next.
 - Telemetry Brief: CPU, Load, NVMe, Wi-Fi representative values.
 - Metric Ledger: detailed core/load/device/interface chips and help tooltips.
-- Telemetry Matrix: coverage across memory, disk, fan, storage health, power,
-  network, thermal, kernel, and freshness.
+- Telemetry Matrix: coverage across CPU profile, memory, disk, fan, NVMe
+  health/capacity/I/O, power, Wi-Fi link, network, thermal, kernel, and
+  freshness.
 - Pattern Explorer: repeated signals by category, component, model, and kernel.
+
+## Collector Signals
+
+- CPU model and core/thread counts come from `/proc/cpuinfo`; Intel Core Ultra
+  5 125H is shown as 4P/8E/2LP-E/18 threads when detected.
+- Wi-Fi link speed comes from `iw dev <interface> link` Rx/Tx bitrate, with
+  `iwconfig` Bit Rate as a fallback. This is not an internet speed test result.
+- NVMe capacity comes from sysfs block namespaces.
+- NVMe read/write speed is bytes/sec calculated from sector-counter deltas
+  between collector samples. The first sample can show `Needs 2 samples`.
 
 ## Verification
 

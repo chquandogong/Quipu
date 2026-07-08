@@ -50,7 +50,7 @@ import type {
 import './styles.css';
 
 const flowStages = ['Detect', 'Triage', 'Investigate', 'Hypothesize', 'Act', 'Verify', 'Report'];
-const appVersion = 'v0.10.0';
+const appVersion = 'v0.11.0';
 
 const riskLabels: Record<RiskLevel, string> = {
   healthy: 'Healthy',
@@ -170,6 +170,9 @@ function metricSampleValue(metric: MetricSample | undefined): string {
   if (metric.unit === 'boolean') return metric.value >= 0.5 ? 'Online' : 'Offline';
   if (metric.unit === 'rpm') return `${metric.value.toFixed(0)} rpm`;
   if (metric.unit === 'count') return `${metric.value.toFixed(0)}`;
+  if (metric.unit === 'bytes') return formatBytes(metric.value);
+  if (metric.unit === 'bytes_per_sec') return `${formatBytes(metric.value)}/s`;
+  if (metric.unit === 'mbps') return `${metric.value.toFixed(metric.value >= 100 ? 0 : 1)} Mbps`;
   return `${metric.value}`;
 }
 
@@ -189,6 +192,29 @@ function observedTime(detail: InvestigationDetail | null, name: string): string 
 
 function compareLabel(left: string, right: string): number {
   return left.localeCompare(right, undefined, { numeric: true, sensitivity: 'base' });
+}
+
+function formatBytes(value: number): string {
+  const units = ['B', 'KB', 'MB', 'GB', 'TB', 'PB'];
+  let scaled = Math.max(0, value);
+  let unitIndex = 0;
+  while (scaled >= 1024 && unitIndex < units.length - 1) {
+    scaled /= 1024;
+    unitIndex += 1;
+  }
+  const precision = Number.isInteger(scaled) || scaled >= 100 || unitIndex === 0 ? 0 : scaled >= 10 ? 1 : 2;
+  return `${scaled.toFixed(precision)} ${units[unitIndex]}`;
+}
+
+function compactCpuModel(model: string | null | undefined): string {
+  if (!model) return 'Unknown CPU';
+  return model
+    .replace(/\(R\)/g, '')
+    .replace(/\(TM\)/g, '')
+    .replace(/\s+CPU\s+/i, ' ')
+    .replace(/\s+@.+$/, '')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 function coreTemperatureStatus(sample: MetricSample): SignalStatus {
@@ -264,7 +290,83 @@ function statusForMetricSample(name: string, sample: MetricSample | undefined): 
     if (value <= -80) return 'critical';
     if (value <= -70) return 'watch';
   }
+  if (/^wifi(\.[^.]+)?\.(rx|tx|link)_bitrate_mbps$/.test(name)) {
+    if (value <= 12) return 'watch';
+  }
   return 'nominal';
+}
+
+function metricNamesByPattern(latestMetrics: Record<string, MetricSample>, pattern: RegExp): string[] {
+  return Object.keys(latestMetrics)
+    .filter((metricName) => pattern.test(metricName))
+    .sort(compareLabel);
+}
+
+function cpuProfileValue(detail: InvestigationDetail | null): string {
+  const physicalCores = latestMetric(detail, 'cpu.physical_cores');
+  const logicalThreads = latestMetric(detail, 'cpu.logical_threads');
+  if (physicalCores && logicalThreads) {
+    return `${physicalCores.value.toFixed(0)} cores / ${logicalThreads.value.toFixed(0)} threads`;
+  }
+  if (logicalThreads) return `${logicalThreads.value.toFixed(0)} threads`;
+  return detail?.fleet_context.device.cpu_model ? compactCpuModel(detail.fleet_context.device.cpu_model) : 'Unavailable';
+}
+
+function cpuProfileStatus(detail: InvestigationDetail | null): SignalStatus {
+  return detail?.fleet_context.device.cpu_model || latestMetric(detail, 'cpu.logical_threads') ? 'nominal' : 'missing';
+}
+
+function cpuProfileSummary(detail: InvestigationDetail | null): string {
+  const model = compactCpuModel(detail?.fleet_context.device.cpu_model);
+  const pCores = latestMetric(detail, 'cpu.performance_cores')?.value;
+  const eCores = latestMetric(detail, 'cpu.efficient_cores')?.value;
+  const lpECores = latestMetric(detail, 'cpu.low_power_efficient_cores')?.value;
+  const physicalCores = latestMetric(detail, 'cpu.physical_cores')?.value;
+  const logicalThreads = latestMetric(detail, 'cpu.logical_threads')?.value;
+  const topology = pCores !== undefined && eCores !== undefined && lpECores !== undefined
+    ? `Topology: P ${pCores.toFixed(0)}, E ${eCores.toFixed(0)}, LP-E ${lpECores.toFixed(0)}.`
+    : physicalCores !== undefined || logicalThreads !== undefined
+      ? `Topology: ${physicalCores?.toFixed(0) ?? '?'} cores, ${logicalThreads?.toFixed(0) ?? '?'} threads.`
+      : 'Topology metrics are unavailable.';
+  return `${model}. ${topology}`;
+}
+
+function wifiLinkValue(detail: InvestigationDetail | null): string {
+  const rx = latestMetric(detail, 'wifi.rx_bitrate_mbps');
+  const tx = latestMetric(detail, 'wifi.tx_bitrate_mbps');
+  const link = latestMetric(detail, 'wifi.link_bitrate_mbps');
+  if (rx && tx) return `Rx ${metricSampleValue(rx)} / Tx ${metricSampleValue(tx)}`;
+  if (rx) return `Rx ${metricSampleValue(rx)}`;
+  if (tx) return `Tx ${metricSampleValue(tx)}`;
+  if (link) return `Link ${metricSampleValue(link)}`;
+  return 'Unavailable';
+}
+
+function wifiLinkStatus(detail: InvestigationDetail | null): SignalStatus {
+  return strongestStatus(
+    metricStatus(detail, 'wifi.rx_bitrate_mbps'),
+    metricStatus(detail, 'wifi.tx_bitrate_mbps'),
+    metricStatus(detail, 'wifi.link_bitrate_mbps'),
+  );
+}
+
+function nvmeCapacityValue(detail: InvestigationDetail | null): string {
+  return metricValue(detail, 'nvme.capacity_bytes');
+}
+
+function nvmeCapacityStatus(detail: InvestigationDetail | null): SignalStatus {
+  return latestMetric(detail, 'nvme.capacity_bytes') ? 'nominal' : 'missing';
+}
+
+function nvmeIoValue(detail: InvestigationDetail | null): string {
+  const read = latestMetric(detail, 'nvme.read_bytes_per_sec');
+  const write = latestMetric(detail, 'nvme.write_bytes_per_sec');
+  if (read && write) return `R ${metricSampleValue(read)} / W ${metricSampleValue(write)}`;
+  return 'Needs 2 samples';
+}
+
+function nvmeIoStatus(detail: InvestigationDetail | null): SignalStatus {
+  return latestMetric(detail, 'nvme.read_bytes_per_sec') || latestMetric(detail, 'nvme.write_bytes_per_sec') ? 'nominal' : 'missing';
 }
 
 function metricBreakdown(detail: InvestigationDetail, name: string): MetricBreakdown | null {
@@ -310,21 +412,44 @@ function metricBreakdown(detail: InvestigationDetail, name: string): MetricBreak
     return { title: 'Load', items: windows };
   }
   if (name === 'nvme.temp_c') {
-    const devices = Object.entries(latestMetrics)
-      .map(([metricName, sample]) => {
-        const match = metricName.match(/^nvme\.([^.]+)\.temp_c$/);
-        const value = breakdownSampleValue(sample);
-        return match
-          ? {
-              key: metricName,
-              label: match[1],
-              value,
-              status: statusForMetricSample(metricName, sample),
-              ariaLabel: `NVMe ${match[1]} temperature: ${value}`,
-            }
-          : null;
+    const namespaceNames = new Set<string>();
+    const controllerTempNames = new Set<string>();
+    for (const metricName of Object.keys(latestMetrics)) {
+      const match = metricName.match(/^nvme\.([^.]+)\.(temp_c|capacity_bytes|read_bytes_per_sec|write_bytes_per_sec)$/);
+      if (!match) continue;
+      if (match[2] === 'temp_c') {
+        controllerTempNames.add(match[1]);
+      } else {
+        namespaceNames.add(match[1]);
+      }
+    }
+    const displayNames = namespaceNames.size > 0
+      ? [...namespaceNames, ...[...controllerTempNames].filter((deviceName) => ![...namespaceNames].some((namespaceName) => namespaceName.startsWith(deviceName)))]
+      : [...controllerTempNames];
+    const devices = displayNames
+      .map((deviceName) => {
+        const controllerName = deviceName.match(/^(nvme\d+)n\d+$/)?.[1] ?? deviceName;
+        const tempName = latestMetrics[`nvme.${deviceName}.temp_c`]
+          ? `nvme.${deviceName}.temp_c`
+          : `nvme.${controllerName}.temp_c`;
+        const capacityName = `nvme.${deviceName}.capacity_bytes`;
+        const readName = `nvme.${deviceName}.read_bytes_per_sec`;
+        const writeName = `nvme.${deviceName}.write_bytes_per_sec`;
+        const parts = [
+          latestMetrics[tempName] ? breakdownSampleValue(latestMetrics[tempName]) : null,
+          latestMetrics[capacityName] ? breakdownSampleValue(latestMetrics[capacityName]) : null,
+          latestMetrics[readName] ? `R ${breakdownSampleValue(latestMetrics[readName])}` : null,
+          latestMetrics[writeName] ? `W ${breakdownSampleValue(latestMetrics[writeName])}` : null,
+        ].filter((part): part is string => Boolean(part));
+        const value = parts.length > 0 ? parts.join(' · ') : '-';
+        return {
+          key: deviceName,
+          label: deviceName,
+          value,
+          status: statusForMetricSample(tempName, latestMetrics[tempName]),
+          ariaLabel: `NVMe ${deviceName}: ${value}`,
+        };
       })
-      .filter((device): device is MetricBreakdownItem => device !== null)
       .sort((left, right) => compareLabel(left.label, right.label));
     if (devices.length === 0 && latestMetrics['nvme.temp_c']) {
       const sample = latestMetrics['nvme.temp_c'];
@@ -345,21 +470,32 @@ function metricBreakdown(detail: InvestigationDetail, name: string): MetricBreak
     };
   }
   if (name === 'wifi.signal_dbm') {
-    const interfaces = Object.entries(latestMetrics)
-      .map(([metricName, sample]) => {
-        const match = metricName.match(/^wifi\.([^.]+)\.signal_dbm$/);
-        const value = breakdownSampleValue(sample);
-        return match
-          ? {
-              key: metricName,
-              label: match[1],
-              value,
-              status: statusForMetricSample(metricName, sample),
-              ariaLabel: `Wi-Fi ${match[1]} signal: ${value}`,
-            }
-          : null;
+    const interfaceNames = new Set<string>();
+    for (const metricName of Object.keys(latestMetrics)) {
+      const match = metricName.match(/^wifi\.([^.]+)\.(signal_dbm|rx_bitrate_mbps|tx_bitrate_mbps|link_bitrate_mbps)$/);
+      if (match) interfaceNames.add(match[1]);
+    }
+    const interfaces = [...interfaceNames]
+      .map((interfaceName) => {
+        const signalName = `wifi.${interfaceName}.signal_dbm`;
+        const rxName = `wifi.${interfaceName}.rx_bitrate_mbps`;
+        const txName = `wifi.${interfaceName}.tx_bitrate_mbps`;
+        const linkName = `wifi.${interfaceName}.link_bitrate_mbps`;
+        const parts = [
+          latestMetrics[signalName] ? breakdownSampleValue(latestMetrics[signalName]) : null,
+          latestMetrics[rxName] ? `Rx ${breakdownSampleValue(latestMetrics[rxName])}` : null,
+          latestMetrics[txName] ? `Tx ${breakdownSampleValue(latestMetrics[txName])}` : null,
+          latestMetrics[linkName] && !latestMetrics[rxName] && !latestMetrics[txName] ? `Link ${breakdownSampleValue(latestMetrics[linkName])}` : null,
+        ].filter((part): part is string => Boolean(part));
+        const value = parts.length > 0 ? parts.join(' · ') : '-';
+        return {
+          key: interfaceName,
+          label: interfaceName,
+          value,
+          status: statusForMetricSample(signalName, latestMetrics[signalName]),
+          ariaLabel: `Wi-Fi ${interfaceName}: ${value}`,
+        };
       })
-      .filter((iface): iface is MetricBreakdownItem => iface !== null)
       .sort((left, right) => compareLabel(left.label, right.label));
     if (interfaces.length === 0 && latestMetrics['wifi.signal_dbm']) {
       const sample = latestMetrics['wifi.signal_dbm'];
@@ -473,8 +609,21 @@ function buildTelemetryTiles(detail: InvestigationDetail | null, overview: Fleet
   const powerStatus = hasPowerSignal ? strongestStatus(metricStatus(detail, 'battery.capacity_percent'), powerEvents.length > 0 ? 'watch' : 'nominal') : 'missing';
   const acState = metricValue(detail, 'battery.ac_online');
   const batteryValue = latestMetric(detail, 'battery.capacity_percent') ? metricValue(detail, 'battery.capacity_percent') : acState;
+  const wifiInterfaceNames = metricNamesByPattern(detail?.fleet_context.latest_metrics ?? {}, /^wifi\.[^.]+\.signal_dbm$/)
+    .map((metricName) => metricName.split('.')[1]);
+  const nvmeDeviceNames = metricNamesByPattern(detail?.fleet_context.latest_metrics ?? {}, /^nvme\.[^.]+\.capacity_bytes$/)
+    .map((metricName) => metricName.split('.')[1]);
 
   return [
+    {
+      id: 'cpu.profile',
+      category: 'Hardware',
+      label: 'CPU Profile',
+      value: cpuProfileValue(detail),
+      status: cpuProfileStatus(detail),
+      summary: cpuProfileSummary(detail),
+      Icon: Cpu,
+    },
     {
       id: 'memory.used_percent',
       category: 'Compute',
@@ -492,6 +641,26 @@ function buildTelemetryTiles(detail: InvestigationDetail | null, overview: Fleet
       status: storageStatus,
       summary: 'root filesystem 사용률과 kernel storage warning을 함께 봅니다. (disk fullness and I/O stalls)',
       Icon: HardDrive,
+    },
+    {
+      id: 'nvme.capacity',
+      category: 'Storage',
+      label: 'NVMe Capacity',
+      value: nvmeCapacityValue(detail),
+      status: nvmeCapacityStatus(detail),
+      summary: nvmeDeviceNames.length > 0
+        ? `Detected NVMe namespace(s): ${nvmeDeviceNames.join(', ')}. Capacity uses sysfs block size in bytes.`
+        : 'NVMe capacity is unavailable from sysfs.',
+      Icon: HardDrive,
+    },
+    {
+      id: 'nvme.io',
+      category: 'Storage',
+      label: 'NVMe I/O',
+      value: nvmeIoValue(detail),
+      status: nvmeIoStatus(detail),
+      summary: 'Read/write throughput is calculated from NVMe sector counters between collector samples. 첫 샘플에는 비교 기준이 없어 비어 있을 수 있습니다.',
+      Icon: Gauge,
     },
     {
       id: 'fan.rpm',
@@ -519,6 +688,17 @@ function buildTelemetryTiles(detail: InvestigationDetail | null, overview: Fleet
       status: powerStatus,
       summary: `배터리 잔량, AC 상태(${acState}), power-management event를 같이 확인합니다.`,
       Icon: BatteryWarning,
+    },
+    {
+      id: 'wifi.link',
+      category: 'Network',
+      label: 'Wi-Fi Link',
+      value: wifiLinkValue(detail),
+      status: wifiLinkStatus(detail),
+      summary: wifiInterfaceNames.length > 0
+        ? `iw or iwconfig link bitrate for ${wifiInterfaceNames.join(', ')}. 실제 인터넷 속도 측정값이 아니라 AP와의 무선 링크 속도입니다.`
+        : 'Wi-Fi link bitrate is unavailable.',
+      Icon: Wifi,
     },
     {
       id: 'network.events',
@@ -630,8 +810,22 @@ function stageGoal(stage: string): string {
 function sourceLabelForItem(detail: InvestigationDetail | null, item: InvestigationItem | null | undefined): string | null {
   const sourceItem = detail?.item ?? item;
   if (!sourceItem) return null;
-  const hostname = detail?.fleet_context.device.hostname ?? sourceItem.device_hostname;
-  return `${hostname} / ${sourceItem.category}`;
+  const deviceLabel = detail
+    ? deviceDisplayLabel(detail.fleet_context.device)
+    : itemDeviceDisplayLabel(sourceItem);
+  return `${deviceLabel} / ${sourceItem.category}`;
+}
+
+function deviceDisplayLabel(device: { display_name?: string | null; hostname: string }): string {
+  const alias = device.display_name?.trim();
+  if (alias && alias !== device.hostname) return `${alias} · ${device.hostname}`;
+  return alias || device.hostname;
+}
+
+function itemDeviceDisplayLabel(item: { device_display_name?: string | null; device_hostname: string }): string {
+  const alias = item.device_display_name?.trim();
+  if (alias && alias !== item.device_hostname) return `${alias} · ${item.device_hostname}`;
+  return alias || item.device_hostname;
 }
 
 function riskChipLabel(level: RiskLevel | undefined, detail: InvestigationDetail | null, item: InvestigationItem | null | undefined): string {
@@ -667,14 +861,44 @@ function StatusChip({
   title: string;
 }) {
   return (
-    <span aria-describedby={helpId} className={['status-chip', className].filter(Boolean).join(' ')} tabIndex={0}>
+    <span aria-describedby={helpId} className={['status-chip', 'explainable', 'explain-left', className].filter(Boolean).join(' ')} tabIndex={0}>
       <Icon aria-hidden="true" />
       <span className="status-chip-label">{label}</span>
-      <span className="status-tooltip" id={helpId} role="tooltip">
+      <span className="status-tooltip explain-popover" id={helpId} role="tooltip">
         <strong>{title}</strong>
         {Array.isArray(description)
           ? description.map((line) => <span key={line}>{line}</span>)
           : <span>{description}</span>}
+      </span>
+    </span>
+  );
+}
+
+function ProductInfoChip() {
+  return (
+    <span
+      aria-describedby="project-info-help"
+      className="meta-chip product-info-chip explainable explain-left"
+      tabIndex={0}
+    >
+      <Info aria-hidden="true" />
+      Project info
+      <span className="product-info-tooltip explain-popover" id="project-info-help" role="tooltip">
+        <strong>Metadata</strong>
+        <span className="product-info-line">
+          <UserRound aria-hidden="true" />
+          <a href="https://github.com/chquandogong/CHENGHAO-QUAN" target="_blank" rel="noreferrer">
+            Made by Dr. 권성호
+          </a>
+        </span>
+        <span className="product-info-line">
+          <Info aria-hidden="true" />
+          About: workstation health investigation
+        </span>
+        <span className="product-info-line">
+          <Tag aria-hidden="true" />
+          Version {appVersion}
+        </span>
       </span>
     </span>
   );
@@ -778,11 +1002,11 @@ function MetricRow({ detail, metric }: { detail: InvestigationDetail; metric: Me
           <metric.Icon aria-hidden="true" />
           {metric.label}
         </dt>
-        <div className="metric-help">
+        <div className="metric-help explainable explain-left">
           <button aria-describedby={`${metric.name}-help`} aria-label={`Explain ${metric.ariaLabel} metric`} type="button">
             <HelpCircle aria-hidden="true" />
           </button>
-          <div className="metric-tooltip" id={`${metric.name}-help`} role="tooltip">
+          <div className="metric-tooltip explain-popover" id={`${metric.name}-help`} role="tooltip">
             <strong>{metric.ariaLabel}</strong>
             <span>정의: {metric.definition}</span>
             <span>시간창: {metric.window}</span>
@@ -840,15 +1064,15 @@ function TelemetryMatrix({ detail, overview }: { detail: InvestigationDetail | n
       <div className="matrix-head">
         <div>
           <h3>Telemetry Matrix</h3>
-          <p>Core metric 밖의 fan, NVMe health, disk, battery, Wi-Fi, memory, network, kernel, agent freshness를 한 번에 확인합니다.</p>
+          <p>CPU profile, fan, NVMe health/capacity/I/O, disk, battery, Wi-Fi link, memory, network, kernel, agent freshness를 한 번에 확인합니다.</p>
         </div>
         <span
           aria-describedby="telemetry-coverage-help"
-          className="coverage-chip"
+          className="coverage-chip explainable explain-left"
           tabIndex={0}
         >
           {observedCount}/{tiles.length} observed
-          <span className="coverage-tooltip" id="telemetry-coverage-help" role="tooltip">
+          <span className="coverage-tooltip explain-popover" id="telemetry-coverage-help" role="tooltip">
             <strong>Telemetry coverage</strong>
             <span>관측된 범주 수입니다. 위험 점수가 아니라, 조사에 필요한 자료가 얼마나 들어왔는지 보여줍니다.</span>
             <span>{missingLabels.length > 0 ? `Missing: ${missingLabels.join(', ')}` : 'Missing: none'}</span>
@@ -857,14 +1081,22 @@ function TelemetryMatrix({ detail, overview }: { detail: InvestigationDetail | n
       </div>
       <div className="telemetry-grid">
         {tiles.map((tile) => (
-          <article className={`telemetry-tile signal-${tile.status}`} key={tile.id}>
+          <article
+            aria-describedby={`telemetry-${tile.id}-help`}
+            className={`telemetry-tile signal-${tile.status} explainable explain-left`}
+            key={tile.id}
+            tabIndex={0}
+          >
             <span className="telemetry-category">{tile.category}</span>
             <div className="telemetry-value">
               <tile.Icon aria-hidden="true" />
               <strong>{tile.value}</strong>
             </div>
             <h4>{tile.label}</h4>
-            <p>{tile.summary}</p>
+            <p className="telemetry-summary explain-popover" id={`telemetry-${tile.id}-help`} role="tooltip">
+              <strong>Explanation</strong>
+              <span>{tile.summary}</span>
+            </p>
           </article>
         ))}
       </div>
@@ -883,28 +1115,64 @@ function OperationsRail({
 }) {
   const stale = overview?.summary.stale ?? 0;
   const patternCount = patterns?.category_groups.reduce((total, group) => total + group.count, 0) ?? 0;
+  const operationCards = [
+    {
+      id: 'agent-freshness',
+      Icon: Clock3,
+      label: 'Agent Freshness',
+      value: stale > 0 ? `${stale} stale` : 'Fresh',
+      summary: detail?.fleet_context.device.last_seen_at ? `Last selected batch ${new Date(detail.fleet_context.device.last_seen_at).toLocaleString()}` : 'Waiting for selected device context.',
+      status: stale > 0 ? 'watch' : 'nominal',
+    },
+    {
+      id: 'offline-buffer',
+      Icon: HardDrive,
+      label: 'Offline Buffer',
+      value: 'Spool-ready',
+      summary: 'Collector batches can queue locally during server or network outage.',
+      status: 'nominal',
+    },
+    {
+      id: 'enrollment-guard',
+      Icon: ShieldCheck,
+      label: 'Enrollment Guard',
+      value: 'Device-bound',
+      summary: 'Agent tokens can be created, rotated, and revoked per device.',
+      status: 'nominal',
+    },
+    {
+      id: 'pattern-radar',
+      Icon: FileSearch,
+      label: 'Pattern Radar',
+      value: `${patternCount} events`,
+      summary: `${patterns?.category_groups[0]?.category ?? 'No repeated category'} is the leading grouped signal.`,
+      status: patternCount > 0 ? 'watch' : 'missing',
+    },
+  ] satisfies {
+    id: string;
+    Icon: typeof Activity;
+    label: string;
+    value: string;
+    summary: string;
+    status: SignalStatus;
+  }[];
   return (
     <section className="operations-rail" aria-label="Operations Rail">
-      <article className={stale > 0 ? 'ops-card signal-watch' : 'ops-card signal-nominal'}>
-        <span><Clock3 aria-hidden="true" /> Agent Freshness</span>
-        <strong>{stale > 0 ? `${stale} stale` : 'Fresh'}</strong>
-        <p>{detail?.fleet_context.device.last_seen_at ? `Last selected batch ${new Date(detail.fleet_context.device.last_seen_at).toLocaleString()}` : 'Waiting for selected device context.'}</p>
-      </article>
-      <article className="ops-card signal-nominal">
-        <span><HardDrive aria-hidden="true" /> Offline Buffer</span>
-        <strong>Spool-ready</strong>
-        <p>Collector batches can queue locally during server or network outage.</p>
-      </article>
-      <article className="ops-card signal-nominal">
-        <span><ShieldCheck aria-hidden="true" /> Enrollment Guard</span>
-        <strong>Device-bound</strong>
-        <p>Agent tokens can be created, rotated, and revoked per device.</p>
-      </article>
-      <article className={patternCount > 0 ? 'ops-card signal-watch' : 'ops-card signal-missing'}>
-        <span><FileSearch aria-hidden="true" /> Pattern Radar</span>
-        <strong>{patternCount} events</strong>
-        <p>{patterns?.category_groups[0]?.category ?? 'No repeated category'} is the leading grouped signal.</p>
-      </article>
+      {operationCards.map((card) => (
+        <article
+          aria-describedby={`ops-${card.id}-help`}
+          className={`ops-card signal-${card.status} explainable explain-left`}
+          key={card.id}
+          tabIndex={0}
+        >
+          <span className="ops-label"><card.Icon aria-hidden="true" /> {card.label}</span>
+          <strong>{card.value}</strong>
+          <p className="ops-summary explain-popover" id={`ops-${card.id}-help`} role="tooltip">
+            <strong>Explanation</strong>
+            <span>{card.summary}</span>
+          </p>
+        </article>
+      ))}
     </section>
   );
 }
@@ -1018,6 +1286,9 @@ function WorkflowStages({ stage }: { stage: string }) {
             aria-current={isActive ? 'step' : undefined}
             className={[
               'workflow-step',
+              'explainable',
+              'explain-up',
+              'explain-center',
               isActive ? 'active' : '',
               isComplete ? 'complete' : '',
             ].filter(Boolean).join(' ')}
@@ -1025,7 +1296,7 @@ function WorkflowStages({ stage }: { stage: string }) {
             tabIndex={0}
           >
             <span aria-hidden="true">{flowStage[0]}</span>
-            <span className="workflow-step-tooltip" role="tooltip">
+            <span className="workflow-step-tooltip explain-popover" role="tooltip">
               <strong>{flowStage}</strong>
               <span>{stageDescription(flowStage)}</span>
             </span>
@@ -1128,14 +1399,14 @@ function FleetBrief({ overview, queue }: { overview: FleetOverview | null; queue
           <span
             aria-describedby={`fleet-${stat.label.toLowerCase()}-help`}
             aria-label={`${stat.label} ${stat.metricLabel}: ${stat.value}`}
-            className={`fleet-reading fleet-${stat.tone}`}
+            className={`fleet-reading fleet-${stat.tone} explainable explain-right`}
             key={stat.label}
             tabIndex={0}
           >
             <strong>{stat.value}</strong>
             <span>{stat.label}</span>
             <small>{stat.value === 1 ? stat.singularUnit : stat.pluralUnit}</small>
-            <span className="fleet-tooltip" id={`fleet-${stat.label.toLowerCase()}-help`} role="tooltip">
+            <span className="fleet-tooltip explain-popover" id={`fleet-${stat.label.toLowerCase()}-help`} role="tooltip">
               {stat.description}
             </span>
           </span>
@@ -1143,7 +1414,7 @@ function FleetBrief({ overview, queue }: { overview: FleetOverview | null; queue
       </div>
       <div className={`fleet-source fleet-${sourceTone}`}>
         <span>{leadingSource ? `${riskLabels[leadingSource.risk_level]} source` : 'No active source'}</span>
-        <strong>{leadingSource ? `${leadingSource.device_hostname} / ${leadingSource.category}` : 'No active warning'}</strong>
+        <strong>{leadingSource ? `${itemDeviceDisplayLabel(leadingSource)} / ${leadingSource.category}` : 'No active warning'}</strong>
         <em>{leadingSource?.title ?? 'All selected fleet signals are clear.'}</em>
       </div>
     </section>
@@ -1279,7 +1550,11 @@ export default function App() {
   const verificationSummary = detail?.verification.summary ?? 'Record an intervention before verification.';
   const selectedStage = selectedItem?.stage ?? 'Detect';
   const selectedRiskLevel = detail?.item.risk_level ?? selectedItem?.risk_level;
-  const deviceLabel = detail?.fleet_context.device.hostname ?? selectedItem?.device_hostname ?? 'No device selected';
+  const deviceLabel = detail
+    ? deviceDisplayLabel(detail.fleet_context.device)
+    : selectedItem
+      ? itemDeviceDisplayLabel(selectedItem)
+      : 'No device selected';
   const caseTitle = detail?.item.title ?? selectedItem?.title ?? 'Select an investigation';
   const selectedRiskSource = selectedRiskSourceDescription(selectedRiskLevel, detail, selectedItem);
   const selectedRiskDescription = selectedRiskSource
@@ -1369,20 +1644,8 @@ export default function App() {
           <h1>Quipu</h1>
         </div>
         <div className="topbar-meta">
-          <p className="generated">Detect - triage - verify with evidence</p>
           <div className="meta-chips" aria-label="Project metadata">
-            <a className="meta-chip" href="https://github.com/chquandogong/CHENGHAO-QUAN" target="_blank" rel="noreferrer">
-              <UserRound aria-hidden="true" />
-              Made by Dr. 권성호
-            </a>
-            <span className="meta-chip">
-              <Info aria-hidden="true" />
-              About: workstation health investigation
-            </span>
-            <span className="meta-chip">
-              <Tag aria-hidden="true" />
-              Version {appVersion}
-            </span>
+            <ProductInfoChip />
           </div>
         </div>
       </header>
@@ -1496,7 +1759,7 @@ export default function App() {
                   type="button"
                 >
                   <span className={priorityClass(item.priority)}>{item.priority}</span>
-                  <strong>{item.device_hostname}</strong>
+                  <strong>{itemDeviceDisplayLabel(item)}</strong>
                   <em>{item.why_now}</em>
                   <small>{item.next_step}</small>
                 </button>

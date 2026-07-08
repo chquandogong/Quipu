@@ -11,8 +11,10 @@ def _payload() -> dict:
         "observed_at": "2026-07-07T03:00:00+00:00",
         "device": {
             "device_id": "thinkpad-p1",
+            "display_name": "Dev P1",
             "hostname": "dev-p1",
             "model": "ThinkPad P1",
+            "cpu_model": "Intel Core Ultra 5 125H",
             "os_name": "Ubuntu 24.04",
             "kernel_version": "6.14.0",
         },
@@ -50,4 +52,6 @@ def test_ingest_then_fleet_overview(tmp_path: Path) -> None:
     assert ingest.json()["inserted"] is True
     assert overview.status_code == 200
     assert overview.json()["summary"]["total"] == 1
+    assert overview.json()["devices"][0]["device"]["display_name"] == "Dev P1"
     assert overview.json()["devices"][0]["device"]["hostname"] == "dev-p1"
+    assert overview.json()["devices"][0]["device"]["cpu_model"] == "Intel Core Ultra 5 125H"

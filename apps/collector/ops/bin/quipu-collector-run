@@ -22,10 +22,15 @@ args=(
   "--offline-buffer"
   "--spool-dir" "${QUIPU_SPOOL_DIR:-/var/lib/quipu/collector-spool}"
   "--spool-max-batches" "${QUIPU_SPOOL_MAX_BATCHES:-288}"
+  "--state-dir" "${QUIPU_STATE_DIR:-/var/lib/quipu/collector-state}"
 )
 
 if [[ -n "${QUIPU_COLLECTOR_DEVICE_ID:-}" ]]; then
   args+=("--device-id" "${QUIPU_COLLECTOR_DEVICE_ID}")
+fi
+
+if [[ -n "${QUIPU_COLLECTOR_DEVICE_ALIAS:-}" ]]; then
+  args+=("--device-alias" "${QUIPU_COLLECTOR_DEVICE_ALIAS}")
 fi
 
 exec "${collector_bin}" "${args[@]}"

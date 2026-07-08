@@ -2,8 +2,10 @@ export type RiskLevel = 'healthy' | 'warning' | 'critical' | 'stale';
 
 export type Device = {
   device_id: string;
+  display_name: string | null;
   hostname: string;
   model: string | null;
+  cpu_model: string | null;
   os_name: string | null;
   kernel_version: string | null;
   first_seen_at: string;
@@ -59,6 +61,7 @@ export type InvestigationItem = {
   stage: string;
   risk_level: RiskLevel;
   device_id: string;
+  device_display_name: string | null;
   device_hostname: string;
   title: string;
   category: string;
@@ -170,6 +173,7 @@ export type PatternGroup = {
   latest_observed_at: string;
   examples: Array<{
     device_id: string;
+    display_name?: string | null;
     hostname: string;
     summary: string;
     observed_at: string;

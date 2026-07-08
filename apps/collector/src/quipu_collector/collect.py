@@ -138,6 +138,25 @@ def _model(root: Path) -> str | None:
     return _read_text(_root_path(root, "/sys/devices/virtual/dmi/id/product_name"))
 
 
+def _cpu_model(root: Path) -> str | None:
+    cpuinfo = _read_text(_root_path(root, "/proc/cpuinfo"))
+    if cpuinfo:
+        preferred_keys = ("model name", "Hardware", "Processor")
+        for preferred_key in preferred_keys:
+            for line in cpuinfo.splitlines():
+                if ":" not in line:
+                    continue
+                key, value = line.split(":", 1)
+                if key.strip() == preferred_key:
+                    stripped = value.strip()
+                    if stripped:
+                        return stripped
+    if root == Path("/"):
+        detected = platform.processor().strip()
+        return detected or None
+    return None
+
+
 def _os_name(root: Path) -> str | None:
     os_release = _read_text(_root_path(root, "/etc/os-release"))
     if not os_release:
@@ -429,6 +448,66 @@ def _disk_metric(root: Path, observed_at: str) -> dict[str, Any] | None:
     return _metric("disk.root_used_percent", used_percent, "percent", observed_at)
 
 
+def _cpu_topology_for_model(cpu_model: str | None) -> dict[str, float]:
+    if not cpu_model:
+        return {}
+    normalized = cpu_model.lower()
+    if re.search(r"\bultra\s+5\s+125h\b", normalized):
+        return {
+            "cpu.physical_cores": 14.0,
+            "cpu.logical_threads": 18.0,
+            "cpu.performance_cores": 4.0,
+            "cpu.efficient_cores": 8.0,
+            "cpu.low_power_efficient_cores": 2.0,
+        }
+    return {}
+
+
+def _cpu_metrics(root: Path, observed_at: str, cpu_model: str | None) -> list[dict[str, Any]]:
+    values = _cpu_topology_for_model(cpu_model)
+    cpuinfo = _read_text(_root_path(root, "/proc/cpuinfo"))
+    if cpuinfo:
+        processors: set[int] = set()
+        physical_core_count: float | None = None
+        sibling_count: float | None = None
+        physical_core_ids: set[tuple[str, str]] = set()
+        current_physical_id = "0"
+        for line in cpuinfo.splitlines():
+            if not line.strip():
+                current_physical_id = "0"
+                continue
+            if ":" not in line:
+                continue
+            key, raw_value = [part.strip() for part in line.split(":", 1)]
+            if key == "processor":
+                parsed = _parse_metric_number(raw_value)
+                if parsed is not None:
+                    processors.add(int(parsed))
+            elif key == "physical id":
+                current_physical_id = raw_value or "0"
+            elif key == "core id":
+                physical_core_ids.add((current_physical_id, raw_value or "0"))
+            elif key == "cpu cores" and physical_core_count is None:
+                physical_core_count = _parse_metric_number(raw_value)
+            elif key == "siblings" and sibling_count is None:
+                sibling_count = _parse_metric_number(raw_value)
+
+        if processors and "cpu.logical_threads" not in values:
+            values["cpu.logical_threads"] = float(len(processors))
+        if physical_core_ids and "cpu.physical_cores" not in values:
+            values["cpu.physical_cores"] = float(len(physical_core_ids))
+        elif physical_core_count is not None and "cpu.physical_cores" not in values:
+            values["cpu.physical_cores"] = physical_core_count
+        if sibling_count is not None and "cpu.logical_threads" not in values:
+            values["cpu.logical_threads"] = sibling_count
+
+    return [
+        _metric(name, value, "count", observed_at)
+        for name, value in sorted(values.items())
+        if value >= 0
+    ]
+
+
 def _parse_metric_number(value: str) -> float | None:
     hex_match = re.search(r"0x[0-9a-fA-F]+", value)
     if hex_match:
@@ -529,6 +608,111 @@ def _nvme_metrics(root: Path, observed_at: str) -> list[dict[str, Any]]:
     return metrics
 
 
+def _read_json_object(path: Path) -> dict[str, Any]:
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    return payload if isinstance(payload, dict) else {}
+
+
+def _write_json_object(path: Path, payload: dict[str, Any]) -> None:
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        temp_path = path.with_suffix(path.suffix + ".tmp")
+        temp_path.write_text(json.dumps(payload, sort_keys=True), encoding="utf-8")
+        temp_path.replace(path)
+    except OSError:
+        return
+
+
+def _block_stat_bytes(block_device: Path) -> tuple[float, float] | None:
+    raw_stat = _read_text(block_device / "stat")
+    if not raw_stat:
+        return None
+    parts = raw_stat.split()
+    if len(parts) < 7:
+        return None
+    try:
+        read_sectors = float(parts[2])
+        write_sectors = float(parts[6])
+    except ValueError:
+        return None
+    return read_sectors * 512, write_sectors * 512
+
+
+def _nvme_block_metrics(
+    root: Path,
+    observed_at: str,
+    observed: datetime,
+    state_dir: Path | None,
+) -> list[dict[str, Any]]:
+    base = _root_path(root, "/sys/class/block")
+    metrics: list[dict[str, Any]] = []
+    total_capacity = 0.0
+    aggregate_read_bps = 0.0
+    aggregate_write_bps = 0.0
+    rate_samples = 0
+    previous_state: dict[str, Any] = {}
+    state_path = state_dir / "nvme-io.json" if state_dir is not None else None
+    if state_path is not None:
+        previous_state = _read_json_object(state_path)
+    next_state: dict[str, Any] = {
+        "observed_at": observed_at,
+        "timestamp": observed.timestamp(),
+        "devices": {},
+    }
+
+    for block_device in sorted(base.glob("nvme*n*")):
+        if not re.fullmatch(r"nvme\d+n\d+", block_device.name):
+            continue
+        device_name = _safe_metric_part(block_device.name)
+        raw_size = _read_text(block_device / "size")
+        if raw_size:
+            parsed_size = _parse_metric_number(raw_size)
+            if parsed_size is not None and parsed_size > 0:
+                capacity_bytes = parsed_size * 512
+                total_capacity += capacity_bytes
+                metrics.append(_metric(f"nvme.{device_name}.capacity_bytes", capacity_bytes, "bytes", observed_at))
+
+        stat_bytes = _block_stat_bytes(block_device)
+        if stat_bytes is None:
+            continue
+        read_bytes, write_bytes = stat_bytes
+        next_state["devices"][device_name] = {
+            "read_bytes": read_bytes,
+            "write_bytes": write_bytes,
+        }
+        previous_devices = previous_state.get("devices")
+        previous_device = previous_devices.get(device_name) if isinstance(previous_devices, dict) else None
+        previous_timestamp = previous_state.get("timestamp")
+        if not isinstance(previous_device, dict) or not isinstance(previous_timestamp, (int, float)):
+            continue
+        elapsed = observed.timestamp() - float(previous_timestamp)
+        if elapsed <= 0:
+            continue
+        previous_read = previous_device.get("read_bytes")
+        previous_write = previous_device.get("write_bytes")
+        if not isinstance(previous_read, (int, float)) or not isinstance(previous_write, (int, float)):
+            continue
+        read_bps = max(0.0, read_bytes - float(previous_read)) / elapsed
+        write_bps = max(0.0, write_bytes - float(previous_write)) / elapsed
+        aggregate_read_bps += read_bps
+        aggregate_write_bps += write_bps
+        rate_samples += 1
+        metrics.append(_metric(f"nvme.{device_name}.read_bytes_per_sec", read_bps, "bytes_per_sec", observed_at))
+        metrics.append(_metric(f"nvme.{device_name}.write_bytes_per_sec", write_bps, "bytes_per_sec", observed_at))
+
+    if total_capacity > 0:
+        metrics.insert(0, _metric("nvme.capacity_bytes", total_capacity, "bytes", observed_at))
+    if rate_samples > 0:
+        metrics.insert(0, _metric("nvme.write_bytes_per_sec", aggregate_write_bps, "bytes_per_sec", observed_at))
+        metrics.insert(0, _metric("nvme.read_bytes_per_sec", aggregate_read_bps, "bytes_per_sec", observed_at))
+    if state_path is not None and next_state["devices"]:
+        _write_json_object(state_path, next_state)
+    return metrics
+
+
 def _nvme_device_name(hwmon: Path, fallback_index: int) -> str:
     candidates: list[str] = []
     for path in (hwmon / "device", hwmon):
@@ -594,16 +778,72 @@ def _nvme_health_metrics(root: Path, observed_at: str) -> list[dict[str, Any]]:
     return list(metrics_by_name.values())
 
 
-def _wifi_metrics(root: Path, observed_at: str) -> list[dict[str, Any]]:
+def _wifi_link_bitrate_metrics(
+    interface: str,
+    observed_at: str,
+    command_runner: CommandRunner | None,
+) -> list[dict[str, Any]]:
+    runner = command_runner or _run_command
+    link = runner(["iw", "dev", interface, "link"])
+    metrics: list[dict[str, Any]] = []
+    generic_names = {
+        "rx": "wifi.rx_bitrate_mbps",
+        "tx": "wifi.tx_bitrate_mbps",
+    }
+    if link:
+        for direction in ("rx", "tx"):
+            match = re.search(rf"\b{direction}\s+bitrate:\s*([0-9.]+)\s*([GMK]?Bit/s)", link, flags=re.IGNORECASE)
+            if not match:
+                continue
+            value = _wifi_bitrate_value_mbps(match.group(1), match.group(2))
+            if value is None:
+                continue
+            metrics.append(_metric(f"wifi.{interface}.{direction}_bitrate_mbps", value, "mbps", observed_at))
+            metrics.append(_metric(generic_names[direction], value, "mbps", observed_at))
+    if metrics:
+        return metrics
+
+    iwconfig = runner(["iwconfig", interface])
+    if not iwconfig:
+        return []
+    match = re.search(r"\bBit Rate[:=]\s*([0-9.]+)\s*([GMK]?(?:b/s|Bit/s))", iwconfig, flags=re.IGNORECASE)
+    if not match:
+        return []
+    value = _wifi_bitrate_value_mbps(match.group(1), match.group(2))
+    if value is None:
+        return []
+    return [
+        _metric(f"wifi.{interface}.link_bitrate_mbps", value, "mbps", observed_at),
+        _metric("wifi.link_bitrate_mbps", value, "mbps", observed_at),
+    ]
+
+
+def _wifi_bitrate_value_mbps(raw_value: str, raw_unit: str) -> float | None:
+    try:
+        value = float(raw_value)
+    except ValueError:
+        return None
+    unit = raw_unit.lower()
+    if unit.startswith("g"):
+        value *= 1000
+    elif unit.startswith("k"):
+        value /= 1000
+    return value
+    return metrics
+
+
+def _wifi_metrics(root: Path, observed_at: str, command_runner: CommandRunner | None = None) -> list[dict[str, Any]]:
     wireless = _read_text(_root_path(root, "/proc/net/wireless"))
     if not wireless:
         return []
     metrics: list[dict[str, Any]] = []
     generic_recorded = False
+    generic_bitrates_recorded: set[str] = set()
     for line in wireless.splitlines():
         if ":" not in line:
             continue
-        interface = _safe_metric_part(line.split(":", 1)[0])
+        raw_interface = line.split(":", 1)[0].strip()
+        interface = _safe_metric_part(raw_interface)
         parts = line.split()
         if len(parts) < 4:
             continue
@@ -615,6 +855,14 @@ def _wifi_metrics(root: Path, observed_at: str) -> list[dict[str, Any]]:
             metrics.append(_metric("wifi.signal_dbm", signal, "dbm", observed_at))
             generic_recorded = True
         metrics.append(_metric(f"wifi.{interface}.signal_dbm", signal, "dbm", observed_at))
+        for metric in _wifi_link_bitrate_metrics(raw_interface, observed_at, command_runner):
+            if metric["name"].startswith(f"wifi.{raw_interface}."):
+                metric["name"] = metric["name"].replace(f"wifi.{raw_interface}.", f"wifi.{interface}.", 1)
+            if metric["name"] in {"wifi.rx_bitrate_mbps", "wifi.tx_bitrate_mbps", "wifi.link_bitrate_mbps"}:
+                if metric["name"] in generic_bitrates_recorded:
+                    continue
+                generic_bitrates_recorded.add(metric["name"])
+            metrics.append(metric)
     return metrics
 
 
@@ -650,13 +898,18 @@ def collect_observation(
     root: Path | str = Path("/"),
     observed_at: datetime | None = None,
     device_id: str | None = None,
+    device_alias: str | None = None,
+    state_dir: Path | str | None = None,
     command_runner: CommandRunner | None = None,
 ) -> dict[str, Any]:
     root_path = Path(root)
+    collector_state_dir = Path(state_dir).expanduser() if state_dir is not None else None
     observed = _utc(observed_at)
     observed_iso = observed.isoformat()
     collected_device_id = _device_id(root_path, device_id)
+    cpu_model = _cpu_model(root_path)
     metrics = _load_metrics(root_path, observed_iso)
+    metrics.extend(_cpu_metrics(root_path, observed_iso, cpu_model))
     metrics.extend(
         metric
         for metric in [
@@ -665,9 +918,10 @@ def collect_observation(
         ]
         if metric is not None
     )
-    metrics.extend(_wifi_metrics(root_path, observed_iso))
+    metrics.extend(_wifi_metrics(root_path, observed_iso, command_runner))
     metrics.extend(_thermal_metrics(root_path, observed_iso))
     metrics.extend(_nvme_metrics(root_path, observed_iso))
+    metrics.extend(_nvme_block_metrics(root_path, observed_iso, observed, collector_state_dir))
     metrics.extend(_fan_metrics(root_path, observed_iso))
     metrics.extend(_nvme_health_metrics(root_path, observed_iso))
     metrics.extend(_power_supply_metrics(root_path, observed_iso))
@@ -683,8 +937,10 @@ def collect_observation(
         "observed_at": observed_iso,
         "device": {
             "device_id": collected_device_id,
+            "display_name": device_alias.strip() if device_alias and device_alias.strip() else None,
             "hostname": _hostname(root_path),
             "model": _model(root_path),
+            "cpu_model": cpu_model,
             "os_name": _os_name(root_path),
             "kernel_version": platform.release(),
         },

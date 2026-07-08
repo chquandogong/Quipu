@@ -60,6 +60,7 @@ def main(
     parser = argparse.ArgumentParser(description="Collect read-only Quipu observation batches")
     parser.add_argument("--root", default="/", help="filesystem root to read, mainly for tests")
     parser.add_argument("--device-id", help="override generated device ID")
+    parser.add_argument("--device-alias", help="friendly name shown in the Quipu UI")
     parser.add_argument("--observed-at", help="ISO datetime override")
     parser.add_argument("--server-url", help="Quipu server base URL; prints JSON when omitted")
     parser.add_argument("--token", help="agent token required when --server-url is set")
@@ -70,6 +71,7 @@ def main(
     parser.add_argument("--offline-buffer", action="store_true", help="spool batches locally when posting fails")
     parser.add_argument("--spool-dir", default="~/.local/state/quipu/collector-spool", help="offline buffer directory")
     parser.add_argument("--spool-max-batches", type=_positive_int, default=288, help="maximum offline batches to retain")
+    parser.add_argument("--state-dir", default="~/.local/state/quipu/collector-state", help="collector state directory for rate metrics")
     parser.add_argument("--flush-limit", type=_positive_int, help="maximum spooled batches to send before the current batch")
     parser.add_argument("--retry-backoff", type=_positive_float, default=0.0, help="seconds to sleep after buffering a failed send")
     args = parser.parse_args(argv)
@@ -96,7 +98,13 @@ def main(
     try:
         while max_iterations is None or iteration < max_iterations:
             try:
-                batch = collect(root=Path(args.root), observed_at=observed_at, device_id=args.device_id)
+                batch = collect(
+                    root=Path(args.root),
+                    observed_at=observed_at,
+                    device_id=args.device_id,
+                    device_alias=args.device_alias,
+                    state_dir=Path(args.state_dir),
+                )
             except Exception as exc:
                 _write_error("collection_failed", str(exc))
                 return 1

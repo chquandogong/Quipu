@@ -1,6 +1,6 @@
 # Quipu Project Dashboard
 
-> Status: v0.10.0 hardware-aware Metric Ledger and documentation release track
+> Status: v0.11.0 multi-device naming, hardware telemetry, and explanation consistency release track
 > Date: 2026-07-08
 > Owner: chquan
 
@@ -66,6 +66,9 @@ The second valuable question is:
 | Done | Product hardening roadmap | Collector rollout, retention, backup/restore, RBAC, packaging, production, Postgres, analytics, AI |
 | Done | Documentation reset | Korean README rewritten, English and Chinese editions refreshed, Korean user manual added |
 | Done | Hardware-aware Metric Ledger | Load average 1m/5m/15m chips, real CPU core IDs only, Ultra 5 125H P/E/LP-E grouping, per-device NVMe/Wi-Fi chips |
+| Done | Multi-device naming | Collector `--device-alias`, systemd alias env, API persistence, and `alias · hostname` UI labels |
+| Done | Hardware detail telemetry | CPU model/topology, Wi-Fi link bitrate, NVMe capacity, and sample-to-sample NVMe I/O rate |
+| Done | Explanation consistency | Unified hover/focus popover behavior and single Project info metadata chip |
 | Approved | Private remote push and release | User requested commit, tag, push, and release on 2026-07-07 |
 | Approved | Public repository visibility after audit | User approved public visibility on 2026-07-07 |
 

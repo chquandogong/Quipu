@@ -2,7 +2,7 @@ from pathlib import Path
 import sqlite3
 
 
-SCHEMA_VERSION = "0.10.0"
+SCHEMA_VERSION = "0.11.0"
 
 SCHEMA = """
 PRAGMA journal_mode=WAL;
@@ -14,13 +14,15 @@ CREATE TABLE IF NOT EXISTS schema_meta (
 );
 
 INSERT INTO schema_meta (key, value)
-VALUES ('schema_version', '0.10.0')
+VALUES ('schema_version', '0.11.0')
 ON CONFLICT(key) DO UPDATE SET value = excluded.value;
 
 CREATE TABLE IF NOT EXISTS devices (
   device_id TEXT PRIMARY KEY,
+  display_name TEXT,
   hostname TEXT NOT NULL,
   model TEXT,
+  cpu_model TEXT,
   os_name TEXT,
   kernel_version TEXT,
   first_seen_at TEXT NOT NULL,
@@ -119,4 +121,12 @@ def connect(path: Path) -> sqlite3.Connection:
 
 def initialize(conn: sqlite3.Connection) -> sqlite3.Connection:
     conn.executescript(SCHEMA)
+    device_columns = {
+        row["name"]
+        for row in conn.execute("PRAGMA table_info(devices)").fetchall()
+    }
+    if "display_name" not in device_columns:
+        conn.execute("ALTER TABLE devices ADD COLUMN display_name TEXT")
+    if "cpu_model" not in device_columns:
+        conn.execute("ALTER TABLE devices ADD COLUMN cpu_model TEXT")
     return conn

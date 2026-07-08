@@ -1,9 +1,9 @@
 # Quipu Ship Checklist
 
-> Status: release candidate approved for GitHub release and public visibility after audit
+> Status: v0.10.0 release candidate approved for GitHub release after audit
 > Date: 2026-07-08
 > Owner: chquan
-> Release: v0.9.0
+> Release: v0.10.0
 
 ## Scope
 
@@ -16,6 +16,7 @@ Included:
 - Investigation queue and detail API.
 - React investigation-first UI.
 - Korean default README, English README, and Simplified Chinese README.
+- Korean user manual for operators and first-time users.
 - GitHub Actions CI.
 - GitHub Actions runtime version patch.
 - Read-only Linux collector.
@@ -25,13 +26,13 @@ Included:
 - Verification result UI.
 - Command Center first viewport and hover/focus expansion panels.
 - High-contrast dark command theme.
-- Core signal console for CPU package temperature, 1-minute load average, NVMe
-  temperature, and Wi-Fi signal.
+- Core signal console for CPU package temperature, 1-minute/5-minute/15-minute
+  load average, NVMe temperature, and Wi-Fi signal.
 - Telemetry Matrix for Memory Used, Network Events, Reconnect History, Thermal
   Throttling, Fan RPM, NVMe Health, Disk Health, Battery Power, Kernel Warnings,
   and Agent Freshness.
-- Hover/focus metric explanations for CPU package temperature, 1-minute load
-  average, NVMe temperature, and Wi-Fi signal.
+- Hover/focus metric explanations for CPU package temperature, load average,
+  NVMe temperature, and Wi-Fi signal.
 - Best-effort collector summaries for kernel thermal throttling and
   NetworkManager reconnect/disconnect events.
 - Event-specific findings for thermal throttling and network reconnects.
@@ -59,6 +60,11 @@ Included:
   kernel.
 - Operations Rail for agent freshness, offline buffering, enrollment guard,
   and pattern radar.
+- Metric Ledger breakdown chips for load average, CPU package/core sensors,
+  NVMe devices, and Wi-Fi interfaces.
+- Intel Core Ultra 5 125H CPU core grouping for P, E, and LP-E core
+  temperature sensors when the observed sensor IDs match that topology.
+- Local-notebook-only collector workflow documented after deleting sample data.
 - Removed duplicate creator/reference image drawer from the working UI.
 - Visible Made by, About, and Version metadata chips.
 - Project docs, GitHub templates, contribution notes, and security policy.
@@ -73,9 +79,9 @@ Excluded:
 
 ## Tests
 
-- Server tests: `pytest -v` -> 32 passed, 1 Starlette deprecation warning.
+- Server tests: `pytest -v` -> 35 passed, 1 Starlette deprecation warning.
 - Collector tests: `pytest -v` -> 17 passed.
-- Web tests: `npm test` -> 1 passed.
+- Web tests: `npm test` -> 3 passed.
 - Web build: `npm run build` -> succeeded.
 - Whitespace check: `git diff --check` -> passed.
 
@@ -141,21 +147,22 @@ Check after release:
 
 - GitHub repository URL resolves.
 - `main` branch is pushed.
-- `v0.9.0` tag exists locally and remotely.
-- GitHub release exists for `v0.9.0`.
+- `v0.10.0` tag exists locally and remotely.
+- GitHub release exists for `v0.10.0`.
 - Repository visibility is public after audit.
 
 ## Documents
 
-- README: current.
+- README: rewritten for v0.10.0.
+- User manual: present.
 - Dashboard: current release state recorded.
 - Roadmap: operations resilience recorded.
-- Changelog: `v0.9.0` prepared.
+- Changelog: `v0.10.0` prepared.
 - Security policy: present.
 
 ## Final Judgment
 
-GitHub release is allowed for `v0.9.0`.
+GitHub release is allowed for `v0.10.0`.
 
 Public repository visibility is allowed after sensitive-content audit.
 Package publishing, production deployment, destructive git operations, and

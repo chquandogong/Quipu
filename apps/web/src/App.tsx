@@ -50,7 +50,7 @@ import type {
 import './styles.css';
 
 const flowStages = ['Detect', 'Triage', 'Investigate', 'Hypothesize', 'Act', 'Verify', 'Report'];
-const appVersion = 'v0.9.0';
+const appVersion = 'v0.10.0';
 
 const riskLabels: Record<RiskLevel, string> = {
   healthy: 'Healthy',
@@ -141,6 +141,22 @@ type CoreTemperature = {
   status: SignalStatus;
 };
 
+type MetricBreakdownItem = {
+  key: string;
+  label: string;
+  value: string;
+  status: SignalStatus;
+  ariaLabel: string;
+  group?: string;
+};
+
+type MetricBreakdown = {
+  title: string;
+  items: MetricBreakdownItem[];
+  emptyLabel?: string;
+  emptyAriaLabel?: string;
+};
+
 function latestMetric(detail: InvestigationDetail | null, name: string): MetricSample | undefined {
   return detail?.fleet_context.latest_metrics[name];
 }
@@ -150,10 +166,15 @@ function metricSampleValue(metric: MetricSample | undefined): string {
   if (metric.unit === 'celsius') return `${metric.value.toFixed(1)}C`;
   if (metric.unit === 'percent') return `${metric.value.toFixed(1)}%`;
   if (metric.unit === 'dbm') return `${metric.value.toFixed(0)} dBm`;
+  if (metric.unit === 'load') return metric.value.toFixed(2);
   if (metric.unit === 'boolean') return metric.value >= 0.5 ? 'Online' : 'Offline';
   if (metric.unit === 'rpm') return `${metric.value.toFixed(0)} rpm`;
   if (metric.unit === 'count') return `${metric.value.toFixed(0)}`;
   return `${metric.value}`;
+}
+
+function breakdownSampleValue(metric: MetricSample | undefined): string {
+  return metric ? metricSampleValue(metric) : '-';
 }
 
 function metricValue(detail: InvestigationDetail | null, name: string): string {
@@ -186,51 +207,31 @@ function cpuCoreBreakdown(detail: InvestigationDetail): CoreTemperature[] {
     .sort((left, right) => compareLabel(left.index, right.index));
 }
 
-function metricBreakdown(detail: InvestigationDetail, name: string): string | null {
-  const latestMetrics = detail.fleet_context.latest_metrics;
-  if (name === 'cpu.load_1m') {
-    const windows = [
-      ['1m', latestMetrics['cpu.load_1m']],
-      ['5m', latestMetrics['cpu.load_5m']],
-      ['15m', latestMetrics['cpu.load_15m']],
-    ].filter((entry): entry is [string, MetricSample] => entry[1] !== undefined);
-    if (windows.length <= 1) return null;
-    return `Windows: ${windows.map(([label, sample]) => `${label} ${sample.value.toFixed(2)}`).join(' · ')}`;
+function coreTypeGroupsForUltra5_125H(cores: CoreTemperature[]): Map<string, string> {
+  const coreIds = cores.map((core) => Number(core.index)).filter(Number.isInteger);
+  const expectedIds = [0, 1, 2, 3, 4, 5, 6, 7, 8, 12, 16, 20, 32, 33];
+  if (
+    coreIds.length !== expectedIds.length
+    || expectedIds.some((expectedId) => !coreIds.includes(expectedId))
+  ) {
+    return new Map();
   }
-  if (name === 'nvme.temp_c') {
-    const devices = Object.entries(latestMetrics)
-      .map(([metricName, sample]) => {
-        const match = metricName.match(/^nvme\.([^.]+)\.temp_c$/);
-        return match ? { label: match[1], sample } : null;
-      })
-      .filter((device): device is { label: string; sample: MetricSample } => device !== null)
-      .sort((left, right) => compareLabel(left.label, right.label));
-    if (devices.length === 0) return null;
-    return `Devices: ${devices.map((device) => `${device.label} ${metricSampleValue(device.sample)}`).join(' · ')}`;
-  }
-  if (name === 'wifi.signal_dbm') {
-    const interfaces = Object.entries(latestMetrics)
-      .map(([metricName, sample]) => {
-        const match = metricName.match(/^wifi\.([^.]+)\.signal_dbm$/);
-        return match ? { label: match[1], sample } : null;
-      })
-      .filter((iface): iface is { label: string; sample: MetricSample } => iface !== null);
-    if (interfaces.length === 0) return null;
-    return `Interfaces: ${interfaces.map((iface) => `${iface.label} ${metricSampleValue(iface.sample)}`).join(' · ')}`;
-  }
-  return null;
+  return new Map([
+    ...[8, 12, 16, 20].map((coreId): [string, string] => [String(coreId), 'P']),
+    ...[0, 1, 2, 3, 4, 5, 6, 7].map((coreId): [string, string] => [String(coreId), 'E']),
+    ...[32, 33].map((coreId): [string, string] => [String(coreId), 'LP-E']),
+  ]);
 }
 
-function metricStatus(detail: InvestigationDetail | null, name: string): SignalStatus {
-  const metric = latestMetric(detail, name);
-  if (!metric) return 'missing';
-  const value = metric.value;
-  if (name === 'cpu.package_temp_c') {
+function statusForMetricSample(name: string, sample: MetricSample | undefined): SignalStatus {
+  if (!sample) return 'missing';
+  const value = sample.value;
+  if (name === 'cpu.package_temp_c' || /^cpu\.core_\d+\.temp_c$/.test(name)) {
     if (value >= 90) return 'critical';
     if (value >= 78) return 'watch';
   }
-  if (name === 'cpu.load_1m' && value >= 4) return 'watch';
-  if (name === 'nvme.temp_c') {
+  if (/^cpu\.load_(1m|5m|15m)$/.test(name) && value >= 4) return 'watch';
+  if (name === 'nvme.temp_c' || /^nvme\.[^.]+\.temp_c$/.test(name)) {
     if (value >= 75) return 'critical';
     if (value >= 60) return 'watch';
   }
@@ -259,11 +260,130 @@ function metricStatus(detail: InvestigationDetail | null, name: string): SignalS
     if (value >= 10) return 'critical';
     if (value > 0) return 'watch';
   }
-  if (name === 'wifi.signal_dbm') {
+  if (name === 'wifi.signal_dbm' || /^wifi\.[^.]+\.signal_dbm$/.test(name)) {
     if (value <= -80) return 'critical';
     if (value <= -70) return 'watch';
   }
   return 'nominal';
+}
+
+function metricBreakdown(detail: InvestigationDetail, name: string): MetricBreakdown | null {
+  const latestMetrics = detail.fleet_context.latest_metrics;
+  if (name === 'cpu.package_temp_c') {
+    const coreBreakdown = cpuCoreBreakdown(detail);
+    const coreTypeGroups = coreTypeGroupsForUltra5_125H(coreBreakdown);
+    const cores = coreBreakdown.map((core) => {
+      const value = breakdownSampleValue(core.sample);
+      const group = coreTypeGroups.get(core.index);
+      return {
+        key: core.index,
+        label: core.index,
+        value,
+        status: core.status,
+        ariaLabel: group ? `CPU ${group} core ${core.index} temperature: ${value}` : `CPU core ${core.index} temperature: ${value}`,
+        group,
+      };
+    });
+    return {
+      title: 'Cores',
+      items: cores,
+      emptyLabel: 'No core sensors',
+      emptyAriaLabel: 'CPU core temperatures: no per-core sensors reported',
+    };
+  }
+  if (name === 'cpu.load_1m') {
+    const windows = [
+      ['1m', 'cpu.load_1m'],
+      ['5m', 'cpu.load_5m'],
+      ['15m', 'cpu.load_15m'],
+    ].map(([label, metricName]) => {
+      const sample = latestMetrics[metricName];
+      const value = breakdownSampleValue(sample);
+      return {
+        key: metricName,
+        label,
+        value,
+        status: statusForMetricSample(metricName, sample),
+        ariaLabel: `Load average ${label}: ${value}`,
+      };
+    });
+    return { title: 'Load', items: windows };
+  }
+  if (name === 'nvme.temp_c') {
+    const devices = Object.entries(latestMetrics)
+      .map(([metricName, sample]) => {
+        const match = metricName.match(/^nvme\.([^.]+)\.temp_c$/);
+        const value = breakdownSampleValue(sample);
+        return match
+          ? {
+              key: metricName,
+              label: match[1],
+              value,
+              status: statusForMetricSample(metricName, sample),
+              ariaLabel: `NVMe ${match[1]} temperature: ${value}`,
+            }
+          : null;
+      })
+      .filter((device): device is MetricBreakdownItem => device !== null)
+      .sort((left, right) => compareLabel(left.label, right.label));
+    if (devices.length === 0 && latestMetrics['nvme.temp_c']) {
+      const sample = latestMetrics['nvme.temp_c'];
+      const value = breakdownSampleValue(sample);
+      devices.push({
+        key: 'nvme.temp_c',
+        label: 'Primary',
+        value,
+        status: statusForMetricSample('nvme.temp_c', sample),
+        ariaLabel: `NVMe primary temperature: ${value}`,
+      });
+    }
+    return {
+      title: 'Devices',
+      items: devices,
+      emptyLabel: 'No NVMe devices',
+      emptyAriaLabel: 'NVMe devices: no per-device sensor reported',
+    };
+  }
+  if (name === 'wifi.signal_dbm') {
+    const interfaces = Object.entries(latestMetrics)
+      .map(([metricName, sample]) => {
+        const match = metricName.match(/^wifi\.([^.]+)\.signal_dbm$/);
+        const value = breakdownSampleValue(sample);
+        return match
+          ? {
+              key: metricName,
+              label: match[1],
+              value,
+              status: statusForMetricSample(metricName, sample),
+              ariaLabel: `Wi-Fi ${match[1]} signal: ${value}`,
+            }
+          : null;
+      })
+      .filter((iface): iface is MetricBreakdownItem => iface !== null)
+      .sort((left, right) => compareLabel(left.label, right.label));
+    if (interfaces.length === 0 && latestMetrics['wifi.signal_dbm']) {
+      const sample = latestMetrics['wifi.signal_dbm'];
+      const value = breakdownSampleValue(sample);
+      interfaces.push({
+        key: 'wifi.signal_dbm',
+        label: 'Primary',
+        value,
+        status: statusForMetricSample('wifi.signal_dbm', sample),
+        ariaLabel: `Wi-Fi primary signal: ${value}`,
+      });
+    }
+    return {
+      title: 'Interfaces',
+      items: interfaces,
+      emptyLabel: 'No Wi-Fi interfaces',
+      emptyAriaLabel: 'Wi-Fi interfaces: no per-interface signal reported',
+    };
+  }
+  return null;
+}
+
+function metricStatus(detail: InvestigationDetail | null, name: string): SignalStatus {
+  return statusForMetricSample(name, latestMetric(detail, name));
 }
 
 function statusLabel(status: SignalStatus): string {
@@ -594,9 +714,62 @@ function VerificationResultView({ result }: { result: VerificationResult }) {
   );
 }
 
+function MetricBreakdownChip({ item }: { item: MetricBreakdownItem }) {
+  return (
+    <span
+      aria-label={item.ariaLabel}
+      className={`breakdown-chip breakdown-${item.status}`}
+    >
+      <strong>{item.label}</strong>
+      <span>{item.value}</span>
+    </span>
+  );
+}
+
+function MetricBreakdownView({ breakdown }: { breakdown: MetricBreakdown }) {
+  const ariaLabel = breakdown.items.length > 0
+    ? `${breakdown.title}: ${breakdown.items.map((item) => `${item.label} ${item.value}`).join(', ')}`
+    : `${breakdown.title}: ${breakdown.emptyLabel ?? 'No data'}`;
+  const groupedItems = breakdown.items.reduce<Map<string, MetricBreakdownItem[]>>((groups, item) => {
+    if (!item.group) return groups;
+    const group = groups.get(item.group) ?? [];
+    group.push(item);
+    groups.set(item.group, group);
+    return groups;
+  }, new Map());
+  const hasGroups = groupedItems.size > 0;
+  const groupOrder = ['P', 'E', 'LP-E'];
+  return (
+    <span aria-label={ariaLabel} className="metric-breakdown metric-chip-breakdown">
+      <span className="metric-breakdown-title">{breakdown.title}</span>
+      {hasGroups
+        ? groupOrder
+          .filter((group) => groupedItems.has(group))
+          .map((group) => (
+            <span
+              aria-label={`${group} core group: ${groupedItems.get(group)?.map((item) => `${item.label} ${item.value}`).join(', ')}`}
+              className="breakdown-group"
+              key={group}
+            >
+              <span className="breakdown-group-label">{group}</span>
+              {groupedItems.get(group)?.map((item) => <MetricBreakdownChip item={item} key={item.key} />)}
+            </span>
+          ))
+        : breakdown.items.map((item) => <MetricBreakdownChip item={item} key={item.key} />)}
+      {breakdown.items.length === 0 && (
+        <span
+          aria-label={breakdown.emptyAriaLabel ?? `${breakdown.title}: No data`}
+          className="breakdown-chip breakdown-missing"
+        >
+          <strong>{breakdown.emptyLabel ?? 'No data'}</strong>
+        </span>
+      )}
+    </span>
+  );
+}
+
 function MetricRow({ detail, metric }: { detail: InvestigationDetail; metric: MetricDefinition }) {
   const status = metricStatus(detail, metric.name);
-  const coreBreakdown = metric.name === 'cpu.package_temp_c' ? cpuCoreBreakdown(detail) : [];
   const breakdown = metricBreakdown(detail, metric.name);
   return (
     <div className={`metric-row metric-${metric.tone} signal-${status}`}>
@@ -620,25 +793,7 @@ function MetricRow({ detail, metric }: { detail: InvestigationDetail; metric: Me
       </div>
       <dd>{metricValue(detail, metric.name)}</dd>
       <span className="metric-observed">{metric.shortLabel} / {statusLabel(status)} / observed {observedTime(detail, metric.name)}</span>
-      {coreBreakdown.length > 0 && (
-        <span
-          aria-label={`CPU core temperatures: ${coreBreakdown.map((core) => `${core.index} ${metricSampleValue(core.sample)}`).join(', ')}`}
-          className="metric-breakdown metric-core-breakdown"
-        >
-          <span className="metric-breakdown-title">Cores</span>
-          {coreBreakdown.map((core) => (
-            <span
-              aria-label={`CPU core ${core.index} temperature: ${metricSampleValue(core.sample)}`}
-              className={`core-chip core-${core.status}`}
-              key={core.index}
-            >
-              <strong>{core.index}</strong>
-              <span>{metricSampleValue(core.sample)}</span>
-            </span>
-          ))}
-        </span>
-      )}
-      {breakdown && <span className="metric-breakdown">{breakdown}</span>}
+      {breakdown && <MetricBreakdownView breakdown={breakdown} />}
     </div>
   );
 }

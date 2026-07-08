@@ -1,10 +1,11 @@
 import '@testing-library/jest-dom/vitest';
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import App from './App';
 
 afterEach(() => {
+  cleanup();
   vi.restoreAllMocks();
 });
 
@@ -29,6 +30,7 @@ const fleetResponse = {
         'cpu.load_15m': { value: 0.9, unit: 'load', observed_at: '2026-07-07T03:00:00+00:00' },
         'cpu.core_0.temp_c': { value: 84.0, unit: 'celsius', observed_at: '2026-07-07T03:00:00+00:00' },
         'cpu.core_1.temp_c': { value: 82.5, unit: 'celsius', observed_at: '2026-07-07T03:00:00+00:00' },
+        'cpu.core_3.temp_c': { value: 81.5, unit: 'celsius', observed_at: '2026-07-07T03:00:00+00:00' },
         'nvme.temp_c': { value: 42.9, unit: 'celsius', observed_at: '2026-07-07T03:00:00+00:00' },
         'nvme.nvme0.temp_c': { value: 42.9, unit: 'celsius', observed_at: '2026-07-07T03:00:00+00:00' },
         'nvme.nvme1.temp_c': { value: 44.2, unit: 'celsius', observed_at: '2026-07-07T03:00:00+00:00' },
@@ -339,7 +341,7 @@ describe('App', () => {
     expect(screen.queryByText('Creator and visual references')).not.toBeInTheDocument();
     expect(screen.queryByText('Dogu Robotics · Dogu X · Physical AI')).not.toBeInTheDocument();
     expect(screen.getByText('About: workstation health investigation')).toBeInTheDocument();
-    expect(screen.getByText('Version v0.9.0')).toBeInTheDocument();
+    expect(screen.getByText('Version v0.10.0')).toBeInTheDocument();
     const selectedCaseStatus = screen.getByLabelText('Selected case status');
     expect(screen.getByText('Priority / 우선순위')).toBeInTheDocument();
     expect(within(selectedCaseStatus).getByText('Medium').closest('.status-chip')).toHaveClass('priority-medium');
@@ -363,15 +365,27 @@ describe('App', () => {
     expect(screen.queryByText('Cores: core 0 84.0C · core 1 82.5C')).not.toBeInTheDocument();
     const cpuCore0 = screen.getByLabelText('CPU core 0 temperature: 84.0C');
     const cpuCore1 = screen.getByLabelText('CPU core 1 temperature: 82.5C');
-    expect(cpuCore0).toHaveClass('core-watch');
-    expect(cpuCore1).toHaveClass('core-watch');
+    const cpuCore3 = screen.getByLabelText('CPU core 3 temperature: 81.5C');
+    expect(cpuCore0).toHaveClass('breakdown-watch');
+    expect(cpuCore1).toHaveClass('breakdown-watch');
+    expect(cpuCore3).toHaveClass('breakdown-watch');
     expect(cpuCore0).toHaveTextContent('0');
     expect(cpuCore0).toHaveTextContent('84.0C');
     expect(cpuCore1).toHaveTextContent('1');
     expect(cpuCore1).toHaveTextContent('82.5C');
-    expect(screen.getByText('Windows: 1m 3.70 · 5m 2.10 · 15m 0.90')).toBeInTheDocument();
-    expect(screen.getByText('Devices: nvme0 42.9C · nvme1 44.2C')).toBeInTheDocument();
-    expect(screen.getByText('Interfaces: wlp0s20f3 -43 dBm · wlan0 -61 dBm')).toBeInTheDocument();
+    expect(screen.queryByLabelText('CPU core 2 temperature: -')).not.toBeInTheDocument();
+    expect(cpuCore3).toHaveTextContent('3');
+    expect(cpuCore3).toHaveTextContent('81.5C');
+    expect(screen.queryByText('Windows: 1m 3.70 · 5m 2.10 · 15m 0.90')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Load average 1m: 3.70')).toHaveClass('breakdown-nominal');
+    expect(screen.getByLabelText('Load average 5m: 2.10')).toHaveClass('breakdown-nominal');
+    expect(screen.getByLabelText('Load average 15m: 0.90')).toHaveClass('breakdown-nominal');
+    expect(screen.queryByText('Devices: nvme0 42.9C · nvme1 44.2C')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('NVMe nvme0 temperature: 42.9C')).toHaveClass('breakdown-nominal');
+    expect(screen.getByLabelText('NVMe nvme1 temperature: 44.2C')).toHaveClass('breakdown-nominal');
+    expect(screen.queryByText('Interfaces: wlp0s20f3 -43 dBm · wlan0 -61 dBm')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Wi-Fi wlp0s20f3 signal: -43 dBm')).toHaveClass('breakdown-nominal');
+    expect(screen.getByLabelText('Wi-Fi wlan0 signal: -61 dBm')).toHaveClass('breakdown-nominal');
     expect(screen.getByRole('button', { name: 'Explain Wi-Fi signal strength metric' })).toBeInTheDocument();
     expect(screen.getByText('정의: 무선 연결의 수신 신호 강도입니다. (Wi-Fi signal strength, dBm)')).toBeInTheDocument();
     expect(screen.getByRole('region', { name: 'Telemetry coverage matrix' })).toBeInTheDocument();
@@ -437,5 +451,101 @@ describe('App', () => {
     const notePostCall = fetchMock.mock.calls.find(([input, init]) => String(input).includes('/notes') && init?.method === 'POST');
     expect(notePostCall).toBeDefined();
     expect(JSON.parse(String(notePostCall?.[1]?.body)).body).toBe('Thermal result handed off to the next operator.');
+  });
+
+  it('groups Intel Core Ultra 5 125H core sensors by core type', async () => {
+    const {
+      'cpu.core_0.temp_c': _core0,
+      'cpu.core_1.temp_c': _core1,
+      'cpu.core_3.temp_c': _core3,
+      ...latestMetricsWithoutCores
+    } = detailResponse.fleet_context.latest_metrics;
+    const ultraCoreMetrics = Object.fromEntries(
+      [0, 1, 2, 3, 4, 5, 6, 7, 8, 12, 16, 20, 32, 33].map((coreId) => [
+        `cpu.core_${coreId}.temp_c`,
+        { value: 50 + coreId / 10, unit: 'celsius', observed_at: '2026-07-07T03:00:00+00:00' },
+      ]),
+    );
+    const detailWithUltraCores = {
+      ...detailResponse,
+      fleet_context: {
+        ...detailResponse.fleet_context,
+        latest_metrics: {
+          ...latestMetricsWithoutCores,
+          ...ultraCoreMetrics,
+        },
+      },
+    };
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith('/api/fleet/overview')) {
+        return { ok: true, json: async () => fleetResponse };
+      }
+      if (url.endsWith('/api/investigations/queue')) {
+        return { ok: true, json: async () => queueResponse };
+      }
+      if (url.endsWith('/api/patterns/overview')) {
+        return { ok: true, json: async () => patternResponse };
+      }
+      if (url.endsWith('/api/investigations/xps-13%3Athermal/notes')) {
+        return { ok: true, json: async () => notesResponse };
+      }
+      if (url.endsWith('/api/investigations/xps-13%3Athermal')) {
+        return { ok: true, json: async () => detailWithUltraCores };
+      }
+      throw new Error(`unexpected URL ${url}`);
+    });
+
+    vi.stubGlobal('fetch', fetchMock);
+    render(<App />);
+
+    await waitFor(() => expect(screen.getByLabelText('P core group: 8 50.8C, 12 51.2C, 16 51.6C, 20 52.0C')).toBeInTheDocument());
+    expect(screen.getByLabelText('E core group: 0 50.0C, 1 50.1C, 2 50.2C, 3 50.3C, 4 50.4C, 5 50.5C, 6 50.6C, 7 50.7C')).toBeInTheDocument();
+    expect(screen.getByLabelText('LP-E core group: 32 53.2C, 33 53.3C')).toBeInTheDocument();
+    expect(screen.getByLabelText('CPU P core 8 temperature: 50.8C')).toHaveTextContent('8');
+    expect(screen.getByLabelText('CPU E core 0 temperature: 50.0C')).toHaveTextContent('0');
+    expect(screen.getByLabelText('CPU LP-E core 32 temperature: 53.2C')).toHaveTextContent('32');
+  });
+
+  it('shows an explicit CPU core sensor absence state', async () => {
+    const {
+      'cpu.core_0.temp_c': _core0,
+      'cpu.core_1.temp_c': _core1,
+      'cpu.core_3.temp_c': _core3,
+      ...latestMetrics
+    } = detailResponse.fleet_context.latest_metrics;
+    const detailWithoutCoreMetrics = {
+      ...detailResponse,
+      fleet_context: {
+        ...detailResponse.fleet_context,
+        latest_metrics: latestMetrics,
+      },
+    };
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith('/api/fleet/overview')) {
+        return { ok: true, json: async () => fleetResponse };
+      }
+      if (url.endsWith('/api/investigations/queue')) {
+        return { ok: true, json: async () => queueResponse };
+      }
+      if (url.endsWith('/api/patterns/overview')) {
+        return { ok: true, json: async () => patternResponse };
+      }
+      if (url.endsWith('/api/investigations/xps-13%3Athermal/notes')) {
+        return { ok: true, json: async () => notesResponse };
+      }
+      if (url.endsWith('/api/investigations/xps-13%3Athermal')) {
+        return { ok: true, json: async () => detailWithoutCoreMetrics };
+      }
+      throw new Error(`unexpected URL ${url}`);
+    });
+
+    vi.stubGlobal('fetch', fetchMock);
+    render(<App />);
+
+    await waitFor(() => expect(screen.getByLabelText('CPU core temperatures: no per-core sensors reported')).toBeInTheDocument());
+    expect(screen.getByText('No core sensors')).toBeInTheDocument();
+    expect(screen.queryByLabelText('CPU core 0 temperature: 84.0C')).not.toBeInTheDocument();
   });
 });

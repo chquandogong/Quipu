@@ -2,6 +2,45 @@
 
 All notable changes to Quipu are documented in this file.
 
+## v0.10.0 - 2026-07-08
+
+Hardware-aware Metric Ledger and documentation reset release.
+
+### Added
+
+- Korean user manual covering sample mode, local-notebook-only mode, collector
+  commands, systemd operation, UI interpretation, and troubleshooting.
+- Metric Ledger grouping for Intel Core Ultra 5 125H CPU temperature sensors:
+  performance cores, efficient cores, and low-power efficient cores are shown
+  separately when the observed sensor layout matches the processor topology.
+- Per-device Metric Ledger chips for NVMe and Wi-Fi telemetry so single and
+  multiple devices/interfaces use the same display model.
+- Documentation for removing the sample SQLite database and collecting fresh
+  telemetry from the current notebook.
+
+### Changed
+
+- Rewrote the Korean README from the beginning and refreshed the English and
+  Simplified Chinese editions for the current product shape.
+- Load average now appears as 1-minute, 5-minute, and 15-minute values instead
+  of a single ambiguous reading.
+- CPU core temperature chips now show only real observed core sensor IDs, with
+  no gap-filling placeholder cores.
+- CPU core chip labels no longer repeat the word `Core`; the group label gives
+  the context and each chip shows the numeric sensor ID.
+- Updated package, app, API, schema, and UI versions to `0.10.0`.
+
+### Verified
+
+- Server test suite: 35 tests passed, 1 Starlette deprecation warning.
+- Collector test suite: 17 tests passed.
+- Web test suite: 3 tests passed.
+- Web production build succeeded.
+- Browser verification confirmed `Version v0.10.0`, grouped Ultra 5 125H core
+  telemetry, 1m/5m/15m load average chips, and per-device NVMe/Wi-Fi chips.
+- Local notebook-only run confirmed the sample database can be removed and
+  replaced with telemetry collected from this machine.
+
 ## v0.9.0 - 2026-07-08
 
 Operations resilience MVP covering the remaining eight team-operations tracks.

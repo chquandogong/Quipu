@@ -1194,7 +1194,7 @@ h2 {
   overflow-wrap: anywhere;
 }
 
-.metric-core-breakdown {
+.metric-chip-breakdown {
   display: inline-flex;
   flex-wrap: wrap;
   align-items: center;
@@ -1210,7 +1210,28 @@ h2 {
   text-transform: uppercase;
 }
 
-.core-chip {
+.breakdown-group {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.breakdown-group-label {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 2px 6px;
+  border: 1px solid rgba(94, 234, 212, 0.26);
+  border-radius: 999px;
+  background: rgba(45, 212, 191, 0.08);
+  color: #5eead4;
+  font-size: 10px;
+  font-weight: 950;
+  line-height: 1;
+}
+
+.breakdown-chip {
   display: inline-flex;
   align-items: baseline;
   gap: 5px;
@@ -1221,43 +1242,55 @@ h2 {
   background: rgba(15, 23, 42, 0.72);
 }
 
-.core-chip strong {
+.breakdown-chip strong {
   color: #ffffff;
   font-size: 11px;
   line-height: 1;
+  white-space: nowrap;
 }
 
-.core-chip span {
+.breakdown-chip span {
   font-size: 11px;
   font-weight: 850;
   line-height: 1;
+  white-space: nowrap;
 }
 
-.core-nominal {
+.breakdown-nominal {
   border-color: rgba(34, 197, 94, 0.34);
   background: rgba(34, 197, 94, 0.09);
 }
 
-.core-nominal span {
+.breakdown-nominal span {
   color: #86efac;
 }
 
-.core-watch {
+.breakdown-watch {
   border-color: rgba(245, 158, 11, 0.42);
   background: rgba(245, 158, 11, 0.11);
 }
 
-.core-watch span {
+.breakdown-watch span {
   color: #fbbf24;
 }
 
-.core-critical {
+.breakdown-critical {
   border-color: rgba(248, 113, 113, 0.48);
   background: rgba(248, 113, 113, 0.12);
 }
 
-.core-critical span {
+.breakdown-critical span {
   color: #fca5a5;
+}
+
+.breakdown-missing {
+  border-color: rgba(148, 163, 184, 0.28);
+  background: rgba(148, 163, 184, 0.08);
+}
+
+.breakdown-missing span,
+.breakdown-missing strong {
+  color: #94a3b8;
 }
 
 .metric-row dd {

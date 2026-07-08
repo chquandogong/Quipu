@@ -1,6 +1,6 @@
 # Quipu Project Dashboard
 
-> Status: v0.9.0 operations resilience release track
+> Status: v0.10.0 hardware-aware Metric Ledger and documentation release track
 > Date: 2026-07-08
 > Owner: chquan
 
@@ -64,6 +64,8 @@ The second valuable question is:
 | Done | Guided dense analysis UI | Problem Guide first, Telemetry Brief, Fleet Brief, Workflow Rail with DTIHAVR hover stages, Metric Ledger, smaller telemetry tiles |
 | Done | Component pattern grouping | `gpu:*`, `wifi:*`, and `nvme:*` signatures added to Pattern Explorer |
 | Done | Product hardening roadmap | Collector rollout, retention, backup/restore, RBAC, packaging, production, Postgres, analytics, AI |
+| Done | Documentation reset | Korean README rewritten, English and Chinese editions refreshed, Korean user manual added |
+| Done | Hardware-aware Metric Ledger | Load average 1m/5m/15m chips, real CPU core IDs only, Ultra 5 125H P/E/LP-E grouping, per-device NVMe/Wi-Fi chips |
 | Approved | Private remote push and release | User requested commit, tag, push, and release on 2026-07-07 |
 | Approved | Public repository visibility after audit | User approved public visibility on 2026-07-07 |
 

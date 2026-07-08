@@ -44,8 +44,13 @@ Quipu does not open every log and metric at once. After comparing current
 dashboard, design-system, and progressive-disclosure patterns, Quipu uses a
 dark `Command Center`. The first visual anchor is not a wide metric card; it is
 a compact `Problem Guide` that answers what is wrong, which evidence to inspect
-first, and what to do next. CPU/Load/NVMe/Wi-Fi move into a denser instrument
-strip as supporting signals:
+first, and what to do next. CPU/Load/NVMe/Wi-Fi collapse into one
+`Telemetry Brief` as supporting signals. DTIHAVR is not shown as seven large
+fixed boxes; it becomes a thin `Workflow Rail` focused on the current stage,
+next stage, and next action. The `D T I H A V R` initials remain visible as a
+compact stage rail, with hover/focus tooltips for Detect through Report.
+Fleet Total/Critical/Warning/Queue also moves into a compact `Fleet Brief`
+instead of a large number block.
 
 - What should we inspect now?
 - Why does it matter?
@@ -62,7 +67,8 @@ reveal what each chip means, so new operators can interpret priority, risk,
 and the DTIHAVR workflow stage with the same rubric.
 
 Key metrics such as CPU package temperature, Load Average, and NVMe temperature
-do not stand alone as unexplained numbers. Each metric card explains the Korean
+do not stand alone as unexplained numbers. The detailed `Metric Ledger` keeps
+core metrics in one row-based box, and each help button explains the Korean
 meaning together with the English technical term, time window, reading guidance,
 and next check. For example, Load is explicitly described as the Linux
 1-minute load average, not instant CPU utilization.

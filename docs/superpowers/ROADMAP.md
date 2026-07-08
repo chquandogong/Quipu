@@ -42,7 +42,15 @@ Implemented:
 - Problem Guide that highlights what is wrong, first evidence, and the next
   action before raw metrics.
 - High-contrast dark command theme.
-- Dense signal console for CPU, Load, NVMe, and Wi-Fi.
+- Telemetry Brief that collapses CPU, Load, NVMe, and Wi-Fi into one compact
+  line.
+- Workflow Rail that replaces the seven large DTIHAVR boxes with current stage,
+  next stage, and next action.
+- Compact `D T I H A V R` stage initials with hover/focus definitions for
+  Detect through Report.
+- Fleet Brief that collapses Total, Critical, Warning, and Queue into the same
+  compact density as Telemetry Brief.
+- Metric Ledger that keeps core metric explanations in one dense row-based box.
 - Telemetry Matrix for Memory, Fan RPM, NVMe Health, Network Events,
   Reconnect History, Thermal Throttling, Disk Health, Battery Power, Kernel
   Warnings, and Agent Freshness.

@@ -45,8 +45,13 @@ Quipu의 화면은 모든 로그와 지표를 한 번에 펼치지 않습니다.
 design system, progressive disclosure 사례를 비교한 결과, 단순 카드형
 대시보드보다 어두운 `Command Center` 방식을 채택했습니다. 첫 화면의 주인공은
 넓은 metric 카드가 아니라 `Problem Guide`입니다. `뭐가 문제지?`, `먼저 볼
-근거`, `그래서 뭘 해야 하지?`를 먼저 보여주고, CPU/Load/NVMe/Wi-Fi는 더
-조밀한 instrument strip으로 내려 보조 신호처럼 다룹니다.
+근거`, `그래서 뭘 해야 하지?`를 먼저 보여주고, CPU/Load/NVMe/Wi-Fi는
+하나의 `Telemetry Brief`로 접어 보조 신호처럼 다룹니다. DTIHAVR도 7개
+고정 단계를 큰 박스로 나열하지 않고, 현재 단계와 다음 단계, 다음 행동만
+보여주는 얇은 `Workflow Rail`로 표시합니다. 다만 `D T I H A V R` 단계
+initial은 항상 작게 남겨두고, hover/focus에서 Detect부터 Report까지의
+전체 이름과 의미를 확인할 수 있게 합니다. Fleet의 Total/Critical/Warning/
+Queue도 큰 숫자 박스가 아니라 `Fleet Brief`로 접어 같은 밀도를 유지합니다.
 
 - 무엇을 지금 확인해야 하는가?
 - 왜 중요한가?
@@ -63,7 +68,8 @@ focus에서 의미를 보여줘, 처음 보는 사람도 우선순위, 위험도
 진행 단계를 같은 기준으로 해석할 수 있게 합니다.
 
 CPU package, Load Average, NVMe 같은 핵심 지표는 숫자만 보여주지 않습니다.
-각 metric 카드의 정보 버튼은 한국어 설명과 영어 기술 용어를 함께 보여줍니다.
+상세 영역의 `Metric Ledger`는 한 박스 안에 핵심 지표를 행 단위로 정리하고,
+각 정보 버튼은 한국어 설명과 영어 기술 용어를 함께 보여줍니다.
 예를 들어 Load 값은 순간 CPU 사용률이 아니라 Linux 1분 load average임을
 명시합니다.
 

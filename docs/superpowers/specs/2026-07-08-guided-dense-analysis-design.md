@@ -6,6 +6,8 @@ Date: 2026-07-08
 
 The Command Center shows the right investigation pieces, but too much screen
 area is still spent on raw signal cards such as CPU, Load, NVMe, and Wi-Fi. The
+DTIHAVR stage list can also consume space without changing the operator's next
+decision when it is shown as seven large fixed labels. The
 product should not feel like another dashboard wall. It should answer:
 
 - What is the problem?
@@ -15,10 +17,15 @@ product should not feel like another dashboard wall. It should answer:
 
 ## Decision
 
-Use a compact `Problem Guide` as the first visual anchor. Metrics become a
-dense instrument strip, not the main story. Pattern Explorer also adds
-component signatures so repeated graphics, Wi-Fi, and NVMe issues are grouped
-by actionable subsystem, not only by category/model/kernel.
+Use a compact `Problem Guide` as the first visual anchor. Core metrics collapse
+into one `Telemetry Brief`, and detailed metric explanations move into a
+row-based `Metric Ledger`. Fleet totals collapse into a `Fleet Brief` with the
+same visual density. The workflow becomes a `Workflow Rail` that shows current
+stage, next stage, and next action instead of a seven-box step strip, while
+preserving compact `D T I H A V R` initials with hover/focus definitions.
+Pattern Explorer also adds component signatures so repeated graphics, Wi-Fi,
+and NVMe issues are grouped by actionable subsystem, not only by
+category/model/kernel.
 
 ## UI Shape
 
@@ -26,8 +33,12 @@ by actionable subsystem, not only by category/model/kernel.
   action.
 - Existing answer cards stay as secondary detail, with lower height and smaller
   typography.
-- CPU/Load/NVMe/Wi-Fi signal chips become a single-row instrument strip.
-- Metric and telemetry tiles use smaller stable dimensions.
+- CPU/Load/NVMe/Wi-Fi signal chips become one `Telemetry Brief`.
+- Total/Critical/Warning/Queue become one `Fleet Brief`.
+- DTIHAVR fixed labels become a thin `Workflow Rail` with small stage initials
+  and hover/focus explanations for Detect through Report.
+- Core metric explanations become one row-based `Metric Ledger`.
+- Telemetry tiles use smaller stable dimensions.
 - Pattern Explorer gains `By component` for signatures such as `gpu:i915`,
   `wifi:wlp0s20f3`, and `nvme:nvme0n1`.
 

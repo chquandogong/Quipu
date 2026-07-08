@@ -43,7 +43,7 @@ Add a top command surface with:
 - `Do next`
 - `Proof needed`
 - compact fleet health strip
-- compact DTIHAVR stage chips
+- compact Workflow Rail for the current DTIHAVR stage and next action
 
 - [ ] **Step 3: Add compact bilingual helper text**
 
@@ -58,7 +58,7 @@ parentheses.
 - [ ] **Step 1: Replace visual hierarchy**
 
 Remove carousel/reference drawer styles and add command-center, answer-grid,
-health-strip, and stage-strip styles.
+fleet-brief, and workflow-rail styles.
 
 - [ ] **Step 2: Preserve responsive behavior**
 

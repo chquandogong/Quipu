@@ -1,5 +1,5 @@
 import '@testing-library/jest-dom/vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import App from './App';
@@ -297,6 +297,28 @@ describe('App', () => {
     expect(screen.getByText('뭐가 문제지?')).toBeInTheDocument();
     expect(screen.getByText('그래서 뭘 해야 하지?')).toBeInTheDocument();
     expect(screen.getByText('먼저 볼 근거')).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole('region', { name: 'Telemetry Brief' })).toBeInTheDocument());
+    expect(screen.getByText('Telemetry Brief')).toBeInTheDocument();
+    expect(container.querySelector('.signal-console')).not.toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Workflow rail' })).toBeInTheDocument();
+    expect(screen.getByText('Triage -> Investigate')).toBeInTheDocument();
+    const workflowRail = screen.getByRole('region', { name: 'Workflow rail' });
+    const stageList = within(workflowRail).getByRole('list', { name: 'DTIHAVR stages' });
+    expect(within(stageList).getByText('D')).toBeInTheDocument();
+    expect(within(stageList).getByText('T')).toBeInTheDocument();
+    expect(within(stageList).getByText('I')).toBeInTheDocument();
+    expect(within(stageList).getByText('H')).toBeInTheDocument();
+    expect(within(stageList).getByText('A')).toBeInTheDocument();
+    expect(within(stageList).getByText('V')).toBeInTheDocument();
+    expect(within(stageList).getByText('R')).toBeInTheDocument();
+    expect(within(stageList).getByText('Detect')).toBeInTheDocument();
+    expect(within(stageList).getByText('Report')).toBeInTheDocument();
+    expect(container.querySelector('.stage-strip')).not.toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Fleet Brief' })).toBeInTheDocument();
+    expect(screen.getByText('Fleet Brief')).toBeInTheDocument();
+    expect(container.querySelector('.health-strip')).not.toBeInTheDocument();
+    expect(container.querySelector('.metric-strip')).not.toBeInTheDocument();
+    expect(container.querySelector('.metric-card')).not.toBeInTheDocument();
     expect(screen.queryByText('Creator and visual references')).not.toBeInTheDocument();
     expect(screen.queryByText('Dogu Robotics · Dogu X · Physical AI')).not.toBeInTheDocument();
     expect(screen.getByText('About: workstation health investigation')).toBeInTheDocument();
@@ -306,7 +328,7 @@ describe('App', () => {
     expect(screen.getByText('Risk level / 위험도')).toBeInTheDocument();
     expect(screen.getByText('Warning은 경고 근거가 있어 확인이 필요하다는 뜻입니다. Critical은 더 높은 위험, Stale은 데이터가 오래됨입니다.')).toBeInTheDocument();
     expect(screen.getByText('Workflow stage / 진행 단계')).toBeInTheDocument();
-    expect(screen.getByText('Triage는 감지된 근거를 분류하고 다음 조사 항목을 고르는 단계입니다.')).toBeInTheDocument();
+    expect(screen.getAllByText('Triage는 감지된 근거를 분류하고 다음 조사 항목을 고르는 단계입니다.').length).toBeGreaterThan(0);
     expect(screen.getByRole('region', { name: 'Operations Rail' })).toBeInTheDocument();
     expect(screen.getByText('Offline Buffer')).toBeInTheDocument();
     expect(screen.getByText('Enrollment Guard')).toBeInTheDocument();

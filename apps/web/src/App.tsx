@@ -422,6 +422,16 @@ const stageDescriptions: Record<string, string> = {
   Report: 'Report는 다음 담당자나 팀이 이어받을 수 있게 결론과 근거를 남기는 단계입니다.',
 };
 
+const stageGoals: Record<string, string> = {
+  Detect: '새 신호를 조사 queue로 올리는 중입니다.',
+  Triage: '근거를 분류하고 조사 대상을 좁히는 중입니다.',
+  Investigate: 'metric, event, log를 모아 원인을 좁히는 중입니다.',
+  Hypothesize: '가능한 원인과 반대 증거를 정리하는 중입니다.',
+  Act: '사람이 수행한 개입을 기록하는 중입니다.',
+  Verify: '조치 전후 window를 비교하는 중입니다.',
+  Report: '팀이 이어받을 결론과 근거를 남기는 중입니다.',
+};
+
 function priorityDescription(priority: InvestigationItem['priority'] | undefined): string {
   if (!priority) return '아직 조사 queue의 우선순위가 정해지지 않았습니다.';
   return priorityDescriptions[priority];
@@ -434,6 +444,10 @@ function riskDescription(level: RiskLevel | undefined): string {
 
 function stageDescription(stage: string): string {
   return stageDescriptions[stage] ?? `${stage}는 현재 조사 흐름에서 표시되는 작업 단계입니다.`;
+}
+
+function stageGoal(stage: string): string {
+  return stageGoals[stage] ?? '현재 단계의 조사 목표를 좁히는 중입니다.';
 }
 
 function StatusChip({
@@ -497,10 +511,10 @@ function VerificationResultView({ result }: { result: VerificationResult }) {
   );
 }
 
-function MetricCard({ detail, metric }: { detail: InvestigationDetail; metric: MetricDefinition }) {
+function MetricRow({ detail, metric }: { detail: InvestigationDetail; metric: MetricDefinition }) {
   const status = metricStatus(detail, metric.name);
   return (
-    <div className={`metric-card metric-${metric.tone} signal-${status}`}>
+    <div className={`metric-row metric-${metric.tone} signal-${status}`}>
       <div className="metric-topline">
         <dt className="metric-name">
           <metric.Icon aria-hidden="true" />
@@ -525,24 +539,35 @@ function MetricCard({ detail, metric }: { detail: InvestigationDetail; metric: M
   );
 }
 
-function SignalConsole({ detail }: { detail: InvestigationDetail | null }) {
+function MetricLedger({ detail }: { detail: InvestigationDetail }) {
+  return (
+    <dl className="metric-ledger" aria-label="Core telemetry details">
+      {keyMetrics.map((metric) => (
+        <MetricRow detail={detail} key={metric.name} metric={metric} />
+      ))}
+    </dl>
+  );
+}
+
+function TelemetryBrief({ detail }: { detail: InvestigationDetail | null }) {
   if (!detail) return null;
   return (
-    <div className="signal-console" aria-label="First glance telemetry signals">
+    <section className="telemetry-brief" aria-label="Telemetry Brief">
+      <span className="brief-title">Telemetry Brief</span>
+      <div className="brief-readings">
       {keyMetrics.map((metric) => {
         const status = metricStatus(detail, metric.name);
         return (
-          <div className={`signal-chip signal-${status}`} key={metric.name}>
-            <span>
-              <metric.Icon aria-hidden="true" />
-              {metric.shortLabel}
-            </span>
-            <strong>{metricValue(detail, metric.name)}</strong>
-            <em>{statusLabel(status)}</em>
-          </div>
+          <span className={`brief-reading brief-${status}`} key={metric.name}>
+            <metric.Icon aria-hidden="true" />
+            <strong>{metric.shortLabel}</strong>
+            <span>{metricValue(detail, metric.name)}</span>
+            {status !== 'nominal' && <em>{statusLabel(status)}</em>}
+          </span>
         );
       })}
-    </div>
+      </div>
+    </section>
   );
 }
 
@@ -693,6 +718,105 @@ function GuidanceStrip({
         <span>그래서 뭘 해야 하지?</span>
         <strong>{actionLabel}</strong>
         <p>{actionSummary}</p>
+      </div>
+    </section>
+  );
+}
+
+function workflowStageIndex(stage: string): number {
+  const index = flowStages.indexOf(stage);
+  return index >= 0 ? index : 0;
+}
+
+function nextWorkflowStage(stage: string): string {
+  const index = workflowStageIndex(stage);
+  if (index >= flowStages.length - 1) return 'Close';
+  return flowStages[index + 1];
+}
+
+function WorkflowStages({ stage }: { stage: string }) {
+  const currentIndex = workflowStageIndex(stage);
+  return (
+    <ol className="workflow-steps" aria-label="DTIHAVR stages">
+      {flowStages.map((flowStage, stageIndex) => {
+        const isActive = flowStage === stage;
+        const isComplete = stageIndex < currentIndex;
+        return (
+          <li
+            aria-current={isActive ? 'step' : undefined}
+            className={[
+              'workflow-step',
+              isActive ? 'active' : '',
+              isComplete ? 'complete' : '',
+            ].filter(Boolean).join(' ')}
+            key={flowStage}
+            tabIndex={0}
+          >
+            <span aria-hidden="true">{flowStage[0]}</span>
+            <span className="workflow-step-tooltip" role="tooltip">
+              <strong>{flowStage}</strong>
+              <span>{stageDescription(flowStage)}</span>
+            </span>
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
+function WorkflowRail({
+  actionLabel,
+  proofSummary,
+  stage,
+}: {
+  actionLabel: string;
+  proofSummary: string;
+  stage: string;
+}) {
+  const index = workflowStageIndex(stage);
+  const progress = Math.round((index / (flowStages.length - 1)) * 100);
+  const nextStage = nextWorkflowStage(stage);
+  return (
+    <section className="workflow-rail" aria-label="Workflow rail">
+      <div className="workflow-copy">
+        <span>DTIHAVR</span>
+        <strong>{stage} -&gt; {nextStage}</strong>
+        <p>{stageGoal(stage)}</p>
+      </div>
+      <div className="workflow-progress">
+        <div className="workflow-track" aria-label={`Workflow progress ${progress}%`}>
+          <span style={{ width: `${progress}%` }} />
+        </div>
+        <WorkflowStages stage={stage} />
+      </div>
+      <div className="workflow-next">
+        <span>Next</span>
+        <strong>{actionLabel}</strong>
+        <p>{proofSummary}</p>
+      </div>
+    </section>
+  );
+}
+
+function FleetBrief({ overview, queueLength }: { overview: FleetOverview | null; queueLength: number }) {
+  const summary = overview?.summary;
+  const stats = [
+    { label: 'Total', value: summary?.total ?? 0, tone: 'neutral' },
+    { label: 'Critical', value: summary?.critical ?? 0, tone: 'critical' },
+    { label: 'Warning', value: summary?.warning ?? 0, tone: 'warning' },
+    { label: 'Queue', value: queueLength, tone: 'queue' },
+  ];
+
+  return (
+    <section className="fleet-brief" aria-label="Fleet Brief">
+      <span className="brief-title">Fleet Brief</span>
+      <div className="fleet-readings">
+        {stats.map((stat) => (
+          <span className={`fleet-reading fleet-${stat.tone}`} key={stat.label}>
+            <strong>{stat.value}</strong>
+            <span>{stat.label}</span>
+          </span>
+        ))}
       </div>
     </section>
   );
@@ -997,7 +1121,7 @@ export default function App() {
           </article>
         </div>
 
-        <SignalConsole detail={detail} />
+        <TelemetryBrief detail={detail} />
 
         <div className="command-actions" aria-label="Primary investigation actions">
           <button onClick={() => scrollToPanel('evidence-panel')} type="button">
@@ -1015,23 +1139,8 @@ export default function App() {
         </div>
 
         <div className="command-footer">
-          <div className="health-strip" aria-label="Fleet health strip">
-            <span><strong>{overview?.summary.total ?? 0}</strong>Total</span>
-            <span><strong>{overview?.summary.critical ?? 0}</strong>Critical</span>
-            <span><strong>{overview?.summary.warning ?? 0}</strong>Warning</span>
-            <span><strong>{queue.length}</strong>Queue</span>
-          </div>
-          <div className="stage-strip" aria-label="DTIHAVR workflow">
-            {flowStages.map((stage) => (
-              <span
-                aria-current={selectedStage === stage ? 'step' : undefined}
-                className={selectedStage === stage ? 'active' : undefined}
-                key={stage}
-              >
-                {stage}
-              </span>
-            ))}
-          </div>
+          <FleetBrief overview={overview} queueLength={queue.length} />
+          <WorkflowRail actionLabel={actionLabel} proofSummary={proofSummary} stage={selectedStage} />
         </div>
       </section>
 
@@ -1071,13 +1180,7 @@ export default function App() {
               {detail && <span className={riskClass(detail.item.risk_level)}>{riskLabels[detail.item.risk_level]}</span>}
             </div>
             <p className="lead">{detail?.item.evidence ?? 'Choose an item from the investigation queue.'}</p>
-            {detail && (
-              <dl className="metric-strip">
-                {keyMetrics.map((metric) => (
-                  <MetricCard detail={detail} key={metric.name} metric={metric} />
-                ))}
-              </dl>
-            )}
+            {detail && <MetricLedger detail={detail} />}
             <TelemetryMatrix detail={detail} overview={overview} />
           </article>
 

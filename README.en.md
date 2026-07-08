@@ -54,6 +54,11 @@ Detailed evidence stays compact until hover, keyboard focus, or button-driven
 navigation expands it. The main CTAs stay fixed as `Review evidence`,
 `Record action`, and `Verify result`.
 
+Short status words such as `Medium`, `Warning`, and `Triage` remain compact
+status chips instead of permanent explanatory text. Hover and keyboard focus
+reveal what each chip means, so new operators can interpret priority, risk,
+and the DTIHAVR workflow stage with the same rubric.
+
 Key metrics such as CPU package temperature, Load Average, and NVMe temperature
 do not stand alone as unexplained numbers. Each metric card explains the Korean
 meaning together with the English technical term, time window, reading guidance,
@@ -259,9 +264,24 @@ Run a simple supervised loop:
 quipu-collector --server-url http://127.0.0.1:8000 --token dev-token --interval 300
 ```
 
+Use a systemd timer for fixed five-minute collection. The example below is for
+this development machine path (`/home/chquan/Quipu`) and the local API
+(`http://127.0.0.1:8000`). On another team device, change the repository path,
+device id, and token.
+
+Prepare the collector executable:
+
+```bash
+cd /home/chquan/Quipu/apps/collector
+python3 -m venv .venv
+. .venv/bin/activate
+pip install -e .
+```
+
 Preview systemd timer installation:
 
 ```bash
+cd /home/chquan/Quipu
 scripts/install-collector-systemd.sh --dry-run
 ```
 
@@ -269,20 +289,54 @@ Install for real:
 
 ```bash
 sudo scripts/install-collector-systemd.sh --no-enable
-sudoedit /etc/quipu/collector.env
+```
+
+Configure the collector environment file:
+
+```bash
+sudo tee /etc/quipu/collector.env >/dev/null <<EOF
+QUIPU_SERVER_URL=http://127.0.0.1:8000
+QUIPU_AGENT_TOKEN=dev-token
+QUIPU_COLLECTOR_ROOT=/
+QUIPU_COLLECTOR_DEVICE_ID=local-computer
+QUIPU_COLLECTOR_BIN=/home/chquan/Quipu/apps/collector/.venv/bin/quipu-collector
+QUIPU_SPOOL_DIR=/var/lib/quipu/collector-spool
+QUIPU_SPOOL_MAX_BATCHES=288
+EOF
+sudo chmod 600 /etc/quipu/collector.env
+```
+
+Run one manual service execution to check permissions, paths, and server
+connectivity:
+
+```bash
+sudo systemctl start quipu-collector.service
+systemctl status quipu-collector.service --no-pager
+journalctl -u quipu-collector.service -n 80 --no-pager
+```
+
+Enable five-minute automatic collection:
+
+```bash
 sudo systemctl enable --now quipu-collector.timer
 systemctl list-timers quipu-collector.timer
 ```
 
-Uninstall:
+Disable it:
+
+```bash
+sudo systemctl disable --now quipu-collector.timer
+```
+
+Uninstall completely:
 
 ```bash
 sudo scripts/uninstall-collector-systemd.sh
 ```
 
 The installer assumes the `quipu-collector` executable is already installed on
-the target machine. Package publishing and production deployment are not
-included yet.
+the target machine. In production, use a per-device enrollment token instead of
+`dev-token`. Package publishing and production deployment are not included yet.
 
 ## Architecture
 

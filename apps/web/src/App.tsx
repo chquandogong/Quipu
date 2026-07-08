@@ -399,6 +399,70 @@ function riskClass(level: RiskLevel): string {
   return `risk risk-${level}`;
 }
 
+const priorityDescriptions: Record<InvestigationItem['priority'], string> = {
+  High: 'High는 즉시 확인해야 하는 항목입니다. 장애 영향이나 재발 가능성이 커서 queue 상단에 둡니다.',
+  Medium: 'Medium은 지금 queue에 남겨 확인할 항목이지만 즉시 장애 수준은 아니라는 뜻입니다.',
+  Low: 'Low는 관찰은 필요하지만 현재 영향이 제한적이거나 증거가 약한 항목입니다.',
+};
+
+const riskDescriptions: Record<RiskLevel, string> = {
+  healthy: 'Healthy는 현재 collector evidence 기준으로 주요 warning이 보이지 않는 상태입니다.',
+  warning: 'Warning은 경고 근거가 있어 확인이 필요하다는 뜻입니다. Critical은 더 높은 위험, Stale은 데이터가 오래됨입니다.',
+  critical: 'Critical은 즉시 대응해야 할 위험 근거가 있는 상태입니다. 온도, 저장장치, 전원, kernel warning을 우선 확인합니다.',
+  stale: 'Stale은 telemetry가 오래되어 현재 상태 판단보다 collector/agent 복구가 먼저라는 뜻입니다.',
+};
+
+const stageDescriptions: Record<string, string> = {
+  Detect: 'Detect는 collector/API가 이상 신호를 발견한 단계입니다.',
+  Triage: 'Triage는 감지된 근거를 분류하고 다음 조사 항목을 고르는 단계입니다.',
+  Investigate: 'Investigate는 관련 metric, event, system log를 모아 원인을 좁히는 단계입니다.',
+  Hypothesize: 'Hypothesize는 가능한 원인과 반대 증거, 빠진 확인 항목을 정리하는 단계입니다.',
+  Act: 'Act는 냉각 조정, workload 변경, 네트워크/전원 조치 같은 개입을 기록하는 단계입니다.',
+  Verify: 'Verify는 조치 전후 window를 비교해 실제로 도움이 됐는지 확인하는 단계입니다.',
+  Report: 'Report는 다음 담당자나 팀이 이어받을 수 있게 결론과 근거를 남기는 단계입니다.',
+};
+
+function priorityDescription(priority: InvestigationItem['priority'] | undefined): string {
+  if (!priority) return '아직 조사 queue의 우선순위가 정해지지 않았습니다.';
+  return priorityDescriptions[priority];
+}
+
+function riskDescription(level: RiskLevel | undefined): string {
+  if (!level) return '아직 선택된 장비의 위험도 판단이 없습니다.';
+  return riskDescriptions[level];
+}
+
+function stageDescription(stage: string): string {
+  return stageDescriptions[stage] ?? `${stage}는 현재 조사 흐름에서 표시되는 작업 단계입니다.`;
+}
+
+function StatusChip({
+  className,
+  description,
+  helpId,
+  Icon,
+  label,
+  title,
+}: {
+  className?: string;
+  description: string;
+  helpId: string;
+  Icon: typeof Activity;
+  label: string;
+  title: string;
+}) {
+  return (
+    <span aria-describedby={helpId} className={['status-chip', className].filter(Boolean).join(' ')} tabIndex={0}>
+      <Icon aria-hidden="true" />
+      <span className="status-chip-label">{label}</span>
+      <span className="status-tooltip" id={helpId} role="tooltip">
+        <strong>{title}</strong>
+        <span>{description}</span>
+      </span>
+    </span>
+  );
+}
+
 function verificationStatusLabel(status: VerificationResult['status']): string {
   return {
     helped: 'Helped',
@@ -725,9 +789,10 @@ export default function App() {
   const verificationLabel = detail?.verification.status ?? 'Pending';
   const verificationSummary = detail?.verification.summary ?? 'Record an intervention before verification.';
   const selectedStage = selectedItem?.stage ?? 'Detect';
+  const selectedRiskLevel = detail?.item.risk_level ?? selectedItem?.risk_level;
   const deviceLabel = detail?.fleet_context.device.hostname ?? selectedItem?.device_hostname ?? 'No device selected';
   const caseTitle = detail?.item.title ?? selectedItem?.title ?? 'Select an investigation';
-  const riskLabel = detail ? riskLabels[detail.item.risk_level] : 'No risk';
+  const riskLabel = selectedRiskLevel ? riskLabels[selectedRiskLevel] : 'No risk';
   const whyNow = detail?.item.evidence ?? selectedItem?.why_now ?? 'Choose a queue item to see the evidence.';
   const whyDetail = detail?.item.category === 'agent'
     ? 'Fresh telemetry is required before trusting older thermal, load, or storage readings.'
@@ -837,9 +902,30 @@ export default function App() {
             <p>{caseTitle}</p>
           </div>
           <div className="case-badges" aria-label="Selected case status">
-            <span><AlertTriangle aria-hidden="true" /> {selectedItem?.priority ?? 'No priority'}</span>
-            <span><ShieldCheck aria-hidden="true" /> {riskLabel}</span>
-            <span><ListChecks aria-hidden="true" /> {selectedStage}</span>
+            <StatusChip
+              className={selectedItem ? priorityClass(selectedItem.priority) : 'status-neutral'}
+              description={priorityDescription(selectedItem?.priority)}
+              helpId="selected-priority-help"
+              Icon={AlertTriangle}
+              label={selectedItem?.priority ?? 'No priority'}
+              title="Priority / 우선순위"
+            />
+            <StatusChip
+              className={selectedRiskLevel ? riskClass(selectedRiskLevel) : 'status-neutral'}
+              description={riskDescription(selectedRiskLevel)}
+              helpId="selected-risk-help"
+              Icon={ShieldCheck}
+              label={riskLabel}
+              title="Risk level / 위험도"
+            />
+            <StatusChip
+              className="status-stage"
+              description={stageDescription(selectedStage)}
+              helpId="selected-stage-help"
+              Icon={ListChecks}
+              label={selectedStage}
+              title="Workflow stage / 진행 단계"
+            />
           </div>
         </div>
 

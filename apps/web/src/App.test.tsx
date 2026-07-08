@@ -287,6 +287,12 @@ describe('App', () => {
     expect(screen.queryByText('Dogu Robotics · Dogu X · Physical AI')).not.toBeInTheDocument();
     expect(screen.getByText('About: workstation health investigation')).toBeInTheDocument();
     expect(screen.getByText('Version v0.9.0')).toBeInTheDocument();
+    expect(screen.getByText('Priority / 우선순위')).toBeInTheDocument();
+    expect(screen.getByText('Medium은 지금 queue에 남겨 확인할 항목이지만 즉시 장애 수준은 아니라는 뜻입니다.')).toBeInTheDocument();
+    expect(screen.getByText('Risk level / 위험도')).toBeInTheDocument();
+    expect(screen.getByText('Warning은 경고 근거가 있어 확인이 필요하다는 뜻입니다. Critical은 더 높은 위험, Stale은 데이터가 오래됨입니다.')).toBeInTheDocument();
+    expect(screen.getByText('Workflow stage / 진행 단계')).toBeInTheDocument();
+    expect(screen.getByText('Triage는 감지된 근거를 분류하고 다음 조사 항목을 고르는 단계입니다.')).toBeInTheDocument();
     expect(screen.getByRole('region', { name: 'Operations Rail' })).toBeInTheDocument();
     expect(screen.getByText('Offline Buffer')).toBeInTheDocument();
     expect(screen.getByText('Enrollment Guard')).toBeInTheDocument();

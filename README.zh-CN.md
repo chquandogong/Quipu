@@ -52,6 +52,10 @@ progressive disclosure 模式之后，Quipu 采用深色 `Command Center` 方式
 CTA 固定为 `Review evidence`、`Record action` 和 `Verify result`，让下一步
 操作保持清晰。
 
+`Medium`、`Warning`、`Triage` 这类短状态词不会展开成固定说明文本，而是
+保留为紧凑的 status chip。鼠标 hover 或键盘 focus 时才显示含义，让新的
+操作者也能用同一套标准理解优先级、风险和 DTIHAVR 流程阶段。
+
 CPU package、Load Average、NVMe 等核心指标不会只显示孤立数字。每个
 metric 卡片会用韩文解释并保留英文技术术语，同时说明时间窗口、解读方式
 和下一步检查。例如 Load 会明确说明它是 Linux 1 分钟 load average，而不是
@@ -237,9 +241,24 @@ quipu-collector --dry-run --interval 60 --iterations 3
 quipu-collector --server-url http://127.0.0.1:8000 --token dev-token --interval 300
 ```
 
+如果要固定为每 5 分钟自动采集，请使用 systemd timer。下面的例子基于当前
+开发机器路径（`/home/chquan/Quipu`）和本地 API
+（`http://127.0.0.1:8000`）。在其他团队设备上，只需要改 repository 路径、
+device id 和 token。
+
+准备 collector 可执行文件：
+
+```bash
+cd /home/chquan/Quipu/apps/collector
+python3 -m venv .venv
+. .venv/bin/activate
+pip install -e .
+```
+
 预览 systemd timer 安装：
 
 ```bash
+cd /home/chquan/Quipu
 scripts/install-collector-systemd.sh --dry-run
 ```
 
@@ -247,19 +266,53 @@ scripts/install-collector-systemd.sh --dry-run
 
 ```bash
 sudo scripts/install-collector-systemd.sh --no-enable
-sudoedit /etc/quipu/collector.env
+```
+
+配置 collector 环境文件：
+
+```bash
+sudo tee /etc/quipu/collector.env >/dev/null <<EOF
+QUIPU_SERVER_URL=http://127.0.0.1:8000
+QUIPU_AGENT_TOKEN=dev-token
+QUIPU_COLLECTOR_ROOT=/
+QUIPU_COLLECTOR_DEVICE_ID=local-computer
+QUIPU_COLLECTOR_BIN=/home/chquan/Quipu/apps/collector/.venv/bin/quipu-collector
+QUIPU_SPOOL_DIR=/var/lib/quipu/collector-spool
+QUIPU_SPOOL_MAX_BATCHES=288
+EOF
+sudo chmod 600 /etc/quipu/collector.env
+```
+
+先手动运行一次，检查权限、路径和 server 连接：
+
+```bash
+sudo systemctl start quipu-collector.service
+systemctl status quipu-collector.service --no-pager
+journalctl -u quipu-collector.service -n 80 --no-pager
+```
+
+启用每 5 分钟自动采集：
+
+```bash
 sudo systemctl enable --now quipu-collector.timer
 systemctl list-timers quipu-collector.timer
 ```
 
-卸载：
+停用：
+
+```bash
+sudo systemctl disable --now quipu-collector.timer
+```
+
+完全卸载：
 
 ```bash
 sudo scripts/uninstall-collector-systemd.sh
 ```
 
 安装脚本假设目标机器上已经安装了 `quipu-collector` 可执行文件。目前尚未
-包含 package publishing 和 production deployment。
+包含 package publishing 和 production deployment。生产环境建议使用每台设备
+独立的 enrollment token，而不是 `dev-token`。
 
 ## 架构
 

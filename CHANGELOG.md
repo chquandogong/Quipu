@@ -2,6 +2,39 @@
 
 All notable changes to Quipu are documented in this file.
 
+## v0.7.0 - 2026-07-08
+
+Collector operation loop release.
+
+### Added
+
+- Collector CLI `--dry-run` mode that prints observation batches and skips
+  posting even when `--server-url` is present.
+- Collector CLI `--interval` and `--iterations` controls for lightweight
+  repeated collection under a supervisor.
+- Structured JSON error output for collection and send failures.
+- CLI tests covering one-shot output, POST behavior, dry-run behavior,
+  interval iteration behavior, invalid loop options, and collection failure
+  output.
+- v0.7.0 collector operation-loop design and implementation plan documents.
+
+### Changed
+
+- The collector remains one-shot by default, but can now run as a lightweight
+  loop without adding daemon, systemd, or external runtime dependencies.
+- README editions now document one-shot dry-run, one-shot POST, repeated smoke
+  tests, and simple supervised-loop examples.
+- Updated package and app versions to `0.7.0`.
+
+### Verified
+
+- Server test suite: 27 tests passed.
+- Collector test suite: 7 tests passed.
+- Web test suite: 1 test passed.
+- Web production build succeeded.
+- CLI smoke command produced a local observation batch.
+- Browser screenshot confirmed `Version v0.7.0` in the running app.
+
 ## v0.6.0 - 2026-07-08
 
 Fan and NVMe SMART-lite telemetry release.

@@ -2,7 +2,7 @@
 
 <p align="center">
   <img alt="CI" src="https://github.com/chquandogong/Quipu/actions/workflows/ci.yml/badge.svg">
-  <img alt="Version" src="https://img.shields.io/badge/version-v0.6.0-2f6f7e">
+  <img alt="Version" src="https://img.shields.io/badge/version-v0.7.0-2f6f7e">
   <img alt="Status" src="https://img.shields.io/badge/status-local--first%20prototype-5b6b73">
   <img alt="License" src="https://img.shields.io/badge/license-not%20selected-lightgrey">
 </p>
@@ -122,13 +122,15 @@ Implemented:
 - Rule-based fleet overview
 - Deterministic sample fleet data
 - Investigation queue/detail API
-- Read-only one-shot Linux collector
+- Read-only Linux collector
 - Best-effort collector summaries for kernel thermal throttling and
   NetworkManager reconnect events
 - Collector metrics for root filesystem usage, battery capacity, and AC online
   state
 - Best-effort collector summaries for kernel storage and power warning events
 - Collector metrics for hwmon Fan RPM and sysfs NVMe SMART-lite health
+- Lightweight collector operation loop with dry-run, interval, and iteration
+  controls
 - Intervention records for investigation items
 - Before/after verification results for interventions
 - Vite React investigation-first UI
@@ -144,7 +146,7 @@ Implemented:
 
 Next direction:
 
-- A supervised local-agent version of the collector
+- systemd service/timer packaging and an offline local ring buffer
 - Team pattern exploration by model, kernel, driver, storage, Wi-Fi, workload,
   and physical setup
 - Role-aware team workflows, redaction controls, and retention policy
@@ -173,8 +175,9 @@ http://127.0.0.1:5173
 
 ## Collector
 
-The collector is a one-shot Linux signal reader. It does not require root, does
-not execute repair commands, and does not upload full raw logs.
+The collector reads Linux signals without root. It runs once by default, and
+`--interval` turns it into a lightweight collection loop. It does not execute
+repair commands and does not upload full raw logs.
 
 Current key signals:
 
@@ -200,14 +203,29 @@ cd apps/collector
 python -m venv .venv
 . .venv/bin/activate
 pip install -e .
-quipu-collector
+quipu-collector --dry-run
 ```
 
 Send one batch to a local Quipu server:
 
 ```bash
-quipu-collector --server-url http://127.0.0.1:8000 --token dev-local-token
+quipu-collector --server-url http://127.0.0.1:8000 --token dev-token
 ```
+
+Run a repeated smoke test:
+
+```bash
+quipu-collector --dry-run --interval 60 --iterations 3
+```
+
+Run a simple supervised loop:
+
+```bash
+quipu-collector --server-url http://127.0.0.1:8000 --token dev-token --interval 300
+```
+
+Packaged daemon files, systemd units, and an offline local ring buffer are not
+included yet.
 
 ## Architecture
 
@@ -268,7 +286,7 @@ npm run build
 
 ```text
 apps/
-  collector/     Read-only one-shot Linux observation collector
+  collector/     Read-only Linux observation collector
   server/        FastAPI API, SQLite persistence, rule-based analysis
   web/           Vite React UI
 docs/

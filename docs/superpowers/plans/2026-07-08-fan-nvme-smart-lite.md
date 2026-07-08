@@ -45,7 +45,7 @@ pytest, Vitest.
       roadmap, and ship checklist.
 - [x] Run full server tests, collector tests, web tests, web build,
       `git diff --check`, sensitive-content scan, and browser screenshots.
-- [ ] Commit, push, tag `v0.6.0`, and publish GitHub release.
+- [x] Commit, push, tag `v0.6.0`, and publish GitHub release.
 
 ## Verification Commands
 

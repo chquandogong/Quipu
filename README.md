@@ -2,7 +2,7 @@
 
 <p align="center">
   <img alt="CI" src="https://github.com/chquandogong/Quipu/actions/workflows/ci.yml/badge.svg">
-  <img alt="Version" src="https://img.shields.io/badge/version-v0.6.0-2f6f7e">
+  <img alt="Version" src="https://img.shields.io/badge/version-v0.7.0-2f6f7e">
   <img alt="Status" src="https://img.shields.io/badge/status-local--first%20prototype-5b6b73">
   <img alt="License" src="https://img.shields.io/badge/license-not%20selected-lightgrey">
 </p>
@@ -121,11 +121,12 @@ Quipu는 초기 로컬 우선 프로토타입입니다.
 - 규칙 기반 fleet overview
 - 결정적 샘플 장비 데이터
 - Investigation queue/detail API
-- 읽기 전용 one-shot Linux collector
+- 읽기 전용 Linux collector
 - collector의 best-effort kernel thermal throttling 및 NetworkManager reconnect event 요약 수집
 - collector의 root filesystem 사용률, 배터리 잔량, AC 연결 상태 수집
 - collector의 best-effort kernel storage 및 power warning event 요약 수집
 - collector의 hwmon 기반 Fan RPM 및 sysfs 기반 NVMe SMART-lite health 수집
+- collector의 dry-run, interval, iterations 기반 경량 운용 루프
 - 조사 항목별 intervention 기록
 - intervention 전후 검증 결과
 - Vite React 조사 중심 UI
@@ -137,7 +138,7 @@ Quipu는 초기 로컬 우선 프로토타입입니다.
 
 다음 방향:
 
-- supervised local agent 형태의 collector
+- systemd service/timer 패키징과 offline local ring buffer
 - 모델, 커널, 드라이버, 저장장치, Wi-Fi, 워크로드, 물리적 환경별 팀 패턴 탐색
 - 역할 기반 팀 워크플로, redaction, retention policy
 
@@ -165,9 +166,10 @@ http://127.0.0.1:5173
 
 ## Collector
 
-collector는 root 권한 없이 Linux 신호를 한 번 읽어 Quipu observation
-batch로 출력합니다. 수리 명령을 실행하지 않고, raw log 전체를 업로드하지
-않습니다.
+collector는 root 권한 없이 Linux 신호를 읽어 Quipu observation batch로
+출력합니다. 기본값은 one-shot 실행이고, `--interval`을 주면 가벼운 반복
+수집 루프로 운용할 수 있습니다. 수리 명령을 실행하지 않고, raw log 전체를
+업로드하지 않습니다.
 
 현재 수집하는 주요 신호:
 
@@ -189,14 +191,29 @@ cd apps/collector
 python -m venv .venv
 . .venv/bin/activate
 pip install -e .
-quipu-collector
+quipu-collector --dry-run
 ```
 
-로컬 Quipu 서버로 전송:
+로컬 Quipu 서버로 한 번 전송:
 
 ```bash
-quipu-collector --server-url http://127.0.0.1:8000 --token dev-local-token
+quipu-collector --server-url http://127.0.0.1:8000 --token dev-token
 ```
+
+반복 수집 smoke test:
+
+```bash
+quipu-collector --dry-run --interval 60 --iterations 3
+```
+
+간단한 supervised loop:
+
+```bash
+quipu-collector --server-url http://127.0.0.1:8000 --token dev-token --interval 300
+```
+
+아직 packaged daemon, systemd unit, offline local ring buffer는 포함하지
+않습니다.
 
 ## 아키텍처
 
@@ -257,7 +274,7 @@ npm run build
 
 ```text
 apps/
-  collector/     읽기 전용 one-shot Linux observation collector
+  collector/     읽기 전용 Linux observation collector
   server/        FastAPI API, SQLite persistence, rule-based analysis
   web/           Vite React UI
 docs/

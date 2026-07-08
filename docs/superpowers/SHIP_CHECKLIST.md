@@ -3,7 +3,7 @@
 > Status: release candidate approved for GitHub release and public visibility after audit
 > Date: 2026-07-08
 > Owner: chquan
-> Release: v0.6.0
+> Release: v0.7.0
 
 ## Scope
 
@@ -18,7 +18,7 @@ Included:
 - Korean default README, English README, and Simplified Chinese README.
 - GitHub Actions CI.
 - GitHub Actions runtime version patch.
-- Read-only one-shot Linux collector.
+- Read-only Linux collector.
 - Persistent intervention records.
 - Intervention recording UI.
 - Before/after intervention verification.
@@ -41,13 +41,18 @@ Included:
 - Fan RPM and NVMe SMART-lite health collector metrics.
 - Storage findings for NVMe critical-warning, spare, lifetime usage, and media
   error signals.
+- Collector dry-run mode.
+- Collector interval and iterations mode for lightweight supervised operation.
+- Structured collector JSON error output.
 - Removed duplicate creator/reference image drawer from the working UI.
 - Visible Made by, About, and Version metadata chips.
 - Project docs, GitHub templates, contribution notes, and security policy.
 
 Excluded:
 
-- Long-running collector daemon.
+- Packaged collector daemon files.
+- systemd service/timer installation.
+- Offline local ring buffer.
 - Remote repair or remote command execution.
 - AI-generated conclusions.
 - Package publishing.
@@ -56,7 +61,7 @@ Excluded:
 ## Tests
 
 - Server tests: `pytest -v` -> 27 passed, 1 Starlette deprecation warning.
-- Collector tests: `pytest -v` -> 1 passed.
+- Collector tests: `pytest -v` -> 7 passed.
 - Web tests: `npm test` -> 1 passed.
 - Web build: `npm run build` -> succeeded.
 - Whitespace check: `git diff --check` -> passed.
@@ -74,6 +79,8 @@ Known risks:
   machine.
 - Fan RPM and NVMe SMART-lite coverage are best-effort because Linux hardware
   exposure varies by machine.
+- The collector operation loop is CLI-level only; production supervisor
+  packaging is not included yet.
 - Current analysis is deterministic and intentionally conservative.
 - Verification uses a fixed 30-minute window.
 - `npm ci` reports existing transitive web dependency vulnerabilities; no public
@@ -99,7 +106,7 @@ Unapproved risks:
 Rollback method:
 
 - Delete or supersede the private GitHub release if the release note is wrong.
-- Move forward with a patch tag such as `v0.6.0` for code or documentation fixes.
+- Move forward with a patch tag such as `v0.7.1` for code or documentation fixes.
 - Avoid force-push and history rewrite.
 
 Rollback owner:
@@ -118,21 +125,21 @@ Check after release:
 
 - GitHub repository URL resolves.
 - `main` branch is pushed.
-- `v0.6.0` tag exists locally and remotely.
-- GitHub release exists for `v0.6.0`.
+- `v0.7.0` tag exists locally and remotely.
+- GitHub release exists for `v0.7.0`.
 - Repository visibility is public after audit.
 
 ## Documents
 
 - README: current.
 - Dashboard: current release state recorded.
-- Roadmap: fan/NVMe SMART-lite telemetry expansion recorded.
-- Changelog: `v0.6.0` prepared.
+- Roadmap: collector operation loop recorded.
+- Changelog: `v0.7.0` prepared.
 - Security policy: present.
 
 ## Final Judgment
 
-GitHub release is allowed for `v0.6.0`.
+GitHub release is allowed for `v0.7.0`.
 
 Public repository visibility is allowed after sensitive-content audit.
 Package publishing, production deployment, destructive git operations, and

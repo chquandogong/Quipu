@@ -223,7 +223,7 @@ describe('App', () => {
     expect(screen.queryByText('Creator and visual references')).not.toBeInTheDocument();
     expect(screen.queryByText('Dogu Robotics · Dogu X · Physical AI')).not.toBeInTheDocument();
     expect(screen.getByText('About: workstation health investigation')).toBeInTheDocument();
-    expect(screen.getByText('Version v0.6.0')).toBeInTheDocument();
+    expect(screen.getByText('Version v0.7.0')).toBeInTheDocument();
     await waitFor(() => expect(screen.getByRole('button', { name: 'Explain CPU package temperature metric' })).toBeInTheDocument());
     expect(screen.getByText('정의: 선택한 장비의 CPU 패키지 센서 온도입니다. (CPU package temperature)')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Explain 1 minute load average metric' })).toBeInTheDocument();

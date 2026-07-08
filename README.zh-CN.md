@@ -2,7 +2,7 @@
 
 <p align="center">
   <img alt="CI" src="https://github.com/chquandogong/Quipu/actions/workflows/ci.yml/badge.svg">
-  <img alt="Version" src="https://img.shields.io/badge/version-v0.6.0-2f6f7e">
+  <img alt="Version" src="https://img.shields.io/badge/version-v0.7.0-2f6f7e">
   <img alt="Status" src="https://img.shields.io/badge/status-local--first%20prototype-5b6b73">
   <img alt="License" src="https://img.shields.io/badge/license-not%20selected-lightgrey">
 </p>
@@ -115,11 +115,12 @@ Quipu 仍是早期本地优先原型。
 - 基于规则的 fleet overview
 - 确定性的示例设备数据
 - Investigation queue/detail API
-- 只读 one-shot Linux collector
+- 只读 Linux collector
 - collector 对 kernel thermal throttling 和 NetworkManager reconnect event 的 best-effort 摘要收集
 - collector 采集 root filesystem 使用率、电池电量和 AC 连接状态
 - collector 对 kernel storage 与 power warning event 的 best-effort 摘要收集
 - collector 采集基于 hwmon 的 Fan RPM 与基于 sysfs 的 NVMe SMART-lite health
+- collector 支持 dry-run、interval 和 iterations 的轻量运行循环
 - 调查项 intervention 记录
 - intervention 前后验证结果
 - Vite React 调查优先 UI
@@ -131,7 +132,7 @@ Quipu 仍是早期本地优先原型。
 
 下一步方向：
 
-- supervised local agent 形式的 collector
+- systemd service/timer 打包与离线 local ring buffer
 - 按型号、内核、驱动、存储、Wi-Fi、工作负载和物理环境探索团队模式
 - 角色感知的团队流程、redaction 控制和 retention policy
 
@@ -159,8 +160,9 @@ http://127.0.0.1:5173
 
 ## Collector
 
-collector 是一次性 Linux 信号读取器。它不需要 root 权限，不执行修复命令，
-也不会上传完整 raw log。
+collector 不需要 root 权限即可读取 Linux 信号。默认只执行一次，加入
+`--interval` 后可以作为轻量采集循环运行。它不执行修复命令，也不会上传
+完整 raw log。
 
 当前主要采集信号：
 
@@ -182,14 +184,28 @@ cd apps/collector
 python -m venv .venv
 . .venv/bin/activate
 pip install -e .
-quipu-collector
+quipu-collector --dry-run
 ```
 
 发送一个 batch 到本地 Quipu server：
 
 ```bash
-quipu-collector --server-url http://127.0.0.1:8000 --token dev-local-token
+quipu-collector --server-url http://127.0.0.1:8000 --token dev-token
 ```
+
+运行重复采集 smoke test：
+
+```bash
+quipu-collector --dry-run --interval 60 --iterations 3
+```
+
+运行简单 supervised loop：
+
+```bash
+quipu-collector --server-url http://127.0.0.1:8000 --token dev-token --interval 300
+```
+
+目前尚未包含 packaged daemon、systemd unit 和离线 local ring buffer。
 
 ## 架构
 
@@ -250,7 +266,7 @@ npm run build
 
 ```text
 apps/
-  collector/     只读 one-shot Linux observation collector
+  collector/     只读 Linux observation collector
   server/        FastAPI API、SQLite persistence、rule-based analysis
   web/           Vite React UI
 docs/

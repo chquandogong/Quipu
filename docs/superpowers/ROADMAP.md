@@ -57,7 +57,7 @@ Remaining:
 
 ## Phase 3: Native Read-Only Agent
 
-Status: one-shot collector foundation implemented.
+Status: lightweight collector loop implemented.
 
 Goal: collect real Linux workstation signals safely.
 
@@ -76,6 +76,9 @@ Implemented:
 - Fan RPM where available through hwmon.
 - NVMe SMART-lite health where available through sysfs-style files.
 - Optional POST to the ingest API.
+- CLI dry-run mode.
+- CLI interval and iteration controls for supervised repeated collection.
+- Structured JSON error output for collection and send failures.
 
 Remaining:
 
@@ -83,6 +86,7 @@ Remaining:
 - Richer multi-fan naming and fan-context analysis.
 - Deeper SMART/NVMe health where available without external dependencies.
 - Kernel, graphics/session, update, reboot markers.
+- systemd service/timer packaging.
 - Local ring buffer for offline periods.
 
 ## Phase 4: Intervention Verification

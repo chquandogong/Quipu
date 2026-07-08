@@ -31,12 +31,24 @@ def test_collect_observation_reads_linux_signals_without_raw_machine_id(tmp_path
     _write(root / "sys/class/hwmon/hwmon0/temp1_input", "42000\n")
     _write(
         root / "var/log/quipu/kernel.log",
-        "2026-07-07T05:22:10+00:00 kernel: CPU0: Core temperature above threshold, cpu clock throttled\n",
+        "\n".join(
+            [
+                "2026-07-07T05:22:10+00:00 kernel: CPU0: Core temperature above threshold, cpu clock throttled",
+                "2026-07-07T05:23:10+00:00 kernel: nvme0n1: I/O timeout, reset controller",
+                "2026-07-07T05:25:00+00:00 kernel: ACPI: battery discharge rate high while AC offline",
+            ]
+        )
+        + "\n",
     )
     _write(
         root / "var/log/quipu/networkmanager.log",
         "2026-07-07T05:24:00+00:00 NetworkManager: wlp0s20f3: state change: activated -> disconnected (reason 'supplicant-disconnect')\n",
     )
+    _write(root / "sys/class/power_supply/BAT0/type", "Battery\n")
+    _write(root / "sys/class/power_supply/BAT0/capacity", "37\n")
+    _write(root / "sys/class/power_supply/BAT0/status", "Discharging\n")
+    _write(root / "sys/class/power_supply/AC/type", "Mains\n")
+    _write(root / "sys/class/power_supply/AC/online", "0\n")
 
     observed_at = datetime(2026, 7, 7, 5, 30, tzinfo=timezone.utc)
     batch = collect_observation(root=root, observed_at=observed_at)
@@ -55,6 +67,10 @@ def test_collect_observation_reads_linux_signals_without_raw_machine_id(tmp_path
     assert metrics["cpu.package_temp_c"]["value"] == 63.0
     assert metrics["nvme.temp_c"]["value"] == 42.0
     assert metrics["wifi.signal_dbm"]["value"] == -43.0
+    assert metrics["battery.capacity_percent"]["value"] == 37.0
+    assert metrics["battery.capacity_percent"]["unit"] == "percent"
+    assert metrics["battery.ac_online"]["value"] == 0.0
+    assert metrics["battery.ac_online"]["unit"] == "boolean"
     events = {(event["category"], event["source"]): event for event in batch["events"]}
     assert events[("thermal", "kernel")]["severity"] == "warning"
     assert "cpu clock throttled" in events[("thermal", "kernel")]["message_summary"]
@@ -64,3 +80,9 @@ def test_collect_observation_reads_linux_signals_without_raw_machine_id(tmp_path
     assert "disconnected" in events[("network", "NetworkManager")]["message_summary"]
     assert events[("network", "NetworkManager")]["raw_ref"] == "var/log/quipu/networkmanager.log"
     assert events[("network", "NetworkManager")]["fingerprint"].startswith("network-networkmanager-")
+    assert events[("storage", "kernel")]["severity"] == "warning"
+    assert "I/O timeout" in events[("storage", "kernel")]["message_summary"]
+    assert events[("storage", "kernel")]["fingerprint"].startswith("storage-kernel-")
+    assert events[("power", "kernel")]["severity"] == "warning"
+    assert "battery discharge" in events[("power", "kernel")]["message_summary"]
+    assert events[("power", "kernel")]["fingerprint"].startswith("power-kernel-")

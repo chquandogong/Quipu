@@ -6,6 +6,27 @@ RISK_ORDER = {"healthy": 0, "warning": 1, "critical": 2, "stale": 3}
 PRIORITY_ORDER = {"High": 3, "Medium": 2, "Low": 1}
 THERMAL_EVENT_PATTERNS = ("thermal thrott", "clock throttled", "above threshold", "critical temperature")
 NETWORK_EVENT_PATTERNS = ("disconnect", "reconnect", "carrier", "supplicant", "deauth", "dhcp", "state change")
+STORAGE_EVENT_PATTERNS = (
+    "i/o error",
+    "i/o timeout",
+    "reset controller",
+    "media error",
+    "smart",
+    "ext4-fs error",
+    "buffer i/o",
+    "read error",
+    "write error",
+)
+POWER_EVENT_PATTERNS = (
+    "battery",
+    "ac offline",
+    "ac adapter",
+    "power_supply",
+    "critical low",
+    "low battery",
+    "discharge rate",
+    "power management",
+)
 
 
 def _parse_time(value: str) -> datetime:
@@ -78,6 +99,22 @@ def _specific_event_finding(event: dict[str, Any]) -> dict[str, str] | None:
             summary,
             "medium",
         )
+    if event["category"] == "storage" and any(pattern in lower for pattern in STORAGE_EVENT_PATTERNS):
+        confidence = "high" if event["severity"] == "critical" else "medium"
+        return _finding(
+            "storage",
+            "Storage health event reported",
+            summary,
+            confidence,
+        )
+    if event["category"] == "power" and any(pattern in lower for pattern in POWER_EVENT_PATTERNS):
+        confidence = "high" if event["severity"] == "critical" else "medium"
+        return _finding(
+            "power",
+            "Battery power issue reported",
+            summary,
+            confidence,
+        )
     return None
 
 
@@ -128,6 +165,50 @@ def classify_snapshot(snapshot: dict[str, Any], *, now: datetime) -> dict[str, A
                 "load",
                 "Load average is elevated",
                 f"Latest 1 minute load average is {load_1m:.2f}.",
+                "medium",
+            )
+        )
+        risk_level = "warning"
+
+    disk_root_used = _metric_value(snapshot, "disk.root_used_percent")
+    if disk_root_used is not None and disk_root_used >= 95 and risk_level != "stale":
+        findings.append(
+            _finding(
+                "storage",
+                "Root filesystem usage is critical",
+                f"Root filesystem usage is {disk_root_used:.1f}%.",
+                "high",
+            )
+        )
+        risk_level = "critical"
+    elif disk_root_used is not None and disk_root_used >= 85 and risk_level == "healthy":
+        findings.append(
+            _finding(
+                "storage",
+                "Root filesystem usage is elevated",
+                f"Root filesystem usage is {disk_root_used:.1f}%.",
+                "medium",
+            )
+        )
+        risk_level = "warning"
+
+    battery_capacity = _metric_value(snapshot, "battery.capacity_percent")
+    if battery_capacity is not None and battery_capacity <= 10 and risk_level != "stale":
+        findings.append(
+            _finding(
+                "power",
+                "Battery capacity is critically low",
+                f"Latest battery capacity is {battery_capacity:.1f}%.",
+                "high",
+            )
+        )
+        risk_level = "critical"
+    elif battery_capacity is not None and battery_capacity <= 20 and risk_level == "healthy":
+        findings.append(
+            _finding(
+                "power",
+                "Battery capacity is low",
+                f"Latest battery capacity is {battery_capacity:.1f}%.",
                 "medium",
             )
         )
@@ -208,6 +289,7 @@ def _next_step_for_category(category: str) -> str:
         "thermal": "Inspect thermal evidence and compare cooling or workload windows.",
         "graphics": "Inspect graphics/session timeline and repeated driver signatures.",
         "storage": "Check storage warnings, NVMe health, and I/O stall evidence.",
+        "power": "Check battery state, AC connection, and power-management events.",
         "network": "Review reconnects, signal changes, and driver messages.",
         "update": "Compare package or kernel changes against the incident window.",
         "reboot": "Inspect pre-reboot graphics, thermal, storage, and power evidence.",
@@ -229,6 +311,10 @@ def _action_for_category(category: str) -> dict[str, str]:
         "storage": {
             "label": "Check storage health",
             "description": "Review NVMe temperature, kernel storage messages, and SMART data if available.",
+        },
+        "power": {
+            "label": "Check battery and power path",
+            "description": "Compare battery level, AC connection, and power-management events before changing workloads.",
         },
         "network": {
             "label": "Check wireless stability",

@@ -3,6 +3,7 @@ import type { FormEvent } from 'react';
 import {
   Activity,
   AlertTriangle,
+  BatteryWarning,
   Clock3,
   CheckCircle2,
   ChevronRight,
@@ -30,7 +31,7 @@ import type { FleetOverview, InvestigationDetail, InvestigationItem, MetricSampl
 import './styles.css';
 
 const flowStages = ['Detect', 'Triage', 'Investigate', 'Hypothesize', 'Act', 'Verify', 'Report'];
-const appVersion = 'v0.4.0';
+const appVersion = 'v0.5.0';
 
 const riskLabels: Record<RiskLevel, string> = {
   healthy: 'Healthy',
@@ -125,6 +126,7 @@ function metricValue(detail: InvestigationDetail | null, name: string): string {
   if (metric.unit === 'celsius') return `${metric.value.toFixed(1)}C`;
   if (metric.unit === 'percent') return `${metric.value.toFixed(1)}%`;
   if (metric.unit === 'dbm') return `${metric.value.toFixed(0)} dBm`;
+  if (metric.unit === 'boolean') return metric.value >= 0.5 ? 'Online' : 'Offline';
   return `${metric.value}`;
 }
 
@@ -150,6 +152,14 @@ function metricStatus(detail: InvestigationDetail | null, name: string): SignalS
   if (name === 'memory.used_percent') {
     if (value >= 95) return 'critical';
     if (value >= 85) return 'watch';
+  }
+  if (name === 'disk.root_used_percent') {
+    if (value >= 95) return 'critical';
+    if (value >= 85) return 'watch';
+  }
+  if (name === 'battery.capacity_percent') {
+    if (value <= 10) return 'critical';
+    if (value <= 20) return 'watch';
   }
   if (name === 'wifi.signal_dbm') {
     if (value <= -80) return 'critical';
@@ -184,6 +194,13 @@ function eventMatches(event: InvestigationDetail['timeline'][number], patterns: 
   return patterns.some((pattern) => text.includes(pattern));
 }
 
+function strongestStatus(...statuses: SignalStatus[]): SignalStatus {
+  if (statuses.includes('critical')) return 'critical';
+  if (statuses.includes('watch')) return 'watch';
+  if (statuses.includes('nominal')) return 'nominal';
+  return 'missing';
+}
+
 function minutesSince(laterIso: string | undefined, earlierIso: string | undefined): number | null {
   if (!laterIso || !earlierIso) return null;
   const later = new Date(laterIso).getTime();
@@ -196,11 +213,19 @@ function buildTelemetryTiles(detail: InvestigationDetail | null, overview: Fleet
   const networkEvents = detail?.timeline.filter((event) => event.category === 'network') ?? [];
   const reconnectEvents = networkEvents.filter((event) => eventMatches(event, ['disconnect', 'reconnect', 'carrier', 'supplicant', 'dhcp', 'state change']));
   const throttlingEvents = detail?.timeline.filter((event) => event.category === 'thermal' && eventMatches(event, ['throttl', 'above threshold', 'critical temperature'])) ?? [];
+  const storageEvents = detail?.timeline.filter((event) => event.category === 'storage') ?? [];
+  const powerEvents = detail?.timeline.filter((event) => event.category === 'power') ?? [];
   const kernelWarnings = detail?.timeline.filter(
     (event) => event.source.toLowerCase().includes('kernel') && (event.severity === 'warning' || event.severity === 'critical'),
   ) ?? [];
   const freshnessMinutes = minutesSince(overview?.generated_at, detail?.fleet_context.device.last_seen_at);
   const freshnessStatus: SignalStatus = freshnessMinutes === null ? 'missing' : freshnessMinutes > 10 ? 'critical' : freshnessMinutes > 5 ? 'watch' : 'nominal';
+  const hasStorageSignal = Boolean(latestMetric(detail, 'disk.root_used_percent') || storageEvents.length);
+  const hasPowerSignal = Boolean(latestMetric(detail, 'battery.capacity_percent') || latestMetric(detail, 'battery.ac_online') || powerEvents.length);
+  const storageStatus = hasStorageSignal ? strongestStatus(metricStatus(detail, 'disk.root_used_percent'), storageEvents.length > 0 ? 'watch' : 'nominal') : 'missing';
+  const powerStatus = hasPowerSignal ? strongestStatus(metricStatus(detail, 'battery.capacity_percent'), powerEvents.length > 0 ? 'watch' : 'nominal') : 'missing';
+  const acState = metricValue(detail, 'battery.ac_online');
+  const batteryValue = latestMetric(detail, 'battery.capacity_percent') ? metricValue(detail, 'battery.capacity_percent') : acState;
 
   return [
     {
@@ -211,6 +236,24 @@ function buildTelemetryTiles(detail: InvestigationDetail | null, overview: Fleet
       status: metricStatus(detail, 'memory.used_percent'),
       summary: '프로세스 압박이나 swap 가능성을 판단하는 보조 신호입니다. (memory pressure)',
       Icon: MemoryStick,
+    },
+    {
+      id: 'disk.health',
+      category: 'Storage',
+      label: 'Disk Health',
+      value: latestMetric(detail, 'disk.root_used_percent') ? metricValue(detail, 'disk.root_used_percent') : eventSignalValue(storageEvents),
+      status: storageStatus,
+      summary: 'root filesystem 사용률과 kernel storage warning을 함께 봅니다. (disk fullness and I/O stalls)',
+      Icon: HardDrive,
+    },
+    {
+      id: 'battery.power',
+      category: 'Power',
+      label: 'Battery Power',
+      value: batteryValue,
+      status: powerStatus,
+      summary: `배터리 잔량, AC 상태(${acState}), power-management event를 같이 확인합니다.`,
+      Icon: BatteryWarning,
     },
     {
       id: 'network.events',
@@ -359,7 +402,7 @@ function TelemetryMatrix({ detail, overview }: { detail: InvestigationDetail | n
       <div className="matrix-head">
         <div>
           <h3>Telemetry Matrix</h3>
-          <p>Core metric 밖의 Wi-Fi, memory, network, kernel, agent freshness를 한 번에 확인합니다.</p>
+          <p>Core metric 밖의 disk, battery, Wi-Fi, memory, network, kernel, agent freshness를 한 번에 확인합니다.</p>
         </div>
         <span>{tiles.filter((tile) => tile.status !== 'missing').length}/{tiles.length} signals</span>
       </div>

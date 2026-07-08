@@ -42,7 +42,7 @@ Implemented:
 - High-contrast dark command theme.
 - Core signal console for CPU, Load, NVMe, and Wi-Fi.
 - Telemetry Matrix for Memory, Network Events, Reconnect History, Thermal
-  Throttling, Kernel Warnings, and Agent Freshness.
+  Throttling, Disk Health, Battery Power, Kernel Warnings, and Agent Freshness.
 - Metric help tooltips for definition, time window, reading guidance, and next
   check.
 - CTA routing to evidence, action recording, and verification.
@@ -69,13 +69,17 @@ Implemented:
 - Wi-Fi signal level when exposed by `/proc/net/wireless`.
 - Best-effort kernel thermal throttling event summaries.
 - Best-effort NetworkManager reconnect/disconnect event summaries.
+- Root filesystem usage.
+- Battery capacity and AC online state from `/sys/class/power_supply`.
+- Best-effort kernel storage and power warning event summaries.
 - Optional POST to the ingest API.
 
 Remaining:
 
 - CPU/core/package thermals with richer sensor naming.
-- Disk health where available.
-- Kernel, graphics/session, storage, update, reboot markers.
+- Fan RPM where available.
+- SMART/NVMe health where available without compromising lightweight setup.
+- Kernel, graphics/session, update, reboot markers.
 - Local ring buffer for offline periods.
 
 ## Phase 4: Intervention Verification

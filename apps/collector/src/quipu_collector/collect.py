@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 import platform
 import re
+import shutil
 import socket
 import subprocess
 from typing import Any, Callable
@@ -32,6 +33,29 @@ NETWORK_EVENT_PATTERNS = (
     "link is down",
     "link is up",
     "state change",
+)
+
+STORAGE_EVENT_PATTERNS = (
+    "i/o error",
+    "i/o timeout",
+    "reset controller",
+    "media error",
+    "smart",
+    "ext4-fs error",
+    "buffer i/o",
+    "read error",
+    "write error",
+)
+
+POWER_EVENT_PATTERNS = (
+    "battery",
+    "ac offline",
+    "ac adapter",
+    "power_supply",
+    "critical low",
+    "low battery",
+    "discharge rate",
+    "power management",
 )
 
 
@@ -151,6 +175,28 @@ def _classify_event_line(
         severity = "critical" if "critical" in lower else "warning"
         return _event(
             category="thermal",
+            severity=severity,
+            source="kernel",
+            message_summary=summary,
+            raw_ref=raw_ref,
+            observed_at=observed_at,
+        )
+    if default_source == "kernel" and any(pattern in lower for pattern in STORAGE_EVENT_PATTERNS):
+        summary = _strip_source_prefix(message, "kernel")
+        severity = "critical" if "critical" in lower or "failed" in lower else "warning"
+        return _event(
+            category="storage",
+            severity=severity,
+            source="kernel",
+            message_summary=summary,
+            raw_ref=raw_ref,
+            observed_at=observed_at,
+        )
+    if default_source == "kernel" and any(pattern in lower for pattern in POWER_EVENT_PATTERNS):
+        summary = _strip_source_prefix(message, "kernel")
+        severity = "critical" if "critical" in lower else "warning"
+        return _event(
+            category="power",
             severity=severity,
             source="kernel",
             message_summary=summary,
@@ -283,6 +329,17 @@ def _memory_metric(root: Path, observed_at: str) -> dict[str, Any] | None:
     return _metric("memory.used_percent", used_percent, "percent", observed_at)
 
 
+def _disk_metric(root: Path, observed_at: str) -> dict[str, Any] | None:
+    try:
+        usage = shutil.disk_usage(root)
+    except OSError:
+        return None
+    if usage.total <= 0:
+        return None
+    used_percent = ((usage.total - usage.free) / usage.total) * 100
+    return _metric("disk.root_used_percent", used_percent, "percent", observed_at)
+
+
 def _thermal_metrics(root: Path, observed_at: str) -> list[dict[str, Any]]:
     base = _root_path(root, "/sys/class/thermal")
     metrics: list[dict[str, Any]] = []
@@ -337,6 +394,33 @@ def _wifi_metric(root: Path, observed_at: str) -> dict[str, Any] | None:
     return None
 
 
+def _power_supply_metrics(root: Path, observed_at: str) -> list[dict[str, Any]]:
+    base = _root_path(root, "/sys/class/power_supply")
+    metrics: list[dict[str, Any]] = []
+    battery_recorded = False
+    ac_recorded = False
+    for supply in sorted(base.glob("*")):
+        supply_type = (_read_text(supply / "type") or "").strip().lower()
+        if supply_type == "battery" and not battery_recorded:
+            raw_capacity = _read_text(supply / "capacity")
+            if raw_capacity:
+                try:
+                    metrics.append(_metric("battery.capacity_percent", float(raw_capacity), "percent", observed_at))
+                    battery_recorded = True
+                except ValueError:
+                    pass
+        if supply_type in {"mains", "usb", "usb_c", "usb-c"} and not ac_recorded:
+            raw_online = _read_text(supply / "online")
+            if raw_online is None:
+                continue
+            try:
+                metrics.append(_metric("battery.ac_online", 1.0 if float(raw_online) > 0 else 0.0, "boolean", observed_at))
+                ac_recorded = True
+            except ValueError:
+                continue
+    return metrics
+
+
 def collect_observation(
     *,
     root: Path | str = Path("/"),
@@ -353,12 +437,14 @@ def collect_observation(
         for metric in [
             _load_metric(root_path, observed_iso),
             _memory_metric(root_path, observed_iso),
+            _disk_metric(root_path, observed_iso),
             _wifi_metric(root_path, observed_iso),
         ]
         if metric is not None
     ]
     metrics.extend(_thermal_metrics(root_path, observed_iso))
     metrics.extend(_nvme_metrics(root_path, observed_iso))
+    metrics.extend(_power_supply_metrics(root_path, observed_iso))
     events = _event_logs(root_path, observed_iso, command_runner)
 
     if not metrics and not events:

@@ -2,6 +2,39 @@
 
 All notable changes to Quipu are documented in this file.
 
+## v0.5.0 - 2026-07-08
+
+Disk and battery telemetry expansion release.
+
+### Added
+
+- Read-only collector metric for `disk.root_used_percent`.
+- Read-only collector metrics for `battery.capacity_percent` and
+  `battery.ac_online` from `/sys/class/power_supply`.
+- Best-effort kernel storage warning parsing for I/O timeout, I/O error,
+  controller reset, SMART, media, and filesystem error signatures.
+- Best-effort kernel power warning parsing for battery, AC offline, AC adapter,
+  low-battery, discharge-rate, and power-management signatures.
+- Rule-based analysis findings for `Storage health event reported` and
+  `Battery power issue reported`.
+- Telemetry Matrix tiles for `Disk Health` and `Battery Power`.
+- v0.5.0 disk/battery telemetry design and implementation plan documents.
+
+### Changed
+
+- Expanded sample team fixture data with disk usage, battery capacity, AC
+  online state, and storage/power warning events.
+- Updated package and app versions to `0.5.0`.
+
+### Verified
+
+- Server test suite: 25 tests passed.
+- Collector test suite: 1 test passed.
+- Web test suite: 1 test passed.
+- Web production build succeeded.
+- Browser screenshot confirmed `Version v0.5.0`, `Disk Health`,
+  `Battery Power`, and `8/8 signals` in the running app.
+
 ## v0.4.0 - 2026-07-08
 
 Thermal and network event collection release.

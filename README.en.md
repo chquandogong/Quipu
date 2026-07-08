@@ -2,7 +2,7 @@
 
 <p align="center">
   <img alt="CI" src="https://github.com/chquandogong/Quipu/actions/workflows/ci.yml/badge.svg">
-  <img alt="Version" src="https://img.shields.io/badge/version-v0.4.0-2f6f7e">
+  <img alt="Version" src="https://img.shields.io/badge/version-v0.5.0-2f6f7e">
   <img alt="Status" src="https://img.shields.io/badge/status-local--first%20prototype-5b6b73">
   <img alt="License" src="https://img.shields.io/badge/license-not%20selected-lightgrey">
 </p>
@@ -62,9 +62,10 @@ and next check. For example, Load is explicitly described as the Linux
 
 CPU, Load, and NVMe are useful for thermal triage, but they are not enough for
 team-level root-cause work. Quipu now promotes Wi-Fi signal into the core
-signals and uses a `Telemetry Matrix` for Memory, Network Events, Reconnect
-History, Thermal Throttling, Kernel Warnings, and Agent Freshness. Battery,
-fan, and disk health can be added through the same matrix structure.
+signals and uses a `Telemetry Matrix` for Memory, Disk Health, Battery Power,
+Network Events, Reconnect History, Thermal Throttling, Kernel Warnings, and
+Agent Freshness. Fan and deeper SMART/NVMe health can expand through the same
+matrix structure later.
 
 Creator and version information stays as compact header metadata. The large
 creator/reference image drawer was removed because it did not help the
@@ -124,6 +125,9 @@ Implemented:
 - Read-only one-shot Linux collector
 - Best-effort collector summaries for kernel thermal throttling and
   NetworkManager reconnect events
+- Collector metrics for root filesystem usage, battery capacity, and AC online
+  state
+- Best-effort collector summaries for kernel storage and power warning events
 - Intervention records for investigation items
 - Before/after verification results for interventions
 - Vite React investigation-first UI
@@ -131,8 +135,8 @@ Implemented:
   expansion panels
 - Per-metric Korean explanation, English technical term, time window, reading
   guidance, and next-check tooltip for CPU, Load, NVMe, and Wi-Fi
-- Telemetry Matrix for Memory, Network Events, Reconnect History, Thermal
-  Throttling, Kernel Warnings, and Agent Freshness
+- Telemetry Matrix for Memory, Disk Health, Battery Power, Network Events,
+  Reconnect History, Thermal Throttling, Kernel Warnings, and Agent Freshness
 - Compact Made by, About, and Version metadata chips
 - GitHub Actions CI for server, collector, and web checks
 
@@ -169,6 +173,19 @@ http://127.0.0.1:5173
 
 The collector is a one-shot Linux signal reader. It does not require root, does
 not execute repair commands, and does not upload full raw logs.
+
+Current key signals:
+
+- `cpu.load_1m`: Linux 1-minute load average
+- `memory.used_percent`: memory usage derived from `/proc/meminfo`
+- `disk.root_used_percent`: root filesystem usage
+- `cpu.package_temp_c`, `thermal.*.temp_c`: sysfs thermal zone temperatures
+- `nvme.temp_c`: NVMe temperature exposed through hwmon
+- `wifi.signal_dbm`: Wi-Fi signal from `/proc/net/wireless`
+- `battery.capacity_percent`, `battery.ac_online`: battery and AC state from
+  `/sys/class/power_supply`
+- Kernel thermal, storage, and power warning summaries, plus NetworkManager
+  reconnect summaries
 
 Print a local observation batch:
 

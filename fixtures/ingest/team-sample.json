@@ -1,6 +1,6 @@
 [
   {
-    "batch_id": "dev-p1-20260707T030000Z-v040",
+    "batch_id": "dev-p1-20260707T030000Z-v050",
     "observed_at": "2026-07-07T03:00:00+00:00",
     "device": {
       "device_id": "thinkpad-p1",
@@ -14,7 +14,10 @@
       { "name": "cpu.load_1m", "value": 0.91, "unit": "load", "observed_at": "2026-07-07T03:00:00+00:00" },
       { "name": "nvme.temp_c", "value": 42.9, "unit": "celsius", "observed_at": "2026-07-07T03:00:00+00:00" },
       { "name": "memory.used_percent", "value": 43.6, "unit": "percent", "observed_at": "2026-07-07T03:00:00+00:00" },
-      { "name": "wifi.signal_dbm", "value": -43, "unit": "dbm", "observed_at": "2026-07-07T03:00:00+00:00" }
+      { "name": "wifi.signal_dbm", "value": -43, "unit": "dbm", "observed_at": "2026-07-07T03:00:00+00:00" },
+      { "name": "disk.root_used_percent", "value": 61.7, "unit": "percent", "observed_at": "2026-07-07T03:00:00+00:00" },
+      { "name": "battery.capacity_percent", "value": 82.0, "unit": "percent", "observed_at": "2026-07-07T03:00:00+00:00" },
+      { "name": "battery.ac_online", "value": 1.0, "unit": "boolean", "observed_at": "2026-07-07T03:00:00+00:00" }
     ],
     "events": [
       {
@@ -29,7 +32,7 @@
     ]
   },
   {
-    "batch_id": "xps-13-20260707T030000Z-v040",
+    "batch_id": "xps-13-20260707T030000Z-v050",
     "observed_at": "2026-07-07T03:00:00+00:00",
     "device": {
       "device_id": "xps-13",
@@ -43,7 +46,10 @@
       { "name": "cpu.load_1m", "value": 3.7, "unit": "load", "observed_at": "2026-07-07T03:00:00+00:00" },
       { "name": "nvme.temp_c", "value": 42.9, "unit": "celsius", "observed_at": "2026-07-07T03:00:00+00:00" },
       { "name": "memory.used_percent", "value": 62.0, "unit": "percent", "observed_at": "2026-07-07T03:00:00+00:00" },
-      { "name": "wifi.signal_dbm", "value": -67, "unit": "dbm", "observed_at": "2026-07-07T03:00:00+00:00" }
+      { "name": "wifi.signal_dbm", "value": -67, "unit": "dbm", "observed_at": "2026-07-07T03:00:00+00:00" },
+      { "name": "disk.root_used_percent", "value": 68.4, "unit": "percent", "observed_at": "2026-07-07T03:00:00+00:00" },
+      { "name": "battery.capacity_percent", "value": 37.0, "unit": "percent", "observed_at": "2026-07-07T03:00:00+00:00" },
+      { "name": "battery.ac_online", "value": 0.0, "unit": "boolean", "observed_at": "2026-07-07T03:00:00+00:00" }
     ],
     "events": [
       {
@@ -53,7 +59,7 @@
         "message_summary": "CPU0: Core temperature above threshold, cpu clock throttled during compile workload.",
         "raw_ref": "journalctl -k --since -60min",
         "observed_at": "2026-07-07T02:58:40+00:00",
-        "fingerprint": "xps-thermal-throttling-v040"
+        "fingerprint": "xps-thermal-throttling-v050"
       },
       {
         "category": "network",
@@ -62,12 +68,30 @@
         "message_summary": "wlp0s20f3: state change: activated -> disconnected (reason 'supplicant-disconnect')",
         "raw_ref": "journalctl -u NetworkManager --since -60min",
         "observed_at": "2026-07-07T02:57:20+00:00",
-        "fingerprint": "xps-wifi-reconnect-v040"
+        "fingerprint": "xps-wifi-reconnect-v050"
+      },
+      {
+        "category": "storage",
+        "severity": "warning",
+        "source": "kernel",
+        "message_summary": "nvme0n1: I/O timeout, reset controller",
+        "raw_ref": "journalctl -k --since -60min",
+        "observed_at": "2026-07-07T02:55:10+00:00",
+        "fingerprint": "xps-storage-timeout-v050"
+      },
+      {
+        "category": "power",
+        "severity": "warning",
+        "source": "kernel",
+        "message_summary": "ACPI: battery discharge rate high while AC offline",
+        "raw_ref": "journalctl -k --since -60min",
+        "observed_at": "2026-07-07T02:54:00+00:00",
+        "fingerprint": "xps-power-discharge-v050"
       }
     ]
   },
   {
-    "batch_id": "framework-20260707T030000Z-v040",
+    "batch_id": "framework-20260707T030000Z-v050",
     "observed_at": "2026-07-07T03:00:00+00:00",
     "device": {
       "device_id": "framework-13",
@@ -82,7 +106,9 @@
       { "name": "nvme.temp_c", "value": 39.8, "unit": "celsius", "observed_at": "2026-07-07T03:00:00+00:00" },
       { "name": "memory.used_percent", "value": 51.4, "unit": "percent", "observed_at": "2026-07-07T03:00:00+00:00" },
       { "name": "wifi.signal_dbm", "value": -55, "unit": "dbm", "observed_at": "2026-07-07T03:00:00+00:00" },
-      { "name": "disk.root_used_percent", "value": 78.2, "unit": "percent", "observed_at": "2026-07-07T03:00:00+00:00" }
+      { "name": "disk.root_used_percent", "value": 78.2, "unit": "percent", "observed_at": "2026-07-07T03:00:00+00:00" },
+      { "name": "battery.capacity_percent", "value": 91.0, "unit": "percent", "observed_at": "2026-07-07T03:00:00+00:00" },
+      { "name": "battery.ac_online", "value": 1.0, "unit": "boolean", "observed_at": "2026-07-07T03:00:00+00:00" }
     ],
     "events": [
       {

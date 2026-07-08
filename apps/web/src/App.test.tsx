@@ -28,6 +28,9 @@ const fleetResponse = {
         'nvme.temp_c': { value: 42.9, unit: 'celsius', observed_at: '2026-07-07T03:00:00+00:00' },
         'memory.used_percent': { value: 62.0, unit: 'percent', observed_at: '2026-07-07T03:00:00+00:00' },
         'wifi.signal_dbm': { value: -43.0, unit: 'dbm', observed_at: '2026-07-07T03:00:00+00:00' },
+        'disk.root_used_percent': { value: 78.2, unit: 'percent', observed_at: '2026-07-07T03:00:00+00:00' },
+        'battery.capacity_percent': { value: 37.0, unit: 'percent', observed_at: '2026-07-07T03:00:00+00:00' },
+        'battery.ac_online': { value: 0.0, unit: 'boolean', observed_at: '2026-07-07T03:00:00+00:00' },
       },
       recent_events: [
         {
@@ -91,6 +94,22 @@ const detailResponse = {
       source: 'NetworkManager',
       summary: 'Wi-Fi reconnect observed within the incident window.',
       raw_ref: 'journalctl -u NetworkManager',
+    },
+    {
+      observed_at: '2026-07-07T02:55:10+00:00',
+      category: 'storage',
+      severity: 'warning',
+      source: 'kernel',
+      summary: 'nvme0n1: I/O timeout, reset controller',
+      raw_ref: 'journalctl -k',
+    },
+    {
+      observed_at: '2026-07-07T02:54:00+00:00',
+      category: 'power',
+      severity: 'warning',
+      source: 'kernel',
+      summary: 'ACPI: battery discharge rate high while AC offline',
+      raw_ref: 'journalctl -k',
     },
   ],
   hypotheses: [
@@ -199,7 +218,7 @@ describe('App', () => {
     expect(screen.queryByText('Creator and visual references')).not.toBeInTheDocument();
     expect(screen.queryByText('Dogu Robotics · Dogu X · Physical AI')).not.toBeInTheDocument();
     expect(screen.getByText('About: workstation health investigation')).toBeInTheDocument();
-    expect(screen.getByText('Version v0.4.0')).toBeInTheDocument();
+    expect(screen.getByText('Version v0.5.0')).toBeInTheDocument();
     await waitFor(() => expect(screen.getByRole('button', { name: 'Explain CPU package temperature metric' })).toBeInTheDocument());
     expect(screen.getByText('정의: 선택한 장비의 CPU 패키지 센서 온도입니다. (CPU package temperature)')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Explain 1 minute load average metric' })).toBeInTheDocument();
@@ -217,6 +236,10 @@ describe('App', () => {
     expect(screen.getAllByText('Kernel Warnings').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Thermal Throttling').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Reconnect History').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Disk Health').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('78.2%').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Battery Power').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('37.0%').length).toBeGreaterThan(0);
     expect(screen.getAllByText('build-xps').length).toBeGreaterThan(0);
     expect(screen.getByText('Top hypotheses')).toBeInTheDocument();
     expect(screen.getByText('Action plan')).toBeInTheDocument();

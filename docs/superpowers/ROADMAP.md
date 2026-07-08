@@ -24,7 +24,7 @@ Status: implemented.
 
 ## Phase 2: Investigation-First UI
 
-Status: first slice implemented.
+Status: operations-resilience slice implemented.
 
 Goal: make the product feel like a guided diagnostic workflow.
 
@@ -50,14 +50,18 @@ Implemented:
 - Hover/focus expansion for detailed panels.
 - Removed creator/reference image drawer from the working UI.
 - Visible Made by, About, and Version metadata chips.
+- Operations Rail for agent freshness, offline buffering, enrollment guard,
+  and pattern radar.
+- Team Handoff notes attached to each investigation item.
+- Pattern Explorer grouped by category, model, and kernel.
 
 Remaining:
 
-- Assignee, owner, and team handoff states.
+- Assignee, owner, and role-aware workflow states.
 
 ## Phase 3: Native Read-Only Agent
 
-Status: systemd operations kit implemented.
+Status: systemd operations and offline-buffer kit implemented.
 
 Goal: collect real Linux workstation signals safely.
 
@@ -82,14 +86,15 @@ Implemented:
 - systemd oneshot service and five-minute timer files.
 - Environment file example and wrapper for safe collector invocation.
 - Dry-run install and uninstall scripts.
+- Offline local ring buffer for temporary server or network outage.
+- Flush-before-current-send path with bounded spool depth.
+- Best-effort graphics/session, memory, update, and reboot markers.
 
 Remaining:
 
 - CPU/core/package thermals with richer sensor naming.
 - Richer multi-fan naming and fan-context analysis.
 - Deeper SMART/NVMe health where available without external dependencies.
-- Kernel, graphics/session, update, reboot markers.
-- Local ring buffer for offline periods.
 
 ## Phase 4: Intervention Verification
 
@@ -116,10 +121,19 @@ Remaining:
 
 ## Phase 5: Team Pattern Explorer
 
+Status: first slice implemented.
+
 Goal: identify repeated signatures across a fleet.
 
-- Same model.
-- Same kernel.
+Implemented:
+
+- API grouping repeated events by category.
+- API grouping repeated events by model.
+- API grouping repeated events by kernel.
+- React Pattern Explorer compact panel.
+
+Remaining:
+
 - Same GPU driver.
 - Same SSD or Wi-Fi device.
 - Same workload window.
@@ -127,10 +141,20 @@ Goal: identify repeated signatures across a fleet.
 
 ## Phase 6: Hardening
 
+Status: first hardening slice implemented.
+
 Goal: make Quipu trustworthy for real team use.
 
-- Device enrollment.
+Implemented:
+
+- Device enrollment API.
+- Device-bound collector tokens.
 - Token rotation.
+- Token revocation.
+- Schema version endpoint.
+
+Remaining:
+
 - Redaction controls.
 - Retention policy.
 - Role-aware UI.

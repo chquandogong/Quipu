@@ -27,6 +27,10 @@ POWER_EVENT_PATTERNS = (
     "discharge rate",
     "power management",
 )
+GRAPHICS_EVENT_PATTERNS = ("gpu hang", "drm", "i915", "amdgpu", "nouveau", "nvidia", "gnome-shell", "kwin")
+UPDATE_EVENT_PATTERNS = ("upgrade:", "install:", "remove:", "package update", "updated", "apt", "dnf")
+REBOOT_EVENT_PATTERNS = ("reboot", "shutdown", "unclean shutdown", "system boot")
+MEMORY_EVENT_PATTERNS = ("out of memory", "oom", "killed process")
 
 
 def _parse_time(value: str) -> datetime:
@@ -114,6 +118,34 @@ def _specific_event_finding(event: dict[str, Any]) -> dict[str, str] | None:
             "Battery power issue reported",
             summary,
             confidence,
+        )
+    if event["category"] == "graphics" and any(pattern in lower for pattern in GRAPHICS_EVENT_PATTERNS):
+        return _finding(
+            "graphics",
+            "Graphics stack event reported",
+            summary,
+            "medium",
+        )
+    if event["category"] == "memory" and any(pattern in lower for pattern in MEMORY_EVENT_PATTERNS):
+        return _finding(
+            "memory",
+            "Memory pressure event reported",
+            summary,
+            "high",
+        )
+    if event["category"] == "update" and any(pattern in lower for pattern in UPDATE_EVENT_PATTERNS):
+        return _finding(
+            "update",
+            "Recent package update reported",
+            summary,
+            "medium",
+        )
+    if event["category"] == "reboot" and any(pattern in lower for pattern in REBOOT_EVENT_PATTERNS):
+        return _finding(
+            "reboot",
+            "Reboot marker reported",
+            summary,
+            "medium",
         )
     return None
 
@@ -686,4 +718,75 @@ def build_investigation_detail(
             "latest_metrics": device_view["latest_metrics"],
             "recent_events": device_view["recent_events"],
         },
+    }
+
+
+def _empty_group(name: str, value: str, event: dict[str, Any]) -> dict[str, Any]:
+    return {
+        name: value,
+        "count": 0,
+        "devices": set(),
+        "severities": {"info": 0, "warning": 0, "critical": 0},
+        "latest_observed_at": event["observed_at"],
+        "examples": [],
+    }
+
+
+def _add_pattern_event(group: dict[str, Any], event: dict[str, Any], device: dict[str, Any]) -> None:
+    group["count"] += 1
+    group["devices"].add(device["device_id"])
+    group["severities"][event["severity"]] += 1
+    if event["observed_at"] > group["latest_observed_at"]:
+        group["latest_observed_at"] = event["observed_at"]
+    if len(group["examples"]) < 3:
+        group["examples"].append(
+            {
+                "device_id": device["device_id"],
+                "hostname": device["hostname"],
+                "summary": event["message_summary"],
+                "observed_at": event["observed_at"],
+            }
+        )
+
+
+def _finalize_groups(groups: dict[str, dict[str, Any]], key_name: str) -> list[dict[str, Any]]:
+    finalized = []
+    for group in groups.values():
+        finalized.append(
+            {
+                key_name: group[key_name],
+                "count": group["count"],
+                "device_count": len(group["devices"]),
+                "severities": group["severities"],
+                "latest_observed_at": group["latest_observed_at"],
+                "examples": group["examples"],
+            }
+        )
+    finalized.sort(key=lambda item: (-item["count"], item[key_name] or "Unknown"))
+    return finalized
+
+
+def build_pattern_overview(snapshots: list[dict[str, Any]]) -> dict[str, Any]:
+    category_groups: dict[str, dict[str, Any]] = {}
+    model_groups: dict[str, dict[str, Any]] = {}
+    kernel_groups: dict[str, dict[str, Any]] = {}
+
+    for snapshot in snapshots:
+        device = snapshot["device"]
+        model = device.get("model") or "Unknown model"
+        kernel = device.get("kernel_version") or "Unknown kernel"
+        for event in snapshot["recent_events"]:
+            category = event["category"]
+            groups = (
+                category_groups.setdefault(category, _empty_group("category", category, event)),
+                model_groups.setdefault(model, _empty_group("model", model, event)),
+                kernel_groups.setdefault(kernel, _empty_group("kernel_version", kernel, event)),
+            )
+            for group in groups:
+                _add_pattern_event(group, event, device)
+
+    return {
+        "category_groups": _finalize_groups(category_groups, "category"),
+        "model_groups": _finalize_groups(model_groups, "model"),
+        "kernel_groups": _finalize_groups(kernel_groups, "kernel_version"),
     }

@@ -402,6 +402,51 @@ h2 {
   align-items: stretch;
 }
 
+.operations-rail {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.ops-card {
+  display: grid;
+  gap: 8px;
+  min-height: 132px;
+  padding: 13px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 8px;
+  background: rgba(10, 16, 30, 0.82);
+}
+
+.ops-card span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: #9fb0c8;
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.ops-card svg {
+  width: 15px;
+  height: 15px;
+}
+
+.ops-card strong {
+  color: #ffffff;
+  font-size: 22px;
+  line-height: 1.05;
+}
+
+.ops-card p {
+  margin-bottom: 0;
+  color: #a8b6cc;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
 .health-strip,
 .stage-strip {
   display: grid;
@@ -502,6 +547,15 @@ h2 {
   max-height: 880px;
 }
 
+.handoff-panel:hover,
+.handoff-panel:focus,
+.handoff-panel:focus-within,
+.pattern-panel:hover,
+.pattern-panel:focus,
+.pattern-panel:focus-within {
+  max-height: 820px;
+}
+
 .collapsible-panel:hover::after,
 .collapsible-panel:focus::after,
 .collapsible-panel:focus-within::after {
@@ -548,7 +602,8 @@ h2 {
 .timeline,
 .signal-list,
 .intervention-form,
-.intervention-list {
+.intervention-list,
+.handoff-list {
   display: grid;
   gap: 10px;
 }
@@ -872,7 +927,9 @@ h2 {
 .timeline-row,
 .hypothesis,
 .action,
-.intervention {
+.intervention,
+.handoff-note,
+.pattern-row {
   padding: 12px;
   border: 1px solid rgba(148, 163, 184, 0.18);
   border-radius: 8px;
@@ -881,7 +938,10 @@ h2 {
 
 .timeline-row time,
 .hypothesis span,
-.intervention span {
+.intervention span,
+.handoff-note time,
+.pattern-row span,
+.pattern-row em {
   display: block;
   margin-bottom: 6px;
   color: #91a4bd;
@@ -892,11 +952,39 @@ h2 {
 .hypothesis p,
 .action p,
 .intervention p,
+.handoff-note p,
 .next-step {
   margin-bottom: 0;
   color: #b6c4d7;
   font-size: 13px;
   line-height: 1.45;
+}
+
+.handoff-note strong,
+.pattern-row strong {
+  color: #ffffff;
+}
+
+.pattern-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.pattern-column {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+}
+
+.pattern-column h3 {
+  margin: 0;
+  color: #dbeafe;
+  font-size: 13px;
+}
+
+.pattern-row em {
+  margin-bottom: 0;
+  color: #fbbf24;
+  font-style: normal;
 }
 
 code {
@@ -1045,7 +1133,9 @@ code {
   .detail-grid,
   .metric-strip,
   .signal-console,
-  .telemetry-grid {
+  .telemetry-grid,
+  .operations-rail,
+  .pattern-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -1085,6 +1175,8 @@ code {
   .metric-strip,
   .signal-console,
   .telemetry-grid,
+  .operations-rail,
+  .pattern-grid,
   .signal-list,
   .comparison-row {
     grid-template-columns: 1fr;

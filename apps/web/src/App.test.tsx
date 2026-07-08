@@ -172,6 +172,51 @@ const detailResponse = {
   fleet_context: fleetResponse.devices[0],
 };
 
+const patternResponse = {
+  category_groups: [
+    {
+      category: 'thermal',
+      count: 2,
+      device_count: 1,
+      severities: { info: 0, warning: 2, critical: 0 },
+      latest_observed_at: '2026-07-07T03:00:00+00:00',
+      examples: [],
+    },
+  ],
+  model_groups: [
+    {
+      model: 'Dell XPS 13',
+      count: 2,
+      device_count: 1,
+      severities: { info: 0, warning: 2, critical: 0 },
+      latest_observed_at: '2026-07-07T03:00:00+00:00',
+      examples: [],
+    },
+  ],
+  kernel_groups: [
+    {
+      kernel_version: '6.14.4',
+      count: 2,
+      device_count: 1,
+      severities: { info: 0, warning: 2, critical: 0 },
+      latest_observed_at: '2026-07-07T03:00:00+00:00',
+      examples: [],
+    },
+  ],
+};
+
+const notesResponse = {
+  notes: [
+    {
+      id: 1,
+      investigation_id: 'xps-13:thermal',
+      author: 'ops',
+      body: 'Raised the rear edge and will compare the next two batches.',
+      created_at: '2026-07-07T03:07:00+00:00',
+    },
+  ],
+};
+
 describe('App', () => {
   it('renders the investigation workflow as the primary surface', async () => {
     const createdIntervention = {
@@ -192,6 +237,24 @@ describe('App', () => {
       }
       if (url.endsWith('/api/investigations/queue')) {
         return { ok: true, json: async () => queueResponse };
+      }
+      if (url.endsWith('/api/patterns/overview')) {
+        return { ok: true, json: async () => patternResponse };
+      }
+      if (url.endsWith('/api/investigations/xps-13%3Athermal/notes') && init?.method === 'POST') {
+        return {
+          ok: true,
+          json: async () => ({
+            id: 2,
+            investigation_id: 'xps-13:thermal',
+            author: 'ops',
+            body: 'Thermal result handed off to the next operator.',
+            created_at: '2026-07-07T03:09:00+00:00',
+          }),
+        };
+      }
+      if (url.endsWith('/api/investigations/xps-13%3Athermal/notes')) {
+        return { ok: true, json: async () => notesResponse };
       }
       if (url.endsWith('/api/investigations/xps-13%3Athermal/interventions') && init?.method === 'POST') {
         return { ok: true, json: async () => createdIntervention };
@@ -223,7 +286,11 @@ describe('App', () => {
     expect(screen.queryByText('Creator and visual references')).not.toBeInTheDocument();
     expect(screen.queryByText('Dogu Robotics · Dogu X · Physical AI')).not.toBeInTheDocument();
     expect(screen.getByText('About: workstation health investigation')).toBeInTheDocument();
-    expect(screen.getByText('Version v0.8.0')).toBeInTheDocument();
+    expect(screen.getByText('Version v0.9.0')).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Operations Rail' })).toBeInTheDocument();
+    expect(screen.getByText('Offline Buffer')).toBeInTheDocument();
+    expect(screen.getByText('Enrollment Guard')).toBeInTheDocument();
+    expect(screen.getByText('Pattern Radar')).toBeInTheDocument();
     await waitFor(() => expect(screen.getByRole('button', { name: 'Explain CPU package temperature metric' })).toBeInTheDocument());
     expect(screen.getByText('정의: 선택한 장비의 CPU 패키지 센서 온도입니다. (CPU package temperature)')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Explain 1 minute load average metric' })).toBeInTheDocument();
@@ -253,6 +320,10 @@ describe('App', () => {
     expect(screen.getByText('Top hypotheses')).toBeInTheDocument();
     expect(screen.getByText('Action plan')).toBeInTheDocument();
     expect(screen.getByText('Recorded interventions')).toBeInTheDocument();
+    expect(screen.getByText('Team Handoff')).toBeInTheDocument();
+    expect(screen.getByText('Pattern Explorer')).toBeInTheDocument();
+    expect(screen.getAllByText('Raised the rear edge and will compare the next two batches.').length).toBeGreaterThan(0);
+    expect(screen.getByText('By category')).toBeInTheDocument();
     expect(screen.getAllByText('Verification').length).toBeGreaterThan(0);
     expect(screen.getByRole('button', { name: 'Review evidence' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Record action' })).toBeInTheDocument();
@@ -271,5 +342,15 @@ describe('App', () => {
     const postCall = fetchMock.mock.calls.find(([input, init]) => String(input).includes('/interventions') && init?.method === 'POST');
     expect(postCall).toBeDefined();
     expect(JSON.parse(String(postCall?.[1]?.body)).label).toBe('Raised rear edge');
+
+    fireEvent.change(screen.getByLabelText('Handoff note'), {
+      target: { value: 'Thermal result handed off to the next operator.' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Record handoff' }));
+
+    await waitFor(() => expect(screen.getByText('Thermal result handed off to the next operator.')).toBeInTheDocument());
+    const notePostCall = fetchMock.mock.calls.find(([input, init]) => String(input).includes('/notes') && init?.method === 'POST');
+    expect(notePostCall).toBeDefined();
+    expect(JSON.parse(String(notePostCall?.[1]?.body)).body).toBe('Thermal result handed off to the next operator.');
   });
 });

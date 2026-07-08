@@ -19,6 +19,9 @@ args=(
   "--server-url" "${QUIPU_SERVER_URL}"
   "--token" "${QUIPU_AGENT_TOKEN}"
   "--once"
+  "--offline-buffer"
+  "--spool-dir" "${QUIPU_SPOOL_DIR:-/var/lib/quipu/collector-spool}"
+  "--spool-max-batches" "${QUIPU_SPOOL_MAX_BATCHES:-288}"
 )
 
 if [[ -n "${QUIPU_COLLECTOR_DEVICE_ID:-}" ]]; then

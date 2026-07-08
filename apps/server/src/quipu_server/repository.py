@@ -1,10 +1,11 @@
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 import hashlib
+import secrets
 import sqlite3
 from typing import Any
 
-from quipu_server.contracts import EventIn, InterventionIn, ObservationBatchIn
+from quipu_server.contracts import EnrollmentCreate, EventIn, InterventionIn, InvestigationNoteIn, ObservationBatchIn
 
 
 @dataclass(frozen=True)
@@ -40,6 +41,166 @@ def _event_fingerprint(event: EventIn) -> str:
         ]
     )
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:32]
+
+
+def _new_agent_token() -> str:
+    return f"quipu_agent_{secrets.token_urlsafe(32)}"
+
+
+def _token_hash(token: str) -> str:
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+def _agent_token_row_to_dict(row: sqlite3.Row, *, token: str | None = None) -> dict[str, Any]:
+    payload: dict[str, Any] = {
+        "id": row["id"],
+        "device_id": row["device_id"],
+        "label": row["label"],
+        "active": bool(row["active"]),
+        "created_at": row["created_at"],
+        "rotated_at": row["rotated_at"],
+        "revoked_at": row["revoked_at"],
+        "last_used_at": row["last_used_at"],
+    }
+    if token is not None:
+        payload["token"] = token
+    return payload
+
+
+def create_agent_token(
+    conn: sqlite3.Connection,
+    enrollment: EnrollmentCreate,
+    *,
+    now: datetime | None = None,
+) -> dict[str, Any]:
+    token = _new_agent_token()
+    created_at = _iso(now or datetime.now(timezone.utc))
+    with conn:
+        cursor = conn.execute(
+            """
+            INSERT INTO agent_tokens (device_id, label, token_hash, active, created_at)
+            VALUES (?, ?, ?, 1, ?)
+            """,
+            (enrollment.device_id, enrollment.label, _token_hash(token), created_at),
+        )
+        row = conn.execute(
+            """
+            SELECT id, device_id, label, active, created_at, rotated_at, revoked_at, last_used_at
+            FROM agent_tokens
+            WHERE id = ?
+            """,
+            (cursor.lastrowid,),
+        ).fetchone()
+    return _agent_token_row_to_dict(row, token=token)
+
+
+def list_agent_tokens(conn: sqlite3.Connection) -> list[dict[str, Any]]:
+    rows = conn.execute(
+        """
+        SELECT id, device_id, label, active, created_at, rotated_at, revoked_at, last_used_at
+        FROM agent_tokens
+        ORDER BY active DESC, device_id ASC, id ASC
+        """
+    ).fetchall()
+    return [_agent_token_row_to_dict(row) for row in rows]
+
+
+def rotate_agent_token(
+    conn: sqlite3.Connection,
+    token_id: int,
+    *,
+    now: datetime | None = None,
+) -> dict[str, Any] | None:
+    token = _new_agent_token()
+    rotated_at = _iso(now or datetime.now(timezone.utc))
+    with conn:
+        cursor = conn.execute(
+            """
+            UPDATE agent_tokens
+            SET token_hash = ?, active = 1, rotated_at = ?, revoked_at = NULL, last_used_at = NULL
+            WHERE id = ?
+            """,
+            (_token_hash(token), rotated_at, token_id),
+        )
+        if cursor.rowcount == 0:
+            return None
+        row = conn.execute(
+            """
+            SELECT id, device_id, label, active, created_at, rotated_at, revoked_at, last_used_at
+            FROM agent_tokens
+            WHERE id = ?
+            """,
+            (token_id,),
+        ).fetchone()
+    return _agent_token_row_to_dict(row, token=token)
+
+
+def revoke_agent_token(
+    conn: sqlite3.Connection,
+    token_id: int,
+    *,
+    now: datetime | None = None,
+) -> dict[str, Any] | None:
+    revoked_at = _iso(now or datetime.now(timezone.utc))
+    with conn:
+        cursor = conn.execute(
+            """
+            UPDATE agent_tokens
+            SET active = 0, revoked_at = ?
+            WHERE id = ?
+            """,
+            (revoked_at, token_id),
+        )
+        if cursor.rowcount == 0:
+            return None
+        row = conn.execute(
+            """
+            SELECT id, device_id, label, active, created_at, rotated_at, revoked_at, last_used_at
+            FROM agent_tokens
+            WHERE id = ?
+            """,
+            (token_id,),
+        ).fetchone()
+    return _agent_token_row_to_dict(row)
+
+
+def validate_agent_token(conn: sqlite3.Connection, *, token: str, device_id: str) -> bool:
+    row = conn.execute(
+        """
+        SELECT id
+        FROM agent_tokens
+        WHERE token_hash = ? AND device_id = ? AND active = 1
+        """,
+        (_token_hash(token), device_id),
+    ).fetchone()
+    if row is None:
+        return False
+    with conn:
+        conn.execute(
+            """
+            UPDATE agent_tokens
+            SET last_used_at = ?
+            WHERE id = ?
+            """,
+            (_iso(datetime.now(timezone.utc)), row["id"]),
+        )
+    return True
+
+
+def get_schema_info(conn: sqlite3.Connection) -> dict[str, Any]:
+    version_row = conn.execute("SELECT value FROM schema_meta WHERE key = 'schema_version'").fetchone()
+    table_rows = conn.execute(
+        """
+        SELECT name
+        FROM sqlite_master
+        WHERE type = 'table' AND name NOT LIKE 'sqlite_%'
+        ORDER BY name ASC
+        """
+    ).fetchall()
+    return {
+        "schema_version": version_row["value"] if version_row else "unknown",
+        "tables": [row["name"] for row in table_rows],
+    }
 
 
 def ingest_batch(
@@ -317,3 +478,51 @@ def list_observations_for_intervention(
             "after": event_rows(recorded_at, after_end, include_start=True, include_end=True),
         },
     }
+
+
+def _investigation_note_row_to_dict(row: sqlite3.Row) -> dict[str, Any]:
+    return {
+        "id": row["id"],
+        "investigation_id": row["investigation_id"],
+        "author": row["author"],
+        "body": row["body"],
+        "created_at": row["created_at"],
+    }
+
+
+def record_investigation_note(
+    conn: sqlite3.Connection,
+    *,
+    investigation_id: str,
+    note: InvestigationNoteIn,
+) -> dict[str, Any]:
+    with conn:
+        cursor = conn.execute(
+            """
+            INSERT INTO investigation_notes (investigation_id, author, body, created_at)
+            VALUES (?, ?, ?, ?)
+            """,
+            (investigation_id, note.author, note.body, _iso(note.created_at)),
+        )
+        row = conn.execute(
+            """
+            SELECT id, investigation_id, author, body, created_at
+            FROM investigation_notes
+            WHERE id = ?
+            """,
+            (cursor.lastrowid,),
+        ).fetchone()
+    return _investigation_note_row_to_dict(row)
+
+
+def list_investigation_notes(conn: sqlite3.Connection, investigation_id: str) -> list[dict[str, Any]]:
+    rows = conn.execute(
+        """
+        SELECT id, investigation_id, author, body, created_at
+        FROM investigation_notes
+        WHERE investigation_id = ?
+        ORDER BY created_at ASC, id ASC
+        """,
+        (investigation_id,),
+    ).fetchall()
+    return [_investigation_note_row_to_dict(row) for row in rows]

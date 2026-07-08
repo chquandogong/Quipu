@@ -42,18 +42,18 @@ systemd file templates.
 
 ## Checklist
 
-- [ ] Add failing collector spool and CLI offline-buffer tests.
-- [ ] Implement collector spool, CLI flags, wrapper/env integration, and
+- [x] Add failing collector spool and CLI offline-buffer tests.
+- [x] Implement collector spool, CLI flags, wrapper/env integration, and
       expanded marker parsing.
-- [ ] Run collector tests and keep them green.
-- [ ] Add failing server enrollment, workflow note, schema version, and pattern
+- [x] Run collector tests and keep them green.
+- [x] Add failing server enrollment, workflow note, schema version, and pattern
       overview tests.
-- [ ] Implement server schema, repository, API, and analysis changes.
-- [ ] Run server tests and keep them green.
-- [ ] Add web types/API/UI and focused render assertions for Operations Rail,
+- [x] Implement server schema, repository, API, and analysis changes.
+- [x] Run server tests and keep them green.
+- [x] Add web types/API/UI and focused render assertions for Operations Rail,
       Team Handoff, and Pattern Explorer.
-- [ ] Update versions to `0.9.0`.
-- [ ] Update README translations, changelog, dashboard, roadmap, and ship
+- [x] Update versions to `0.9.0`.
+- [x] Update README translations, changelog, dashboard, roadmap, and ship
       checklist.
 - [ ] Run full verification, commit, push, tag `v0.9.0`, and publish release.
 

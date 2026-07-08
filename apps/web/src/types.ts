@@ -137,6 +137,50 @@ export type InterventionCreate = {
   recorded_at?: string;
 };
 
+export type InvestigationNote = {
+  id: number;
+  investigation_id: string;
+  author: string;
+  body: string;
+  created_at: string;
+};
+
+export type InvestigationNoteCreate = {
+  author: string;
+  body: string;
+  created_at?: string;
+};
+
+export type InvestigationNotes = {
+  notes: InvestigationNote[];
+};
+
+export type PatternGroup = {
+  category?: string;
+  model?: string;
+  kernel_version?: string;
+  count: number;
+  device_count: number;
+  severities: {
+    info: number;
+    warning: number;
+    critical: number;
+  };
+  latest_observed_at: string;
+  examples: Array<{
+    device_id: string;
+    hostname: string;
+    summary: string;
+    observed_at: string;
+  }>;
+};
+
+export type PatternOverview = {
+  category_groups: PatternGroup[];
+  model_groups: PatternGroup[];
+  kernel_groups: PatternGroup[];
+};
+
 export type InvestigationDetail = {
   item: InvestigationItem;
   timeline: TimelineEvent[];

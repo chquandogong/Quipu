@@ -1,6 +1,6 @@
 # Quipu Project Dashboard
 
-> Status: v0.8.0 collector systemd operations release track
+> Status: v0.9.0 operations resilience release track
 > Date: 2026-07-08
 > Owner: chquan
 
@@ -54,6 +54,12 @@ The second valuable question is:
 | Done | Fan/NVMe SMART-lite telemetry | Fan RPM, NVMe health metrics, storage findings, and matrix tiles |
 | Done | Collector operation loop | CLI dry-run, interval, iterations, injected test seams, and structured error output |
 | Done | Collector systemd operations kit | service, timer, env example, wrapper, dry-run install/uninstall scripts, and ops tests |
+| Done | Operations resilience MVP plan | `docs/superpowers/plans/2026-07-08-operations-resilience-mvp.md` |
+| Done | Collector offline buffer | bounded spool, flush-before-current-send, retry backoff, wrapper/env integration |
+| Done | Expanded event markers | graphics, memory, update, and reboot marker parsing |
+| Done | Device enrollment hardening | per-device tokens, token rotation/revocation, device-bound ingest validation |
+| Done | Team workflow notes | investigation handoff note API and UI |
+| Done | Pattern Explorer | category/model/kernel overview API and compact UI |
 | Done | Visible metadata chips | Made by, About, and Version remain visible without dominating the first viewport |
 | Approved | Private remote push and release | User requested commit, tag, push, and release on 2026-07-07 |
 | Approved | Public repository visibility after audit | User approved public visibility on 2026-07-07 |

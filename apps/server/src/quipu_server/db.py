@@ -2,9 +2,20 @@ from pathlib import Path
 import sqlite3
 
 
+SCHEMA_VERSION = "0.9.0"
+
 SCHEMA = """
 PRAGMA journal_mode=WAL;
 PRAGMA foreign_keys=ON;
+
+CREATE TABLE IF NOT EXISTS schema_meta (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL
+);
+
+INSERT INTO schema_meta (key, value)
+VALUES ('schema_version', '0.9.0')
+ON CONFLICT(key) DO UPDATE SET value = excluded.value;
 
 CREATE TABLE IF NOT EXISTS devices (
   device_id TEXT PRIMARY KEY,
@@ -69,6 +80,32 @@ CREATE TABLE IF NOT EXISTS interventions (
 
 CREATE INDEX IF NOT EXISTS idx_interventions_investigation_time
   ON interventions(investigation_id, recorded_at ASC, id ASC);
+
+CREATE TABLE IF NOT EXISTS agent_tokens (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  device_id TEXT NOT NULL,
+  label TEXT NOT NULL,
+  token_hash TEXT NOT NULL UNIQUE,
+  active INTEGER NOT NULL DEFAULT 1,
+  created_at TEXT NOT NULL,
+  rotated_at TEXT,
+  revoked_at TEXT,
+  last_used_at TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_agent_tokens_device_active
+  ON agent_tokens(device_id, active);
+
+CREATE TABLE IF NOT EXISTS investigation_notes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  investigation_id TEXT NOT NULL,
+  author TEXT NOT NULL,
+  body TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_investigation_notes_item_time
+  ON investigation_notes(investigation_id, created_at ASC, id ASC);
 """
 
 

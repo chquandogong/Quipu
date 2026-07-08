@@ -2,6 +2,42 @@
 
 All notable changes to Quipu are documented in this file.
 
+## v0.9.0 - 2026-07-08
+
+Operations resilience MVP covering the remaining eight team-operations tracks.
+
+### Added
+
+- Collector offline local ring buffer with bounded spool depth, flush before
+  current send, flush limits, and retry backoff.
+- systemd wrapper defaults that enable collector offline buffering without
+  mutating the host during verification.
+- Best-effort collector summaries for graphics, memory, update, and reboot
+  markers.
+- Device enrollment API with per-device agent tokens.
+- Token rotation and revocation APIs; ingest accepts either the development
+  token or an active device-bound token.
+- Schema version endpoint for operational verification.
+- Investigation handoff notes API for team context.
+- Pattern overview API grouped by category, model, and kernel.
+- React Operations Rail, Team Handoff, and Pattern Explorer surfaces.
+- v0.9.0 operations-resilience design and implementation plan documents.
+
+### Changed
+
+- README editions now document offline buffering, enrollment tokens, and the
+  new operations/team/pattern UI surfaces.
+- Updated package and app versions to `0.9.0`.
+
+### Verified
+
+- Server test suite: 32 tests passed.
+- Collector test suite: 17 tests passed.
+- Web test suite: 1 test passed.
+- Web production build succeeded.
+- Collector CLI smoke commands covered one-shot dry-run and offline buffering.
+- Browser screenshot confirmed `Version v0.9.0` in the running app.
+
 ## v0.8.0 - 2026-07-08
 
 Collector systemd operations release.

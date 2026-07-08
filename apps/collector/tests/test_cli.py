@@ -122,6 +122,69 @@ def test_main_returns_error_json_when_collection_fails(capsys) -> None:
     }
 
 
+def test_offline_buffer_spools_batch_when_send_fails(tmp_path: Path, capsys) -> None:
+    def fake_collect(**kwargs):
+        return _batch("offline-batch")
+
+    def fake_send(batch, *, server_url, token):
+        raise RuntimeError("server unavailable")
+
+    exit_code = main(
+        [
+            "--server-url",
+            "http://127.0.0.1:8000",
+            "--token",
+            "dev-token",
+            "--offline-buffer",
+            "--spool-dir",
+            str(tmp_path),
+        ],
+        collect=fake_collect,
+        send=fake_send,
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["buffered"] is True
+    assert payload["spool_depth"] == 1
+    assert len(list(tmp_path.glob("*.json"))) == 1
+
+
+def test_offline_buffer_flushes_spool_before_current_send(tmp_path: Path, capsys) -> None:
+    from quipu_collector.spool import SpoolStore
+
+    SpoolStore(tmp_path, max_batches=10).enqueue(_batch("spooled-batch"))
+    sent: list[str] = []
+
+    def fake_collect(**kwargs):
+        return _batch("current-batch")
+
+    def fake_send(batch, *, server_url, token):
+        sent.append(batch["batch_id"])
+        return {"inserted": True}
+
+    exit_code = main(
+        [
+            "--server-url",
+            "http://127.0.0.1:8000",
+            "--token",
+            "dev-token",
+            "--offline-buffer",
+            "--spool-dir",
+            str(tmp_path),
+        ],
+        collect=fake_collect,
+        send=fake_send,
+    )
+
+    assert exit_code == 0
+    assert sent == ["spooled-batch", "current-batch"]
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["inserted"] is True
+    assert payload["spool"]["sent"] == 1
+    assert payload["spool"]["remaining"] == 0
+
+
 def test_iterations_require_interval() -> None:
     with pytest.raises(SystemExit) as exc_info:
         main(["--iterations", "2", "--dry-run"], collect=lambda **kwargs: _batch())

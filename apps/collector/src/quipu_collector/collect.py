@@ -58,6 +58,43 @@ POWER_EVENT_PATTERNS = (
     "power management",
 )
 
+GRAPHICS_EVENT_PATTERNS = (
+    "gpu hang",
+    "drm",
+    "i915",
+    "amdgpu",
+    "nouveau",
+    "nvidia",
+    "gnome-shell",
+    "kwin",
+    "xorg",
+    "wayland",
+)
+
+UPDATE_EVENT_PATTERNS = (
+    "upgrade:",
+    "install:",
+    "remove:",
+    "dnf",
+    "apt",
+    "package update",
+    "updated",
+)
+
+REBOOT_EVENT_PATTERNS = (
+    "reboot",
+    "shutdown",
+    "unclean shutdown",
+    "starting reboot",
+    "system boot",
+)
+
+MEMORY_EVENT_PATTERNS = (
+    "out of memory",
+    "oom",
+    "killed process",
+)
+
 
 def _utc(value: datetime | None = None) -> datetime:
     value = value or datetime.now(timezone.utc)
@@ -161,6 +198,13 @@ def _strip_source_prefix(message: str, source: str) -> str:
     return re.sub(rf"^{re.escape(source)}:\s*", "", message, flags=re.IGNORECASE)
 
 
+def _line_source(message: str, default_source: str) -> str:
+    for source in ("kernel", "systemd", "journalctl", "apt", "dnf", "NetworkManager"):
+        if re.match(rf"^{re.escape(source)}:\s*", message, flags=re.IGNORECASE):
+            return source
+    return default_source
+
+
 def _classify_event_line(
     line: str,
     *,
@@ -169,8 +213,9 @@ def _classify_event_line(
     fallback_observed_at: str,
 ) -> dict[str, Any] | None:
     observed_at, message = _line_time_and_message(line, fallback_observed_at)
+    source = _line_source(message, default_source)
     lower = message.lower()
-    if default_source == "kernel" and any(pattern in lower for pattern in THERMAL_EVENT_PATTERNS):
+    if source == "kernel" and any(pattern in lower for pattern in THERMAL_EVENT_PATTERNS):
         summary = _strip_source_prefix(message, "kernel")
         severity = "critical" if "critical" in lower else "warning"
         return _event(
@@ -181,7 +226,7 @@ def _classify_event_line(
             raw_ref=raw_ref,
             observed_at=observed_at,
         )
-    if default_source == "kernel" and any(pattern in lower for pattern in STORAGE_EVENT_PATTERNS):
+    if source == "kernel" and any(pattern in lower for pattern in STORAGE_EVENT_PATTERNS):
         summary = _strip_source_prefix(message, "kernel")
         severity = "critical" if "critical" in lower or "failed" in lower else "warning"
         return _event(
@@ -192,7 +237,7 @@ def _classify_event_line(
             raw_ref=raw_ref,
             observed_at=observed_at,
         )
-    if default_source == "kernel" and any(pattern in lower for pattern in POWER_EVENT_PATTERNS):
+    if source == "kernel" and any(pattern in lower for pattern in POWER_EVENT_PATTERNS):
         summary = _strip_source_prefix(message, "kernel")
         severity = "critical" if "critical" in lower else "warning"
         return _event(
@@ -203,7 +248,47 @@ def _classify_event_line(
             raw_ref=raw_ref,
             observed_at=observed_at,
         )
-    if default_source == "NetworkManager" and any(pattern in lower for pattern in NETWORK_EVENT_PATTERNS):
+    if source == "kernel" and any(pattern in lower for pattern in GRAPHICS_EVENT_PATTERNS):
+        summary = _strip_source_prefix(message, "kernel")
+        return _event(
+            category="graphics",
+            severity="warning",
+            source="kernel",
+            message_summary=summary,
+            raw_ref=raw_ref,
+            observed_at=observed_at,
+        )
+    if source == "kernel" and any(pattern in lower for pattern in MEMORY_EVENT_PATTERNS):
+        summary = _strip_source_prefix(message, "kernel")
+        return _event(
+            category="memory",
+            severity="critical",
+            source="kernel",
+            message_summary=summary,
+            raw_ref=raw_ref,
+            observed_at=observed_at,
+        )
+    if source in {"systemd", "journalctl"} and any(pattern in lower for pattern in REBOOT_EVENT_PATTERNS):
+        summary = _strip_source_prefix(message, source)
+        return _event(
+            category="reboot",
+            severity="info",
+            source=source,
+            message_summary=summary,
+            raw_ref=raw_ref,
+            observed_at=observed_at,
+        )
+    if source in {"apt", "dnf"} and any(pattern in lower for pattern in UPDATE_EVENT_PATTERNS):
+        summary = _strip_source_prefix(message, source)
+        return _event(
+            category="update",
+            severity="info",
+            source=source,
+            message_summary=summary,
+            raw_ref=raw_ref,
+            observed_at=observed_at,
+        )
+    if source == "NetworkManager" and any(pattern in lower for pattern in NETWORK_EVENT_PATTERNS):
         summary = _strip_source_prefix(message, "NetworkManager")
         return _event(
             category="network",
@@ -259,6 +344,9 @@ def _event_logs(root: Path, observed_at: str, command_runner: CommandRunner | No
         ("kernel", "var/log/quipu/kernel.log"),
         ("kernel", "var/log/kern.log"),
         ("kernel", "var/log/messages"),
+        ("systemd", "var/log/quipu/system.log"),
+        ("apt", "var/log/apt/history.log"),
+        ("dnf", "var/log/dnf.log"),
         ("NetworkManager", "var/log/quipu/networkmanager.log"),
         ("NetworkManager", "var/log/syslog"),
     ]

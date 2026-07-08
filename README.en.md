@@ -2,7 +2,7 @@
 
 <p align="center">
   <img alt="CI" src="https://github.com/chquandogong/Quipu/actions/workflows/ci.yml/badge.svg">
-  <img alt="Version" src="https://img.shields.io/badge/version-v0.8.0-2f6f7e">
+  <img alt="Version" src="https://img.shields.io/badge/version-v0.9.0-2f6f7e">
   <img alt="Status" src="https://img.shields.io/badge/status-local--first%20prototype-5b6b73">
   <img alt="License" src="https://img.shields.io/badge/license-not%20selected-lightgrey">
 </p>
@@ -66,6 +66,12 @@ signals and uses a `Telemetry Matrix` for Memory, Fan RPM, NVMe Health, Disk
 Health, Battery Power, Network Events, Reconnect History, Thermal Throttling,
 Kernel Warnings, and Agent Freshness. Deeper SMART/NVMe health and fan-context
 analysis can expand through the same matrix structure later.
+
+v0.9.0 adds an `Operations Rail`, `Team Handoff`, and `Pattern Explorer`.
+The operations rail surfaces agent freshness, offline buffering, enrollment
+guardrails, and pattern radar; handoff notes attach team context to each
+investigation; pattern exploration groups repeated signals by category, model,
+and kernel.
 
 Creator and version information stays as compact header metadata. The large
 creator/reference image drawer was removed because it did not help the
@@ -131,8 +137,15 @@ Implemented:
 - Collector metrics for hwmon Fan RPM and sysfs NVMe SMART-lite health
 - Lightweight collector operation loop with dry-run, interval, and iteration
   controls
+- Offline local ring buffer with spool flushing, flush limits, and retry
+  backoff
 - Collector systemd service/timer, environment example, wrapper, and dry-run
   install/uninstall scripts
+- Collector marker summaries for graphics, memory, update, and reboot events
+- Device enrollment, per-device ingest tokens, token rotation, and token
+  revocation APIs
+- Schema version endpoint and team handoff notes per investigation
+- Pattern Explorer API grouped by category, model, and kernel
 - Intervention records for investigation items
 - Before/after verification results for interventions
 - Vite React investigation-first UI
@@ -143,15 +156,15 @@ Implemented:
 - Telemetry Matrix for Memory, Fan RPM, NVMe Health, Disk Health, Battery Power,
   Network Events, Reconnect History, Thermal Throttling, Kernel Warnings, and
   Agent Freshness
+- Operations Rail, Team Handoff, and Pattern Explorer UI
 - Compact Made by, About, and Version metadata chips
 - GitHub Actions CI for server, collector, and web checks
 
 Next direction:
 
-- Offline local ring buffer plus device enrollment and token rotation
-- Team pattern exploration by model, kernel, driver, storage, Wi-Fi, workload,
-  and physical setup
 - Role-aware team workflows, redaction controls, and retention policy
+- Postgres adapter, backup/restore, and longer-term baseline analytics
+- Package publishing and production deployment preparation
 
 ## Quick Start
 
@@ -195,8 +208,8 @@ Current key signals:
 - `wifi.signal_dbm`: Wi-Fi signal from `/proc/net/wireless`
 - `battery.capacity_percent`, `battery.ac_online`: battery and AC state from
   `/sys/class/power_supply`
-- Kernel thermal, storage, and power warning summaries, plus NetworkManager
-  reconnect summaries
+- Kernel thermal, storage, power, graphics, and memory warning summaries,
+  update/reboot markers, plus NetworkManager reconnect summaries
 
 Print a local observation batch:
 
@@ -212,6 +225,26 @@ Send one batch to a local Quipu server:
 
 ```bash
 quipu-collector --server-url http://127.0.0.1:8000 --token dev-token
+```
+
+Buffer batches locally when the server or network is temporarily unavailable:
+
+```bash
+quipu-collector \
+  --server-url http://127.0.0.1:8000 \
+  --token "$QUIPU_AGENT_TOKEN" \
+  --offline-buffer \
+  --spool-dir ~/.local/state/quipu/collector-spool
+```
+
+Create a per-device collector token with the development/admin token, then use
+the returned token only for that device's ingest requests:
+
+```bash
+curl -sS -X POST http://127.0.0.1:8000/api/enrollment/tokens \
+  -H "Content-Type: application/json" \
+  -H "X-Quipu-Agent-Token: dev-token" \
+  -d '{"device_id":"thinkpad-p1","label":"ThinkPad P1 collector"}'
 ```
 
 Run a repeated smoke test:
@@ -248,8 +281,8 @@ sudo scripts/uninstall-collector-systemd.sh
 ```
 
 The installer assumes the `quipu-collector` executable is already installed on
-the target machine. Package publishing, an offline local ring buffer, and
-production deployment are not included yet.
+the target machine. Package publishing and production deployment are not
+included yet.
 
 ## Architecture
 

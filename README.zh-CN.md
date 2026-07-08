@@ -2,7 +2,7 @@
 
 <p align="center">
   <img alt="CI" src="https://github.com/chquandogong/Quipu/actions/workflows/ci.yml/badge.svg">
-  <img alt="Version" src="https://img.shields.io/badge/version-v0.8.0-2f6f7e">
+  <img alt="Version" src="https://img.shields.io/badge/version-v0.9.0-2f6f7e">
   <img alt="Status" src="https://img.shields.io/badge/status-local--first%20prototype-5b6b73">
   <img alt="License" src="https://img.shields.io/badge/license-not%20selected-lightgrey">
 </p>
@@ -64,6 +64,11 @@ Battery Power、Network Events、Reconnect History、Thermal Throttling、
 Kernel Warnings 和 Agent Freshness。更深入的 SMART/NVMe health 与 fan-context
 分析之后也可以沿用同一 matrix 结构扩展。
 
+v0.9.0 增加了 `Operations Rail`、`Team Handoff` 和 `Pattern Explorer`。
+Operations Rail 汇总 agent freshness、offline buffer、enrollment guard 和
+pattern radar；Team Handoff 把团队交接备注绑定到调查项；Pattern Explorer
+按 category、model、kernel 聚合重复信号。
+
 创作者和版本信息只保留在顶部小型 metadata chip 中。大型 creator/reference
 图片区域因为不能直接帮助调查判断，已从工作界面移除。
 
@@ -121,21 +126,27 @@ Quipu 仍是早期本地优先原型。
 - collector 对 kernel storage 与 power warning event 的 best-effort 摘要收集
 - collector 采集基于 hwmon 的 Fan RPM 与基于 sysfs 的 NVMe SMART-lite health
 - collector 支持 dry-run、interval 和 iterations 的轻量运行循环
+- collector 支持离线 local ring buffer、spool flush、flush limit 和 retry backoff
 - collector systemd service/timer、环境文件示例、wrapper，以及支持 dry-run 的安装/卸载脚本
+- collector 采集 graphics、memory、update、reboot marker 摘要
+- device enrollment、按设备绑定的 ingest token、token rotation/revocation API
+- schema version endpoint 和按调查项记录的 team handoff note API
+- 按 category/model/kernel 聚合的 Pattern Explorer API
 - 调查项 intervention 记录
 - intervention 前后验证结果
 - Vite React 调查优先 UI
 - 高对比深色 Command Center、核心 signal console 与 hover/focus 展开面板
 - CPU、Load、NVMe、Wi-Fi 核心 metric 的韩文说明、英文技术术语、时间窗口、解读方式和下一步检查 tooltip
 - 展示 Memory、Fan RPM、NVMe Health、Disk Health、Battery Power、Network Events、Reconnect History、Thermal Throttling、Kernel Warnings、Agent Freshness 的 Telemetry Matrix
+- Operations Rail、Team Handoff、Pattern Explorer UI
 - 小型 Made by、About、Version metadata chip
 - 覆盖 server、collector、web 的 GitHub Actions CI
 
 下一步方向：
 
-- 离线 local ring buffer、device enrollment 与 token rotation
-- 按型号、内核、驱动、存储、Wi-Fi、工作负载和物理环境探索团队模式
 - 角色感知的团队流程、redaction 控制和 retention policy
+- Postgres adapter、backup/restore 和长期 baseline analytics
+- package publishing 与 production deployment 准备
 
 ## 快速开始
 
@@ -176,7 +187,7 @@ collector 不需要 root 权限即可读取 Linux 信号。默认只执行一次
 - `nvme.critical_warning`, `nvme.available_spare_percent`, `nvme.percentage_used_percent`, `nvme.media_errors`: 通过 sysfs 风格文件暴露的 NVMe SMART-lite health
 - `wifi.signal_dbm`: 来自 `/proc/net/wireless` 的 Wi-Fi 信号
 - `battery.capacity_percent`, `battery.ac_online`: 基于 `/sys/class/power_supply` 的电池/AC 状态
-- kernel thermal、storage、power warning 摘要，以及 NetworkManager reconnect 摘要
+- kernel thermal、storage、power、graphics、memory warning 摘要，update/reboot marker，以及 NetworkManager reconnect 摘要
 
 输出本地 observation batch：
 
@@ -192,6 +203,26 @@ quipu-collector --dry-run
 
 ```bash
 quipu-collector --server-url http://127.0.0.1:8000 --token dev-token
+```
+
+当服务器或网络短暂不可用时，可以把 batch 本地缓冲到 spool：
+
+```bash
+quipu-collector \
+  --server-url http://127.0.0.1:8000 \
+  --token "$QUIPU_AGENT_TOKEN" \
+  --offline-buffer \
+  --spool-dir ~/.local/state/quipu/collector-spool
+```
+
+使用开发/admin token 创建按设备绑定的 collector token，然后只把返回的 token
+用于该设备的 ingest：
+
+```bash
+curl -sS -X POST http://127.0.0.1:8000/api/enrollment/tokens \
+  -H "Content-Type: application/json" \
+  -H "X-Quipu-Agent-Token: dev-token" \
+  -d '{"device_id":"thinkpad-p1","label":"ThinkPad P1 collector"}'
 ```
 
 运行重复采集 smoke test：
@@ -228,7 +259,7 @@ sudo scripts/uninstall-collector-systemd.sh
 ```
 
 安装脚本假设目标机器上已经安装了 `quipu-collector` 可执行文件。目前尚未
-包含 package publishing、离线 local ring buffer 和 production deployment。
+包含 package publishing 和 production deployment。
 
 ## 架构
 

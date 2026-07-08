@@ -27,12 +27,30 @@ import {
   Wifi,
 } from 'lucide-react';
 
-import { fetchFleetOverview, fetchInvestigationDetail, fetchInvestigationQueue, recordIntervention } from './api';
-import type { FleetOverview, InvestigationDetail, InvestigationItem, MetricSample, RiskLevel, VerificationResult } from './types';
+import {
+  fetchFleetOverview,
+  fetchInvestigationDetail,
+  fetchInvestigationNotes,
+  fetchInvestigationQueue,
+  fetchPatternOverview,
+  recordIntervention,
+  recordInvestigationNote,
+} from './api';
+import type {
+  FleetOverview,
+  InvestigationDetail,
+  InvestigationItem,
+  InvestigationNote,
+  MetricSample,
+  PatternGroup,
+  PatternOverview,
+  RiskLevel,
+  VerificationResult,
+} from './types';
 import './styles.css';
 
 const flowStages = ['Detect', 'Triage', 'Investigate', 'Hypothesize', 'Act', 'Verify', 'Report'];
-const appVersion = 'v0.8.0';
+const appVersion = 'v0.9.0';
 
 const riskLabels: Record<RiskLevel, string> = {
   healthy: 'Healthy',
@@ -493,6 +511,145 @@ function TelemetryMatrix({ detail, overview }: { detail: InvestigationDetail | n
   );
 }
 
+function OperationsRail({
+  overview,
+  patterns,
+  detail,
+}: {
+  overview: FleetOverview | null;
+  patterns: PatternOverview | null;
+  detail: InvestigationDetail | null;
+}) {
+  const stale = overview?.summary.stale ?? 0;
+  const patternCount = patterns?.category_groups.reduce((total, group) => total + group.count, 0) ?? 0;
+  return (
+    <section className="operations-rail" aria-label="Operations Rail">
+      <article className={stale > 0 ? 'ops-card signal-watch' : 'ops-card signal-nominal'}>
+        <span><Clock3 aria-hidden="true" /> Agent Freshness</span>
+        <strong>{stale > 0 ? `${stale} stale` : 'Fresh'}</strong>
+        <p>{detail?.fleet_context.device.last_seen_at ? `Last selected batch ${new Date(detail.fleet_context.device.last_seen_at).toLocaleString()}` : 'Waiting for selected device context.'}</p>
+      </article>
+      <article className="ops-card signal-nominal">
+        <span><HardDrive aria-hidden="true" /> Offline Buffer</span>
+        <strong>Spool-ready</strong>
+        <p>Collector batches can queue locally during server or network outage.</p>
+      </article>
+      <article className="ops-card signal-nominal">
+        <span><ShieldCheck aria-hidden="true" /> Enrollment Guard</span>
+        <strong>Device-bound</strong>
+        <p>Agent tokens can be created, rotated, and revoked per device.</p>
+      </article>
+      <article className={patternCount > 0 ? 'ops-card signal-watch' : 'ops-card signal-missing'}>
+        <span><FileSearch aria-hidden="true" /> Pattern Radar</span>
+        <strong>{patternCount} events</strong>
+        <p>{patterns?.category_groups[0]?.category ?? 'No repeated category'} is the leading grouped signal.</p>
+      </article>
+    </section>
+  );
+}
+
+function TeamHandoff({
+  notes,
+  noteBody,
+  recording,
+  onBodyChange,
+  onSubmit,
+}: {
+  notes: InvestigationNote[];
+  noteBody: string;
+  recording: boolean;
+  onBodyChange: (value: string) => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+}) {
+  return (
+    <article className="panel collapsible-panel handoff-panel" id="handoff-panel" tabIndex={-1}>
+      <div className="panel-head">
+        <h2>Team Handoff</h2>
+        <span>{notes.length} notes</span>
+      </div>
+      <p className="panel-summary">{notes[notes.length - 1]?.body ?? 'No handoff note recorded yet.'}</p>
+      <div className="panel-body">
+        <div className="handoff-list">
+          {notes.length ? (
+            notes.map((note) => (
+              <div className="handoff-note" key={note.id}>
+                <strong>{note.author}</strong>
+                <time>{new Date(note.created_at).toLocaleString()}</time>
+                <p>{note.body}</p>
+              </div>
+            ))
+          ) : (
+            <p className="status">No team notes yet.</p>
+          )}
+        </div>
+        <form className="intervention-form" onSubmit={onSubmit}>
+          <label>
+            Handoff note
+            <textarea
+              onChange={(event) => onBodyChange(event.target.value)}
+              placeholder="Raised the rear edge; compare the next two batches."
+              value={noteBody}
+            />
+          </label>
+          <button disabled={recording || !noteBody.trim()} type="submit">
+            <ClipboardCheck aria-hidden="true" />
+            {recording ? 'Recording...' : 'Record handoff'}
+          </button>
+        </form>
+      </div>
+    </article>
+  );
+}
+
+function groupTitle(group: PatternGroup, keyName: 'category' | 'model' | 'kernel_version'): string {
+  return group[keyName] ?? 'Unknown';
+}
+
+function PatternGroupList({
+  title,
+  groups,
+  keyName,
+}: {
+  title: string;
+  groups: PatternGroup[];
+  keyName: 'category' | 'model' | 'kernel_version';
+}) {
+  return (
+    <div className="pattern-column">
+      <h3>{title}</h3>
+      {groups.slice(0, 4).map((group) => (
+        <div className="pattern-row" key={`${title}-${groupTitle(group, keyName)}`}>
+          <strong>{groupTitle(group, keyName)}</strong>
+          <span>{group.count} events / {group.device_count} devices</span>
+          <em>{group.severities.critical} critical · {group.severities.warning} warning</em>
+        </div>
+      ))}
+      {groups.length === 0 && <p className="status">No patterns yet.</p>}
+    </div>
+  );
+}
+
+function PatternExplorer({ patterns }: { patterns: PatternOverview | null }) {
+  return (
+    <article className="panel collapsible-panel pattern-panel" id="pattern-panel" tabIndex={-1}>
+      <div className="panel-head">
+        <h2>Pattern Explorer</h2>
+        <span>{patterns?.category_groups.length ?? 0} groups</span>
+      </div>
+      <p className="panel-summary">
+        {patterns?.category_groups[0]
+          ? `${patterns.category_groups[0].category} leads with ${patterns.category_groups[0].count} grouped event(s).`
+          : 'No grouped pattern yet.'}
+      </p>
+      <div className="panel-body pattern-grid">
+        <PatternGroupList title="By category" groups={patterns?.category_groups ?? []} keyName="category" />
+        <PatternGroupList title="By model" groups={patterns?.model_groups ?? []} keyName="model" />
+        <PatternGroupList title="By kernel" groups={patterns?.kernel_groups ?? []} keyName="kernel_version" />
+      </div>
+    </article>
+  );
+}
+
 function scrollToPanel(panelId: string) {
   const panel = document.getElementById(panelId);
   panel?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -506,19 +663,24 @@ export default function App() {
   const [queue, setQueue] = useState<InvestigationItem[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detail, setDetail] = useState<InvestigationDetail | null>(null);
+  const [patterns, setPatterns] = useState<PatternOverview | null>(null);
+  const [notes, setNotes] = useState<InvestigationNote[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [interventionLabel, setInterventionLabel] = useState('');
   const [interventionDescription, setInterventionDescription] = useState('');
+  const [noteBody, setNoteBody] = useState('');
   const [recordingIntervention, setRecordingIntervention] = useState(false);
+  const [recordingNote, setRecordingNote] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let active = true;
-    Promise.all([fetchFleetOverview(), fetchInvestigationQueue()])
-      .then(([fleetData, queueData]) => {
+    Promise.all([fetchFleetOverview(), fetchInvestigationQueue(), fetchPatternOverview()])
+      .then(([fleetData, queueData, patternData]) => {
         if (!active) return;
         setOverview(fleetData);
         setQueue(queueData.items);
+        setPatterns(patternData);
         setSelectedId(queueData.items[0]?.id ?? null);
         setError(null);
       })
@@ -539,9 +701,11 @@ export default function App() {
       return;
     }
     let active = true;
-    fetchInvestigationDetail(selectedId)
-      .then((data) => {
-        if (active) setDetail(data);
+    Promise.all([fetchInvestigationDetail(selectedId), fetchInvestigationNotes(selectedId)])
+      .then(([detailData, notesData]) => {
+        if (!active) return;
+        setDetail(detailData);
+        setNotes(notesData.notes);
       })
       .catch((err: unknown) => {
         if (active) setError(err instanceof Error ? err.message : 'Unknown detail API error');
@@ -600,6 +764,25 @@ export default function App() {
       setError(err instanceof Error ? err.message : 'Unknown intervention API error');
     } finally {
       setRecordingIntervention(false);
+    }
+  }
+
+  async function handleRecordNote(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!selectedId || !noteBody.trim()) return;
+    setRecordingNote(true);
+    try {
+      const created = await recordInvestigationNote(selectedId, {
+        author: 'ops',
+        body: noteBody,
+        created_at: new Date().toISOString(),
+      });
+      setNotes([...notes, created]);
+      setNoteBody('');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Unknown handoff API error');
+    } finally {
+      setRecordingNote(false);
     }
   }
 
@@ -720,6 +903,8 @@ export default function App() {
           </div>
         </div>
       </section>
+
+      <OperationsRail overview={overview} patterns={patterns} detail={detail} />
 
       <section className="investigation-layout">
         <aside className="panel queue-panel">
@@ -878,6 +1063,16 @@ export default function App() {
               {latestVerificationResult && <VerificationResultView result={latestVerificationResult} />}
             </div>
           </article>
+
+          <TeamHandoff
+            notes={notes}
+            noteBody={noteBody}
+            recording={recordingNote}
+            onBodyChange={setNoteBody}
+            onSubmit={handleRecordNote}
+          />
+
+          <PatternExplorer patterns={patterns} />
 
           <article className="panel collapsible-panel" id="report-panel" tabIndex={-1}>
             <div className="panel-head">

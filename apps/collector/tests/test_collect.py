@@ -50,9 +50,16 @@ def test_collect_observation_reads_linux_signals_without_raw_machine_id(tmp_path
                 "2026-07-07T05:22:10+00:00 kernel: CPU0: Core temperature above threshold, cpu clock throttled",
                 "2026-07-07T05:23:10+00:00 kernel: nvme0n1: I/O timeout, reset controller",
                 "2026-07-07T05:25:00+00:00 kernel: ACPI: battery discharge rate high while AC offline",
+                "2026-07-07T05:26:00+00:00 kernel: i915 0000:00:02.0: GPU HANG detected",
+                "2026-07-07T05:27:00+00:00 kernel: Out of memory: Killed process 1234 chrome",
+                "2026-07-07T05:28:00+00:00 systemd: Rebooting.",
             ]
         )
         + "\n",
+    )
+    _write(
+        root / "var/log/apt/history.log",
+        "2026-07-07T05:20:00+00:00 apt: Upgrade: linux-image-generic:amd64\n",
     )
     _write(
         root / "var/log/quipu/networkmanager.log",
@@ -108,3 +115,11 @@ def test_collect_observation_reads_linux_signals_without_raw_machine_id(tmp_path
     assert events[("power", "kernel")]["severity"] == "warning"
     assert "battery discharge" in events[("power", "kernel")]["message_summary"]
     assert events[("power", "kernel")]["fingerprint"].startswith("power-kernel-")
+    assert events[("graphics", "kernel")]["severity"] == "warning"
+    assert "GPU HANG" in events[("graphics", "kernel")]["message_summary"]
+    assert events[("memory", "kernel")]["severity"] == "critical"
+    assert "Killed process" in events[("memory", "kernel")]["message_summary"]
+    assert events[("reboot", "systemd")]["severity"] == "info"
+    assert "Rebooting" in events[("reboot", "systemd")]["message_summary"]
+    assert events[("update", "apt")]["severity"] == "info"
+    assert "Upgrade" in events[("update", "apt")]["message_summary"]

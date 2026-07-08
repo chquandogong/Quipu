@@ -87,3 +87,30 @@ class InterventionIn(BaseModel):
             return None
         stripped = value.strip()
         return stripped or None
+
+
+class EnrollmentCreate(BaseModel):
+    device_id: str = Field(min_length=1, max_length=96)
+    label: str = Field(min_length=1, max_length=120)
+
+    @field_validator("device_id", "label")
+    @classmethod
+    def strip_required_enrollment_text(cls, value: str) -> str:
+        stripped = value.strip()
+        if not stripped:
+            raise ValueError("value must not be blank")
+        return stripped
+
+
+class InvestigationNoteIn(BaseModel):
+    author: str = Field(min_length=1, max_length=80)
+    body: str = Field(min_length=1, max_length=1000)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+    @field_validator("author", "body")
+    @classmethod
+    def strip_required_note_text(cls, value: str) -> str:
+        stripped = value.strip()
+        if not stripped:
+            raise ValueError("value must not be blank")
+        return stripped

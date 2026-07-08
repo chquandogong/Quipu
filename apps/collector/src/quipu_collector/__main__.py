@@ -10,6 +10,7 @@ import time
 from typing import Any
 
 from quipu_collector.collect import collect_observation, send_observation
+from quipu_collector.spool import SpoolStore
 
 CollectFn = Callable[..., dict[str, Any]]
 SendFn = Callable[..., dict[str, Any]]
@@ -66,6 +67,11 @@ def main(
     parser.add_argument("--interval", type=_positive_float, help="seconds to sleep between collection runs")
     parser.add_argument("--iterations", type=_positive_int, help="number of collection runs before exiting")
     parser.add_argument("--dry-run", action="store_true", help="print observation batches and skip posting")
+    parser.add_argument("--offline-buffer", action="store_true", help="spool batches locally when posting fails")
+    parser.add_argument("--spool-dir", default="~/.local/state/quipu/collector-spool", help="offline buffer directory")
+    parser.add_argument("--spool-max-batches", type=_positive_int, default=288, help="maximum offline batches to retain")
+    parser.add_argument("--flush-limit", type=_positive_int, help="maximum spooled batches to send before the current batch")
+    parser.add_argument("--retry-backoff", type=_positive_float, default=0.0, help="seconds to sleep after buffering a failed send")
     args = parser.parse_args(argv)
 
     if args.once and args.interval:
@@ -85,6 +91,7 @@ def main(
     max_iterations = args.iterations or (None if args.interval else 1)
     pretty_output = max_iterations == 1 and not args.interval
     iteration = 0
+    spool = SpoolStore(Path(args.spool_dir), max_batches=args.spool_max_batches)
 
     try:
         while max_iterations is None or iteration < max_iterations:
@@ -95,11 +102,40 @@ def main(
                 return 1
 
             if args.server_url and not args.dry_run:
+                spool_result = None
+                if args.offline_buffer and spool.depth() > 0:
+                    spool_result = spool.flush(
+                        send=send,
+                        server_url=args.server_url,
+                        token=args.token,
+                        limit=args.flush_limit,
+                    )
                 try:
                     payload = send(batch, server_url=args.server_url, token=args.token)
                 except Exception as exc:
+                    if args.offline_buffer:
+                        spool.enqueue(batch)
+                        payload = {
+                            "buffered": True,
+                            "error": "send_failed",
+                            "message": str(exc),
+                            "spool_depth": spool.depth(),
+                            "spool": spool_result,
+                        }
+                        _write_json(payload, pretty=pretty_output)
+                        iteration += 1
+                        if args.retry_backoff > 0:
+                            sleep(args.retry_backoff)
+                        if max_iterations is not None and iteration >= max_iterations:
+                            break
+                        if args.interval:
+                            sleep(args.interval)
+                            continue
+                        break
                     _write_error("send_failed", str(exc))
                     return 1
+                if spool_result is not None:
+                    payload["spool"] = spool_result
             else:
                 payload = batch
 

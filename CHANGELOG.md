@@ -2,6 +2,43 @@
 
 All notable changes to Quipu are documented in this file.
 
+## v0.8.0 - 2026-07-08
+
+Collector systemd operations release.
+
+### Added
+
+- Repo-contained collector operations kit under `apps/collector/ops`.
+- systemd `quipu-collector.service` for one-shot read-only collection.
+- systemd `quipu-collector.timer` for five-minute scheduled collection.
+- `/etc/quipu/collector.env` example for server URL, token, root, optional
+  device ID, and collector binary override.
+- `quipu-collector-run` wrapper that validates required environment values and
+  builds collector CLI arguments safely.
+- Dry-run capable install and uninstall scripts for systemd collector files.
+- Ops packaging tests that validate unit files, timer settings, env examples,
+  wrapper behavior, script syntax, and dry-run behavior without mutating the
+  host.
+- v0.8.0 collector systemd operations design and implementation plan
+  documents.
+
+### Changed
+
+- README editions now document systemd dry-run preview, install, timer enable,
+  list-timers check, and uninstall flows.
+- Updated package and app versions to `0.8.0`.
+
+### Verified
+
+- Server test suite: 27 tests passed.
+- Collector test suite: 12 tests passed.
+- Web test suite: 1 test passed.
+- Web production build succeeded.
+- Collector CLI smoke command produced one-shot and repeated local observation
+  batches.
+- systemd installer and uninstaller dry-run checks passed.
+- Browser screenshot confirmed `Version v0.8.0` in the running app.
+
 ## v0.7.0 - 2026-07-08
 
 Collector operation loop release.

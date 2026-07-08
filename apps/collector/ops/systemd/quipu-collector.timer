@@ -1,0 +1,13 @@
+[Unit]
+Description=Run Quipu collector every five minutes
+Documentation=https://github.com/chquandogong/Quipu
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=5min
+AccuracySec=30s
+Persistent=true
+Unit=quipu-collector.service
+
+[Install]
+WantedBy=timers.target

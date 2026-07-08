@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ -z "${QUIPU_SERVER_URL:-}" ]]; then
+  echo "QUIPU_SERVER_URL is required" >&2
+  exit 64
+fi
+
+if [[ -z "${QUIPU_AGENT_TOKEN:-}" ]]; then
+  echo "QUIPU_AGENT_TOKEN is required" >&2
+  exit 64
+fi
+
+collector_bin="${QUIPU_COLLECTOR_BIN:-/usr/local/bin/quipu-collector}"
+collector_root="${QUIPU_COLLECTOR_ROOT:-/}"
+
+args=(
+  "--root" "${collector_root}"
+  "--server-url" "${QUIPU_SERVER_URL}"
+  "--token" "${QUIPU_AGENT_TOKEN}"
+  "--once"
+)
+
+if [[ -n "${QUIPU_COLLECTOR_DEVICE_ID:-}" ]]; then
+  args+=("--device-id" "${QUIPU_COLLECTOR_DEVICE_ID}")
+fi
+
+exec "${collector_bin}" "${args[@]}"

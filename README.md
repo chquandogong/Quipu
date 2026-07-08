@@ -2,7 +2,7 @@
 
 <p align="center">
   <img alt="CI" src="https://github.com/chquandogong/Quipu/actions/workflows/ci.yml/badge.svg">
-  <img alt="Version" src="https://img.shields.io/badge/version-v0.7.0-2f6f7e">
+  <img alt="Version" src="https://img.shields.io/badge/version-v0.8.0-2f6f7e">
   <img alt="Status" src="https://img.shields.io/badge/status-local--first%20prototype-5b6b73">
   <img alt="License" src="https://img.shields.io/badge/license-not%20selected-lightgrey">
 </p>
@@ -127,6 +127,7 @@ Quipu는 초기 로컬 우선 프로토타입입니다.
 - collector의 best-effort kernel storage 및 power warning event 요약 수집
 - collector의 hwmon 기반 Fan RPM 및 sysfs 기반 NVMe SMART-lite health 수집
 - collector의 dry-run, interval, iterations 기반 경량 운용 루프
+- collector systemd service/timer, 환경 파일 예시, wrapper, dry-run 설치/제거 스크립트
 - 조사 항목별 intervention 기록
 - intervention 전후 검증 결과
 - Vite React 조사 중심 UI
@@ -138,7 +139,7 @@ Quipu는 초기 로컬 우선 프로토타입입니다.
 
 다음 방향:
 
-- systemd service/timer 패키징과 offline local ring buffer
+- offline local ring buffer와 device enrollment/token rotation
 - 모델, 커널, 드라이버, 저장장치, Wi-Fi, 워크로드, 물리적 환경별 팀 패턴 탐색
 - 역할 기반 팀 워크플로, redaction, retention policy
 
@@ -212,8 +213,30 @@ quipu-collector --dry-run --interval 60 --iterations 3
 quipu-collector --server-url http://127.0.0.1:8000 --token dev-token --interval 300
 ```
 
-아직 packaged daemon, systemd unit, offline local ring buffer는 포함하지
-않습니다.
+systemd timer 설치 미리보기:
+
+```bash
+scripts/install-collector-systemd.sh --dry-run
+```
+
+실제 설치 흐름:
+
+```bash
+sudo scripts/install-collector-systemd.sh --no-enable
+sudoedit /etc/quipu/collector.env
+sudo systemctl enable --now quipu-collector.timer
+systemctl list-timers quipu-collector.timer
+```
+
+제거:
+
+```bash
+sudo scripts/uninstall-collector-systemd.sh
+```
+
+설치 스크립트는 `quipu-collector` 실행 파일이 대상 장비에 이미 설치되어
+있다고 가정합니다. 아직 package publishing, offline local ring buffer,
+production deployment는 포함하지 않습니다.
 
 ## 아키텍처
 

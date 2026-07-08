@@ -1,6 +1,6 @@
 # Quipu Project Dashboard
 
-> Status: v0.7.0 collector operation-loop release track
+> Status: v0.8.0 collector systemd operations release track
 > Date: 2026-07-08
 > Owner: chquan
 
@@ -53,6 +53,7 @@ The second valuable question is:
 | Done | Disk/battery telemetry expansion | Root filesystem usage, battery/AC metrics, storage/power findings, and matrix tiles |
 | Done | Fan/NVMe SMART-lite telemetry | Fan RPM, NVMe health metrics, storage findings, and matrix tiles |
 | Done | Collector operation loop | CLI dry-run, interval, iterations, injected test seams, and structured error output |
+| Done | Collector systemd operations kit | service, timer, env example, wrapper, dry-run install/uninstall scripts, and ops tests |
 | Done | Visible metadata chips | Made by, About, and Version remain visible without dominating the first viewport |
 | Approved | Private remote push and release | User requested commit, tag, push, and release on 2026-07-07 |
 | Approved | Public repository visibility after audit | User approved public visibility on 2026-07-07 |
@@ -69,7 +70,7 @@ The second valuable question is:
 
 ## Gate
 
-Packaged daemon files, systemd unit installation, package publishing,
-production deployment, destructive git operations, and any remote repair
-capability remain gated. Public repository visibility is allowed only after a
-final sensitive-content audit passes.
+Actual host systemd installation, package publishing, production deployment,
+destructive git operations, and any remote repair capability remain gated.
+Public repository visibility is allowed only after a final sensitive-content
+audit passes.

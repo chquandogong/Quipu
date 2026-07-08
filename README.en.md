@@ -2,7 +2,7 @@
 
 <p align="center">
   <img alt="CI" src="https://github.com/chquandogong/Quipu/actions/workflows/ci.yml/badge.svg">
-  <img alt="Version" src="https://img.shields.io/badge/version-v0.7.0-2f6f7e">
+  <img alt="Version" src="https://img.shields.io/badge/version-v0.8.0-2f6f7e">
   <img alt="Status" src="https://img.shields.io/badge/status-local--first%20prototype-5b6b73">
   <img alt="License" src="https://img.shields.io/badge/license-not%20selected-lightgrey">
 </p>
@@ -131,6 +131,8 @@ Implemented:
 - Collector metrics for hwmon Fan RPM and sysfs NVMe SMART-lite health
 - Lightweight collector operation loop with dry-run, interval, and iteration
   controls
+- Collector systemd service/timer, environment example, wrapper, and dry-run
+  install/uninstall scripts
 - Intervention records for investigation items
 - Before/after verification results for interventions
 - Vite React investigation-first UI
@@ -146,7 +148,7 @@ Implemented:
 
 Next direction:
 
-- systemd service/timer packaging and an offline local ring buffer
+- Offline local ring buffer plus device enrollment and token rotation
 - Team pattern exploration by model, kernel, driver, storage, Wi-Fi, workload,
   and physical setup
 - Role-aware team workflows, redaction controls, and retention policy
@@ -224,8 +226,30 @@ Run a simple supervised loop:
 quipu-collector --server-url http://127.0.0.1:8000 --token dev-token --interval 300
 ```
 
-Packaged daemon files, systemd units, and an offline local ring buffer are not
-included yet.
+Preview systemd timer installation:
+
+```bash
+scripts/install-collector-systemd.sh --dry-run
+```
+
+Install for real:
+
+```bash
+sudo scripts/install-collector-systemd.sh --no-enable
+sudoedit /etc/quipu/collector.env
+sudo systemctl enable --now quipu-collector.timer
+systemctl list-timers quipu-collector.timer
+```
+
+Uninstall:
+
+```bash
+sudo scripts/uninstall-collector-systemd.sh
+```
+
+The installer assumes the `quipu-collector` executable is already installed on
+the target machine. Package publishing, an offline local ring buffer, and
+production deployment are not included yet.
 
 ## Architecture
 

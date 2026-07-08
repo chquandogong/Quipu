@@ -57,7 +57,7 @@ Remaining:
 
 ## Phase 3: Native Read-Only Agent
 
-Status: lightweight collector loop implemented.
+Status: systemd operations kit implemented.
 
 Goal: collect real Linux workstation signals safely.
 
@@ -79,6 +79,9 @@ Implemented:
 - CLI dry-run mode.
 - CLI interval and iteration controls for supervised repeated collection.
 - Structured JSON error output for collection and send failures.
+- systemd oneshot service and five-minute timer files.
+- Environment file example and wrapper for safe collector invocation.
+- Dry-run install and uninstall scripts.
 
 Remaining:
 
@@ -86,7 +89,6 @@ Remaining:
 - Richer multi-fan naming and fan-context analysis.
 - Deeper SMART/NVMe health where available without external dependencies.
 - Kernel, graphics/session, update, reboot markers.
-- systemd service/timer packaging.
 - Local ring buffer for offline periods.
 
 ## Phase 4: Intervention Verification

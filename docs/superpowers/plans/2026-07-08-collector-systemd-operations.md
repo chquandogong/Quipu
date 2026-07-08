@@ -38,17 +38,17 @@ collector CLI.
 
 ## Checklist
 
-- [ ] Add failing ops packaging tests for service, timer, env example, wrapper,
+- [x] Add failing ops packaging tests for service, timer, env example, wrapper,
       and dry-run scripts.
-- [ ] Run collector tests and confirm the new ops tests fail because files do
+- [x] Run collector tests and confirm the new ops tests fail because files do
       not exist.
-- [ ] Add systemd unit, timer, env example, wrapper, install script, and
+- [x] Add systemd unit, timer, env example, wrapper, install script, and
       uninstall script.
-- [ ] Run collector tests and confirm ops packaging tests pass.
-- [ ] Bump server, collector, and web versions to `0.8.0`.
-- [ ] Update README translations with systemd operations examples.
-- [ ] Update changelog, dashboard, roadmap, and ship checklist.
-- [ ] Run server tests, collector tests, web tests, web build, diff check,
+- [x] Run collector tests and confirm ops packaging tests pass.
+- [x] Bump server, collector, and web versions to `0.8.0`.
+- [x] Update README translations with systemd operations examples.
+- [x] Update changelog, dashboard, roadmap, and ship checklist.
+- [x] Run server tests, collector tests, web tests, web build, diff check,
       sensitive-content scan, CLI smoke, and browser screenshot.
 - [ ] Commit, push, tag `v0.8.0`, and publish GitHub release.
 

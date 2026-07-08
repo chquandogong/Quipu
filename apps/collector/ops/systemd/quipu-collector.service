@@ -1,0 +1,23 @@
+[Unit]
+Description=Quipu read-only workstation collector
+Documentation=https://github.com/chquandogong/Quipu
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/quipu/collector.env
+ExecStart=/usr/local/lib/quipu/quipu-collector-run
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=read-only
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+SystemCallArchitectures=native
+LockPersonality=true
+
+[Install]
+WantedBy=multi-user.target

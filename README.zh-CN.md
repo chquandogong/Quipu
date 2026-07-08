@@ -2,7 +2,7 @@
 
 <p align="center">
   <img alt="CI" src="https://github.com/chquandogong/Quipu/actions/workflows/ci.yml/badge.svg">
-  <img alt="Version" src="https://img.shields.io/badge/version-v0.7.0-2f6f7e">
+  <img alt="Version" src="https://img.shields.io/badge/version-v0.8.0-2f6f7e">
   <img alt="Status" src="https://img.shields.io/badge/status-local--first%20prototype-5b6b73">
   <img alt="License" src="https://img.shields.io/badge/license-not%20selected-lightgrey">
 </p>
@@ -121,6 +121,7 @@ Quipu 仍是早期本地优先原型。
 - collector 对 kernel storage 与 power warning event 的 best-effort 摘要收集
 - collector 采集基于 hwmon 的 Fan RPM 与基于 sysfs 的 NVMe SMART-lite health
 - collector 支持 dry-run、interval 和 iterations 的轻量运行循环
+- collector systemd service/timer、环境文件示例、wrapper，以及支持 dry-run 的安装/卸载脚本
 - 调查项 intervention 记录
 - intervention 前后验证结果
 - Vite React 调查优先 UI
@@ -132,7 +133,7 @@ Quipu 仍是早期本地优先原型。
 
 下一步方向：
 
-- systemd service/timer 打包与离线 local ring buffer
+- 离线 local ring buffer、device enrollment 与 token rotation
 - 按型号、内核、驱动、存储、Wi-Fi、工作负载和物理环境探索团队模式
 - 角色感知的团队流程、redaction 控制和 retention policy
 
@@ -205,7 +206,29 @@ quipu-collector --dry-run --interval 60 --iterations 3
 quipu-collector --server-url http://127.0.0.1:8000 --token dev-token --interval 300
 ```
 
-目前尚未包含 packaged daemon、systemd unit 和离线 local ring buffer。
+预览 systemd timer 安装：
+
+```bash
+scripts/install-collector-systemd.sh --dry-run
+```
+
+实际安装流程：
+
+```bash
+sudo scripts/install-collector-systemd.sh --no-enable
+sudoedit /etc/quipu/collector.env
+sudo systemctl enable --now quipu-collector.timer
+systemctl list-timers quipu-collector.timer
+```
+
+卸载：
+
+```bash
+sudo scripts/uninstall-collector-systemd.sh
+```
+
+安装脚本假设目标机器上已经安装了 `quipu-collector` 可执行文件。目前尚未
+包含 package publishing、离线 local ring buffer 和 production deployment。
 
 ## 架构
 

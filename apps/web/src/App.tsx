@@ -32,7 +32,7 @@ import type { FleetOverview, InvestigationDetail, InvestigationItem, MetricSampl
 import './styles.css';
 
 const flowStages = ['Detect', 'Triage', 'Investigate', 'Hypothesize', 'Act', 'Verify', 'Report'];
-const appVersion = 'v0.7.0';
+const appVersion = 'v0.8.0';
 
 const riskLabels: Record<RiskLevel, string> = {
   healthy: 'Healthy',

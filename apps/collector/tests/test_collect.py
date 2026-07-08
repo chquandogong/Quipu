@@ -46,14 +46,15 @@ def test_collect_observation_reads_linux_signals_without_raw_machine_id(tmp_path
     _write(
         root / "var/log/quipu/kernel.log",
         "\n".join(
-            [
-                "2026-07-07T05:22:10+00:00 kernel: CPU0: Core temperature above threshold, cpu clock throttled",
-                "2026-07-07T05:23:10+00:00 kernel: nvme0n1: I/O timeout, reset controller",
-                "2026-07-07T05:25:00+00:00 kernel: ACPI: battery discharge rate high while AC offline",
-                "2026-07-07T05:26:00+00:00 kernel: i915 0000:00:02.0: GPU HANG detected",
-                "2026-07-07T05:27:00+00:00 kernel: Out of memory: Killed process 1234 chrome",
-                "2026-07-07T05:28:00+00:00 systemd: Rebooting.",
-            ]
+                [
+                    "2026-07-07T05:22:10+00:00 kernel: CPU0: Core temperature above threshold, cpu clock throttled",
+                    "2026-07-07T05:23:10+00:00 kernel: nvme0n1: I/O timeout, reset controller",
+                    "2026-07-07T05:25:00+00:00 kernel: ACPI: battery discharge rate high while AC offline",
+                    "2026-07-07T05:25:30+00:00 kernel: i915 0000:00:02.0: Using 41-bit DMA addresses",
+                    "2026-07-07T05:26:00+00:00 kernel: i915 0000:00:02.0: GPU HANG detected",
+                    "2026-07-07T05:27:00+00:00 kernel: Out of memory: Killed process 1234 chrome",
+                    "2026-07-07T05:28:00+00:00 systemd: Rebooting.",
+                ]
         )
         + "\n",
     )
@@ -63,7 +64,13 @@ def test_collect_observation_reads_linux_signals_without_raw_machine_id(tmp_path
     )
     _write(
         root / "var/log/quipu/networkmanager.log",
-        "2026-07-07T05:24:00+00:00 NetworkManager: wlp0s20f3: state change: activated -> disconnected (reason 'supplicant-disconnect')\n",
+        "\n".join(
+            [
+                "2026-07-07T05:23:30+00:00 NetworkManager: wpa_supplicant: WPA: Group rekeying completed with 24:4b:fe:27:e6:34",
+                "2026-07-07T05:24:00+00:00 NetworkManager: wlp0s20f3: state change: activated -> disconnected (reason 'supplicant-disconnect')",
+            ]
+        )
+        + "\n",
     )
     _write(root / "sys/class/power_supply/BAT0/type", "Battery\n")
     _write(root / "sys/class/power_supply/BAT0/capacity", "37\n")
@@ -117,9 +124,11 @@ def test_collect_observation_reads_linux_signals_without_raw_machine_id(tmp_path
     assert events[("power", "kernel")]["fingerprint"].startswith("power-kernel-")
     assert events[("graphics", "kernel")]["severity"] == "warning"
     assert "GPU HANG" in events[("graphics", "kernel")]["message_summary"]
+    assert not any("Using 41-bit DMA addresses" in event["message_summary"] for event in batch["events"])
     assert events[("memory", "kernel")]["severity"] == "critical"
     assert "Killed process" in events[("memory", "kernel")]["message_summary"]
     assert events[("reboot", "systemd")]["severity"] == "info"
     assert "Rebooting" in events[("reboot", "systemd")]["message_summary"]
     assert events[("update", "apt")]["severity"] == "info"
     assert "Upgrade" in events[("update", "apt")]["message_summary"]
+    assert not any("Group rekeying completed" in event["message_summary"] for event in batch["events"])

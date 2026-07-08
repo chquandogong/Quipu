@@ -27,7 +27,6 @@ NETWORK_EVENT_PATTERNS = (
     "disconnect",
     "reconnect",
     "carrier",
-    "supplicant",
     "deauth",
     "dhcp",
     "link is down",
@@ -60,11 +59,10 @@ POWER_EVENT_PATTERNS = (
 
 GRAPHICS_EVENT_PATTERNS = (
     "gpu hang",
-    "drm",
-    "i915",
-    "amdgpu",
-    "nouveau",
-    "nvidia",
+    "*error*",
+    "atomic update failure",
+    "gpu fault",
+    "xid",
     "gnome-shell",
     "kwin",
     "xorg",

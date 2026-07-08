@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 
+from quipu_server.contracts import DeviceIn, EventIn, MetricSampleIn, ObservationBatchIn
 from quipu_server.repository import ingest_batch, list_device_snapshots
 
 
@@ -27,3 +28,56 @@ def test_ingest_batch_is_idempotent_by_device_and_batch_id(conn, sample_batch) -
     assert second.inserted is False
     assert second.metrics_inserted == 0
     assert second.events_inserted == 0
+
+
+def test_device_snapshot_keeps_actionable_warning_when_info_events_are_newer(conn) -> None:
+    warning_time = datetime(2026, 7, 7, 3, 0, tzinfo=timezone.utc)
+    info_time = datetime(2026, 7, 8, 3, 0, tzinfo=timezone.utc)
+    batch = ObservationBatchIn(
+        batch_id="batch-actionable-events",
+        observed_at=info_time,
+        device=DeviceIn(
+            device_id="local-computer",
+            hostname="local-host",
+            model="Laptop",
+            os_name="Ubuntu",
+            kernel_version="6.17.0",
+        ),
+        metrics=[
+            MetricSampleIn(
+                name="cpu.package_temp_c",
+                value=65.0,
+                unit="celsius",
+                observed_at=info_time,
+            )
+        ],
+        events=[
+            EventIn(
+                category="thermal",
+                severity="warning",
+                source="kernel",
+                message_summary="CPU package temperature was above threshold.",
+                raw_ref="journalctl -k",
+                observed_at=warning_time,
+                fingerprint="thermal-warning-actionable",
+            ),
+            *[
+                EventIn(
+                    category="update",
+                    severity="info",
+                    source="apt",
+                    message_summary=f"Upgrade package set {index}",
+                    raw_ref="var/log/apt/history.log",
+                    observed_at=info_time,
+                    fingerprint=f"update-info-{index}",
+                )
+                for index in range(8)
+            ],
+        ],
+    )
+
+    ingest_batch(conn, batch, received_at=info_time)
+    snapshot = list_device_snapshots(conn, recent_event_limit=3)[0]
+
+    assert snapshot["recent_events"][0]["severity"] == "warning"
+    assert snapshot["recent_events"][0]["fingerprint"] == "thermal-warning-actionable"

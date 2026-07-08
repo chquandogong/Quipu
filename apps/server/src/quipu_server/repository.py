@@ -332,7 +332,13 @@ def list_device_snapshots(conn: sqlite3.Connection, *, recent_event_limit: int =
             SELECT category, severity, source, message_summary, raw_ref, observed_at, fingerprint
             FROM events
             WHERE device_id = ?
-            ORDER BY observed_at DESC
+            ORDER BY
+              CASE severity
+                WHEN 'critical' THEN 0
+                WHEN 'warning' THEN 1
+                ELSE 2
+              END ASC,
+              observed_at DESC
             LIMIT ?
             """,
             (device_id, recent_event_limit),

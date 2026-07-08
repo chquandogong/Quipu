@@ -2,7 +2,7 @@
 
 <p align="center">
   <img alt="CI" src="https://github.com/chquandogong/Quipu/actions/workflows/ci.yml/badge.svg">
-  <img alt="Version" src="https://img.shields.io/badge/version-v0.11.0-2f6f7e">
+  <img alt="Version" src="https://img.shields.io/badge/version-v0.12.0-2f6f7e">
   <img alt="Status" src="https://img.shields.io/badge/status-local--first%20workstation%20health-5b6b73">
   <img alt="License" src="https://img.shields.io/badge/license-not%20selected-lightgrey">
 </p>
@@ -31,7 +31,7 @@ Wi-Fi 불안정, 저장장치 경고, 전원 문제, 재부팅 흔적을 한 화
 Detect -> Triage -> Investigate -> Hypothesize -> Act -> Verify -> Report
 ```
 
-## v0.11.0 핵심
+## v0.12.0 핵심
 
 - 다른 노트북/컴퓨터를 같은 서버에 연결하는 collector 절차를 문서화했습니다.
 - collector `--device-alias`와 systemd `QUIPU_COLLECTOR_DEVICE_ALIAS`로 장비별

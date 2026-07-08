@@ -2,6 +2,30 @@
 
 All notable changes to Quipu are documented in this file.
 
+## v0.12.0 - 2026-07-08
+
+Windows scheduled collector operations release.
+
+### Added
+
+- Windows scheduled-task collector packaging that mirrors the Ubuntu systemd
+  collector flow: environment file, hidden startup wrapper, duplicate-process
+  guard, offline buffer, and five-minute background collection loop.
+- Windows install and uninstall scripts for registering the collector at user
+  logon and removing the task when needed.
+- Windows collector environment example without a development token.
+- Ops packaging tests for the Windows scheduled-task files.
+
+### Changed
+
+- Updated package, app, API, schema, and UI versions to `0.12.0`.
+
+### Verified
+
+- Collector test suite covers the new Windows scheduled-task packaging.
+- Windows scheduled task was registered locally and restarted the `windows`
+  device collector against the LAN Quipu server.
+
 ## v0.11.0 - 2026-07-08
 
 Multi-device naming, hardware telemetry, and consistent explanation UI release.

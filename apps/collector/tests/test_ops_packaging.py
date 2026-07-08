@@ -2,11 +2,15 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+import shutil
 import subprocess
+
+import pytest
 
 
 ROOT = Path(__file__).resolve().parents[3]
 OPS = ROOT / "apps" / "collector" / "ops"
+WINDOWS_OPS = OPS / "windows"
 SCRIPTS = ROOT / "scripts"
 
 
@@ -56,7 +60,43 @@ def test_env_example_documents_required_and_optional_settings() -> None:
     assert "dev-token" not in env_example
 
 
+def test_windows_scheduled_task_packaging_matches_systemd_flow() -> None:
+    env_example = _read(WINDOWS_OPS / "collector.env.example.ps1")
+    starter = _read(WINDOWS_OPS / "start-quipu-collector.ps1")
+    installer = _read(SCRIPTS / "install-collector-scheduled-task.ps1")
+    uninstaller = _read(SCRIPTS / "uninstall-collector-scheduled-task.ps1")
+
+    assert "$env:QUIPU_SERVER_URL = \"http://127.0.0.1:8000\"" in env_example
+    assert "$env:QUIPU_AGENT_TOKEN = \"replace-with-enrollment-token\"" in env_example
+    assert "$env:QUIPU_COLLECTOR_DEVICE_ID = \"\"" in env_example
+    assert "$env:QUIPU_COLLECTOR_DEVICE_ALIAS = \"\"" in env_example
+    assert "$env:QUIPU_COLLECTOR_INTERVAL = \"300\"" in env_example
+    assert "dev-token" not in env_example
+
+    assert "QUIPU_SERVER_URL is required" in starter
+    assert "QUIPU_AGENT_TOKEN is required" in starter
+    assert "\"--offline-buffer\"" in starter
+    assert "\"--interval\"" in starter
+    assert "\"--spool-max-batches\"" in starter
+    assert "collector already running" in starter
+    assert "Start-Process" in starter
+    assert "-WindowStyle Hidden" in starter
+
+    assert "Register-ScheduledTask" in installer
+    assert "New-ScheduledTaskTrigger -AtLogOn" in installer
+    assert "New-ScheduledTaskPrincipal" in installer
+    assert "MultipleInstances IgnoreNew" in installer
+    assert "Start-ScheduledTask" in installer
+
+    assert "Unregister-ScheduledTask" in uninstaller
+    assert "Stop-Process" in uninstaller
+    assert "PurgeConfig" in uninstaller
+
+
 def test_wrapper_validates_required_config_and_builds_safe_args(tmp_path: Path) -> None:
+    if shutil.which("bash") is None:
+        pytest.skip("bash is required to execute the systemd collector wrapper")
+
     wrapper = OPS / "bin" / "quipu-collector-run"
 
     missing = subprocess.run(
@@ -116,6 +156,9 @@ def test_wrapper_validates_required_config_and_builds_safe_args(tmp_path: Path) 
 
 
 def test_ops_scripts_are_syntax_valid_and_support_dry_run() -> None:
+    if shutil.which("bash") is None:
+        pytest.skip("bash is required to validate the systemd collector scripts")
+
     scripts = [
         OPS / "bin" / "quipu-collector-run",
         SCRIPTS / "install-collector-systemd.sh",

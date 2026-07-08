@@ -2,7 +2,7 @@
 
 <p align="center">
   <img alt="CI" src="https://github.com/chquandogong/Quipu/actions/workflows/ci.yml/badge.svg">
-  <img alt="Version" src="https://img.shields.io/badge/version-v0.11.0-2f6f7e">
+  <img alt="Version" src="https://img.shields.io/badge/version-v0.12.0-2f6f7e">
   <img alt="Status" src="https://img.shields.io/badge/status-local--first%20workstation%20health-5b6b73">
   <img alt="License" src="https://img.shields.io/badge/license-not%20selected-lightgrey">
 </p>
@@ -30,6 +30,17 @@ Detect -> Triage -> Investigate -> Hypothesize -> Act -> Verify -> Report
 
 The product is not a remote repair tool. The collector is read-only and the
 server uses deterministic rule-based analysis.
+
+## v0.12.0 Highlights
+
+- Windows collector operations are now packaged beside the Ubuntu systemd
+  collector: environment file, startup wrapper, scheduled-task install script,
+  and uninstall script.
+- The Windows startup wrapper runs hidden at user logon, prevents duplicate
+  collector loops, keeps the offline buffer enabled, and posts every five
+  minutes by default.
+- Version metadata across the collector, server, schema, and web app is now
+  `0.12.0`.
 
 ## v0.11.0 Highlights
 
@@ -112,6 +123,23 @@ quipu-collector \
 
 Use a different `--device-id` per machine. Use enrollment tokens instead of
 `dev-token` for repeated operation.
+
+## Connect A Windows Workstation
+
+Create `apps/collector/ops/windows/collector.env.ps1` from the example, then
+register the collector at user logon:
+
+```powershell
+powershell.exe -ExecutionPolicy Bypass -File scripts\install-collector-scheduled-task.ps1 `
+  -ServerUrl http://<server-ip>:8000 `
+  -Token dev-token `
+  -DeviceId windows `
+  -DeviceAlias "Windows"
+```
+
+The scheduled task starts `apps/collector/ops/windows/start-quipu-collector.ps1`
+hidden in the background. It keeps the offline buffer enabled and sends a batch
+every five minutes.
 
 ## Main Surfaces
 

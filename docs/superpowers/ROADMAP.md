@@ -41,8 +41,9 @@ Implemented:
 - Command Center first viewport with inspect/why/action/proof answers.
 - High-contrast dark command theme.
 - Core signal console for CPU, Load, NVMe, and Wi-Fi.
-- Telemetry Matrix for Memory, Network Events, Reconnect History, Thermal
-  Throttling, Disk Health, Battery Power, Kernel Warnings, and Agent Freshness.
+- Telemetry Matrix for Memory, Fan RPM, NVMe Health, Network Events,
+  Reconnect History, Thermal Throttling, Disk Health, Battery Power, Kernel
+  Warnings, and Agent Freshness.
 - Metric help tooltips for definition, time window, reading guidance, and next
   check.
 - CTA routing to evidence, action recording, and verification.
@@ -72,13 +73,15 @@ Implemented:
 - Root filesystem usage.
 - Battery capacity and AC online state from `/sys/class/power_supply`.
 - Best-effort kernel storage and power warning event summaries.
+- Fan RPM where available through hwmon.
+- NVMe SMART-lite health where available through sysfs-style files.
 - Optional POST to the ingest API.
 
 Remaining:
 
 - CPU/core/package thermals with richer sensor naming.
-- Fan RPM where available.
-- SMART/NVMe health where available without compromising lightweight setup.
+- Richer multi-fan naming and fan-context analysis.
+- Deeper SMART/NVMe health where available without external dependencies.
 - Kernel, graphics/session, update, reboot markers.
 - Local ring buffer for offline periods.
 

@@ -31,6 +31,11 @@ const fleetResponse = {
         'disk.root_used_percent': { value: 78.2, unit: 'percent', observed_at: '2026-07-07T03:00:00+00:00' },
         'battery.capacity_percent': { value: 37.0, unit: 'percent', observed_at: '2026-07-07T03:00:00+00:00' },
         'battery.ac_online': { value: 0.0, unit: 'boolean', observed_at: '2026-07-07T03:00:00+00:00' },
+        'fan.rpm': { value: 2840.0, unit: 'rpm', observed_at: '2026-07-07T03:00:00+00:00' },
+        'nvme.critical_warning': { value: 1.0, unit: 'boolean', observed_at: '2026-07-07T03:00:00+00:00' },
+        'nvme.available_spare_percent': { value: 9.0, unit: 'percent', observed_at: '2026-07-07T03:00:00+00:00' },
+        'nvme.percentage_used_percent': { value: 12.0, unit: 'percent', observed_at: '2026-07-07T03:00:00+00:00' },
+        'nvme.media_errors': { value: 2.0, unit: 'count', observed_at: '2026-07-07T03:00:00+00:00' },
       },
       recent_events: [
         {
@@ -218,7 +223,7 @@ describe('App', () => {
     expect(screen.queryByText('Creator and visual references')).not.toBeInTheDocument();
     expect(screen.queryByText('Dogu Robotics · Dogu X · Physical AI')).not.toBeInTheDocument();
     expect(screen.getByText('About: workstation health investigation')).toBeInTheDocument();
-    expect(screen.getByText('Version v0.5.0')).toBeInTheDocument();
+    expect(screen.getByText('Version v0.6.0')).toBeInTheDocument();
     await waitFor(() => expect(screen.getByRole('button', { name: 'Explain CPU package temperature metric' })).toBeInTheDocument());
     expect(screen.getByText('정의: 선택한 장비의 CPU 패키지 센서 온도입니다. (CPU package temperature)')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Explain 1 minute load average metric' })).toBeInTheDocument();
@@ -240,6 +245,10 @@ describe('App', () => {
     expect(screen.getAllByText('78.2%').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Battery Power').length).toBeGreaterThan(0);
     expect(screen.getAllByText('37.0%').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Fan RPM').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('2840 rpm').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('NVMe Health').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Critical warning').length).toBeGreaterThan(0);
     expect(screen.getAllByText('build-xps').length).toBeGreaterThan(0);
     expect(screen.getByText('Top hypotheses')).toBeInTheDocument();
     expect(screen.getByText('Action plan')).toBeInTheDocument();

@@ -340,6 +340,22 @@ def _disk_metric(root: Path, observed_at: str) -> dict[str, Any] | None:
     return _metric("disk.root_used_percent", used_percent, "percent", observed_at)
 
 
+def _parse_metric_number(value: str) -> float | None:
+    hex_match = re.search(r"0x[0-9a-fA-F]+", value)
+    if hex_match:
+        try:
+            return float(int(hex_match.group(0), 16))
+        except ValueError:
+            return None
+    number_match = re.search(r"-?\d+(?:\.\d+)?", value)
+    if not number_match:
+        return None
+    try:
+        return float(number_match.group(0))
+    except ValueError:
+        return None
+
+
 def _thermal_metrics(root: Path, observed_at: str) -> list[dict[str, Any]]:
     base = _root_path(root, "/sys/class/thermal")
     metrics: list[dict[str, Any]] = []
@@ -356,6 +372,19 @@ def _thermal_metrics(root: Path, observed_at: str) -> list[dict[str, Any]]:
         metric_name = metric_name or f"thermal.{_safe_metric_part(sensor_type)}.temp_c"
         metrics.append(_metric(metric_name, celsius, "celsius", observed_at))
     return metrics
+
+
+def _fan_metrics(root: Path, observed_at: str) -> list[dict[str, Any]]:
+    base = _root_path(root, "/sys/class/hwmon")
+    for hwmon in sorted(base.glob("hwmon*")):
+        for fan_input in sorted(hwmon.glob("fan*_input")):
+            raw_rpm = _read_text(fan_input)
+            if raw_rpm is None:
+                continue
+            rpm = _parse_metric_number(raw_rpm)
+            if rpm is not None and rpm >= 0:
+                return [_metric("fan.rpm", rpm, "rpm", observed_at)]
+    return []
 
 
 def _nvme_metrics(root: Path, observed_at: str) -> list[dict[str, Any]]:
@@ -375,6 +404,58 @@ def _nvme_metrics(root: Path, observed_at: str) -> list[dict[str, Any]]:
             except ValueError:
                 continue
     return metrics
+
+
+def _nvme_health_values(controller: Path) -> dict[str, float]:
+    aliases = {
+        "critical_warning": "critical_warning",
+        "critical_warning_raw": "critical_warning",
+        "available_spare": "available_spare",
+        "percentage_used": "percentage_used",
+        "media_errors": "media_errors",
+        "media_and_data_integrity_errors": "media_errors",
+    }
+    values: dict[str, float] = {}
+    for file_name, value_name in aliases.items():
+        raw_value = _read_text(controller / file_name)
+        if raw_value is None:
+            continue
+        parsed = _parse_metric_number(raw_value)
+        if parsed is not None:
+            values[value_name] = parsed
+
+    smart_log = _read_text(controller / "smart_log")
+    if smart_log:
+        for line in smart_log.splitlines():
+            if ":" not in line and "=" not in line:
+                continue
+            separator = ":" if ":" in line else "="
+            raw_key, raw_value = line.split(separator, 1)
+            normalized_key = _safe_metric_part(raw_key)
+            value_name = aliases.get(normalized_key)
+            if not value_name:
+                continue
+            parsed = _parse_metric_number(raw_value)
+            if parsed is not None:
+                values.setdefault(value_name, parsed)
+    return values
+
+
+def _nvme_health_metrics(root: Path, observed_at: str) -> list[dict[str, Any]]:
+    base = _root_path(root, "/sys/class/nvme")
+    metric_specs = {
+        "critical_warning": ("nvme.critical_warning", "boolean"),
+        "available_spare": ("nvme.available_spare_percent", "percent"),
+        "percentage_used": ("nvme.percentage_used_percent", "percent"),
+        "media_errors": ("nvme.media_errors", "count"),
+    }
+    metrics_by_name: dict[str, dict[str, Any]] = {}
+    for controller in sorted(base.glob("nvme*")):
+        for value_name, value in _nvme_health_values(controller).items():
+            metric_name, unit = metric_specs[value_name]
+            if metric_name not in metrics_by_name:
+                metrics_by_name[metric_name] = _metric(metric_name, value, unit, observed_at)
+    return list(metrics_by_name.values())
 
 
 def _wifi_metric(root: Path, observed_at: str) -> dict[str, Any] | None:
@@ -444,6 +525,8 @@ def collect_observation(
     ]
     metrics.extend(_thermal_metrics(root_path, observed_iso))
     metrics.extend(_nvme_metrics(root_path, observed_iso))
+    metrics.extend(_fan_metrics(root_path, observed_iso))
+    metrics.extend(_nvme_health_metrics(root_path, observed_iso))
     metrics.extend(_power_supply_metrics(root_path, observed_iso))
     events = _event_logs(root_path, observed_iso, command_runner)
 

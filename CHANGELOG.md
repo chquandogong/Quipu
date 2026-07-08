@@ -2,6 +2,38 @@
 
 All notable changes to Quipu are documented in this file.
 
+## v0.6.0 - 2026-07-08
+
+Fan and NVMe SMART-lite telemetry release.
+
+### Added
+
+- Read-only collector metric for `fan.rpm` from the first readable hwmon
+  `fan*_input` value.
+- Read-only collector metrics for `nvme.critical_warning`,
+  `nvme.available_spare_percent`, `nvme.percentage_used_percent`, and
+  `nvme.media_errors` from sysfs-style NVMe health files or an optional
+  `smart_log` text file.
+- Rule-based storage findings for NVMe critical-warning flags, low available
+  spare, high percentage used, and media errors.
+- Telemetry Matrix tiles for `Fan RPM` and `NVMe Health`.
+- v0.6.0 fan/NVMe SMART-lite design and implementation plan documents.
+
+### Changed
+
+- Expanded sample team fixture data with fan RPM and NVMe SMART-lite health
+  metrics across the demo fleet.
+- Updated package and app versions to `0.6.0`.
+
+### Verified
+
+- Server test suite: 27 tests passed.
+- Collector test suite: 1 test passed.
+- Web test suite: 1 test passed.
+- Web production build succeeded.
+- Browser screenshot confirmed `Version v0.6.0`, `Fan RPM`, `NVMe Health`, and
+  `10/10 signals` in the running app.
+
 ## v0.5.0 - 2026-07-08
 
 Disk and battery telemetry expansion release.

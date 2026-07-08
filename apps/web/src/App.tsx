@@ -9,6 +9,7 @@ import {
   ChevronRight,
   ClipboardCheck,
   Cpu,
+  Fan,
   FileSearch,
   Gauge,
   HardDrive,
@@ -31,7 +32,7 @@ import type { FleetOverview, InvestigationDetail, InvestigationItem, MetricSampl
 import './styles.css';
 
 const flowStages = ['Detect', 'Triage', 'Investigate', 'Hypothesize', 'Act', 'Verify', 'Report'];
-const appVersion = 'v0.5.0';
+const appVersion = 'v0.6.0';
 
 const riskLabels: Record<RiskLevel, string> = {
   healthy: 'Healthy',
@@ -127,6 +128,8 @@ function metricValue(detail: InvestigationDetail | null, name: string): string {
   if (metric.unit === 'percent') return `${metric.value.toFixed(1)}%`;
   if (metric.unit === 'dbm') return `${metric.value.toFixed(0)} dBm`;
   if (metric.unit === 'boolean') return metric.value >= 0.5 ? 'Online' : 'Offline';
+  if (metric.unit === 'rpm') return `${metric.value.toFixed(0)} rpm`;
+  if (metric.unit === 'count') return `${metric.value.toFixed(0)}`;
   return `${metric.value}`;
 }
 
@@ -160,6 +163,19 @@ function metricStatus(detail: InvestigationDetail | null, name: string): SignalS
   if (name === 'battery.capacity_percent') {
     if (value <= 10) return 'critical';
     if (value <= 20) return 'watch';
+  }
+  if (name === 'nvme.critical_warning' && value >= 1) return 'critical';
+  if (name === 'nvme.available_spare_percent') {
+    if (value <= 10) return 'critical';
+    if (value <= 20) return 'watch';
+  }
+  if (name === 'nvme.percentage_used_percent') {
+    if (value >= 90) return 'critical';
+    if (value >= 75) return 'watch';
+  }
+  if (name === 'nvme.media_errors') {
+    if (value >= 10) return 'critical';
+    if (value > 0) return 'watch';
   }
   if (name === 'wifi.signal_dbm') {
     if (value <= -80) return 'critical';
@@ -199,6 +215,42 @@ function strongestStatus(...statuses: SignalStatus[]): SignalStatus {
   if (statuses.includes('watch')) return 'watch';
   if (statuses.includes('nominal')) return 'nominal';
   return 'missing';
+}
+
+function fanStatus(detail: InvestigationDetail | null): SignalStatus {
+  const fan = latestMetric(detail, 'fan.rpm');
+  if (!fan) return 'missing';
+  const cpuTemp = latestMetric(detail, 'cpu.package_temp_c')?.value;
+  if (fan.value <= 200 && cpuTemp !== undefined && cpuTemp >= 78) return 'watch';
+  return 'nominal';
+}
+
+function nvmeHealthStatus(detail: InvestigationDetail | null): SignalStatus {
+  const hasSignal = Boolean(
+    latestMetric(detail, 'nvme.critical_warning')
+      || latestMetric(detail, 'nvme.available_spare_percent')
+      || latestMetric(detail, 'nvme.percentage_used_percent')
+      || latestMetric(detail, 'nvme.media_errors'),
+  );
+  if (!hasSignal) return 'missing';
+  return strongestStatus(
+    metricStatus(detail, 'nvme.critical_warning'),
+    metricStatus(detail, 'nvme.available_spare_percent'),
+    metricStatus(detail, 'nvme.percentage_used_percent'),
+    metricStatus(detail, 'nvme.media_errors'),
+  );
+}
+
+function nvmeHealthValue(detail: InvestigationDetail | null): string {
+  const criticalWarning = latestMetric(detail, 'nvme.critical_warning');
+  if (criticalWarning && criticalWarning.value >= 1) return 'Critical warning';
+  const availableSpare = latestMetric(detail, 'nvme.available_spare_percent');
+  if (availableSpare) return `${availableSpare.value.toFixed(1)}% spare`;
+  const percentageUsed = latestMetric(detail, 'nvme.percentage_used_percent');
+  if (percentageUsed) return `${percentageUsed.value.toFixed(1)}% used`;
+  const mediaErrors = latestMetric(detail, 'nvme.media_errors');
+  if (mediaErrors) return `${mediaErrors.value.toFixed(0)} errors`;
+  return 'Unavailable';
 }
 
 function minutesSince(laterIso: string | undefined, earlierIso: string | undefined): number | null {
@@ -244,6 +296,24 @@ function buildTelemetryTiles(detail: InvestigationDetail | null, overview: Fleet
       value: latestMetric(detail, 'disk.root_used_percent') ? metricValue(detail, 'disk.root_used_percent') : eventSignalValue(storageEvents),
       status: storageStatus,
       summary: 'root filesystem 사용률과 kernel storage warning을 함께 봅니다. (disk fullness and I/O stalls)',
+      Icon: HardDrive,
+    },
+    {
+      id: 'fan.rpm',
+      category: 'Cooling',
+      label: 'Fan RPM',
+      value: metricValue(detail, 'fan.rpm'),
+      status: fanStatus(detail),
+      summary: 'hwmon에 노출된 fan 회전수를 냉각 맥락으로 봅니다. 장비별로 결측일 수 있습니다.',
+      Icon: Fan,
+    },
+    {
+      id: 'nvme.health',
+      category: 'Storage',
+      label: 'NVMe Health',
+      value: nvmeHealthValue(detail),
+      status: nvmeHealthStatus(detail),
+      summary: 'critical warning, spare, lifetime usage, media error를 SMART-lite 신호로 확인합니다.',
       Icon: HardDrive,
     },
     {
@@ -402,7 +472,7 @@ function TelemetryMatrix({ detail, overview }: { detail: InvestigationDetail | n
       <div className="matrix-head">
         <div>
           <h3>Telemetry Matrix</h3>
-          <p>Core metric 밖의 disk, battery, Wi-Fi, memory, network, kernel, agent freshness를 한 번에 확인합니다.</p>
+          <p>Core metric 밖의 fan, NVMe health, disk, battery, Wi-Fi, memory, network, kernel, agent freshness를 한 번에 확인합니다.</p>
         </div>
         <span>{tiles.filter((tile) => tile.status !== 'missing').length}/{tiles.length} signals</span>
       </div>

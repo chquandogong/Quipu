@@ -214,6 +214,65 @@ def classify_snapshot(snapshot: dict[str, Any], *, now: datetime) -> dict[str, A
         )
         risk_level = "warning"
 
+    nvme_critical_warning = _metric_value(snapshot, "nvme.critical_warning")
+    if nvme_critical_warning is not None and nvme_critical_warning >= 1 and risk_level != "stale":
+        findings.append(
+            _finding(
+                "storage",
+                "NVMe critical warning reported",
+                "NVMe critical warning flag is active.",
+                "high",
+            )
+        )
+        risk_level = "critical"
+
+    nvme_available_spare = _metric_value(snapshot, "nvme.available_spare_percent")
+    if nvme_available_spare is not None and nvme_available_spare <= 10 and risk_level != "stale":
+        findings.append(
+            _finding(
+                "storage",
+                "NVMe available spare is critical",
+                f"Latest NVMe available spare is {nvme_available_spare:.1f}%.",
+                "high",
+            )
+        )
+        risk_level = "critical"
+    elif nvme_available_spare is not None and nvme_available_spare <= 20 and risk_level == "healthy":
+        findings.append(
+            _finding(
+                "storage",
+                "NVMe available spare is low",
+                f"Latest NVMe available spare is {nvme_available_spare:.1f}%.",
+                "medium",
+            )
+        )
+        risk_level = "warning"
+
+    nvme_percentage_used = _metric_value(snapshot, "nvme.percentage_used_percent")
+    if nvme_percentage_used is not None and nvme_percentage_used >= 90 and risk_level != "stale":
+        findings.append(
+            _finding(
+                "storage",
+                "NVMe lifetime usage is high",
+                f"Latest NVMe percentage used is {nvme_percentage_used:.1f}%.",
+                "medium",
+            )
+        )
+        if risk_level == "healthy":
+            risk_level = "warning"
+
+    nvme_media_errors = _metric_value(snapshot, "nvme.media_errors")
+    if nvme_media_errors is not None and nvme_media_errors > 0 and risk_level == "healthy":
+        findings.append(
+            _finding(
+                "storage",
+                "NVMe media errors reported",
+                f"Latest NVMe media error count is {nvme_media_errors:.0f}.",
+                "medium",
+            )
+        )
+        risk_level = "warning"
+
     for event in snapshot["recent_events"]:
         specific_finding = _specific_event_finding(event)
         if event["severity"] == "critical" and risk_level != "stale":

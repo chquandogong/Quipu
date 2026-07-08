@@ -237,3 +237,80 @@ def test_battery_power_event_gets_specific_finding() -> None:
     assert overview["devices"][0]["findings"][0]["category"] == "power"
     assert queue[0]["id"] == "battery:power"
     assert queue[0]["next_step"] == "Check battery state, AC connection, and power-management events."
+
+
+def test_nvme_critical_warning_gets_storage_finding() -> None:
+    now = datetime(2026, 7, 7, 3, 5, tzinfo=timezone.utc)
+    snapshots = [
+        {
+            "device": {
+                "device_id": "nvme",
+                "hostname": "nvme-dev",
+                "model": "Laptop",
+                "os_name": "Ubuntu",
+                "kernel_version": "6.14.0",
+                "first_seen_at": "2026-07-07T02:55:00+00:00",
+                "last_seen_at": "2026-07-07T03:04:00+00:00",
+            },
+            "latest_metrics": {
+                "nvme.critical_warning": {
+                    "value": 1.0,
+                    "unit": "boolean",
+                    "observed_at": "2026-07-07T03:04:00+00:00",
+                },
+                "nvme.available_spare_percent": {
+                    "value": 9.0,
+                    "unit": "percent",
+                    "observed_at": "2026-07-07T03:04:00+00:00",
+                },
+                "nvme.media_errors": {
+                    "value": 2.0,
+                    "unit": "count",
+                    "observed_at": "2026-07-07T03:04:00+00:00",
+                },
+            },
+            "recent_events": [],
+        }
+    ]
+
+    overview = build_fleet_overview(snapshots, now=now)
+    queue = build_investigation_queue(snapshots, now=now)
+
+    assert overview["summary"]["critical"] == 1
+    assert overview["devices"][0]["findings"][0]["title"] == "NVMe critical warning reported"
+    assert overview["devices"][0]["findings"][0]["category"] == "storage"
+    assert queue[0]["id"] == "nvme:storage"
+    assert queue[0]["priority"] == "High"
+
+
+def test_low_nvme_available_spare_gets_storage_warning() -> None:
+    now = datetime(2026, 7, 7, 3, 5, tzinfo=timezone.utc)
+    snapshots = [
+        {
+            "device": {
+                "device_id": "spare",
+                "hostname": "spare-dev",
+                "model": "Laptop",
+                "os_name": "Ubuntu",
+                "kernel_version": "6.14.0",
+                "first_seen_at": "2026-07-07T02:55:00+00:00",
+                "last_seen_at": "2026-07-07T03:04:00+00:00",
+            },
+            "latest_metrics": {
+                "nvme.available_spare_percent": {
+                    "value": 15.0,
+                    "unit": "percent",
+                    "observed_at": "2026-07-07T03:04:00+00:00",
+                }
+            },
+            "recent_events": [],
+        }
+    ]
+
+    overview = build_fleet_overview(snapshots, now=now)
+    queue = build_investigation_queue(snapshots, now=now)
+
+    assert overview["summary"]["warning"] == 1
+    assert overview["devices"][0]["findings"][0]["title"] == "NVMe available spare is low"
+    assert overview["devices"][0]["findings"][0]["evidence"] == "Latest NVMe available spare is 15.0%."
+    assert queue[0]["id"] == "spare:storage"

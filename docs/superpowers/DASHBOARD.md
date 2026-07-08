@@ -1,6 +1,6 @@
 # Quipu Project Dashboard
 
-> Status: v0.5.0 disk/battery telemetry release track
+> Status: v0.6.0 fan/NVMe SMART-lite telemetry release track
 > Date: 2026-07-08
 > Owner: chquan
 
@@ -51,6 +51,7 @@ The second valuable question is:
 | Done | Dark telemetry expansion | Dark command theme, core signal console, Wi-Fi core metric, and Telemetry Matrix |
 | Done | Thermal/network event collection | Collector summaries, event-specific findings, throttling/reconnect matrix tiles |
 | Done | Disk/battery telemetry expansion | Root filesystem usage, battery/AC metrics, storage/power findings, and matrix tiles |
+| Done | Fan/NVMe SMART-lite telemetry | Fan RPM, NVMe health metrics, storage findings, and matrix tiles |
 | Done | Visible metadata chips | Made by, About, and Version remain visible without dominating the first viewport |
 | Approved | Private remote push and release | User requested commit, tag, push, and release on 2026-07-07 |
 | Approved | Public repository visibility after audit | User approved public visibility on 2026-07-07 |

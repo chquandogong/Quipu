@@ -29,6 +29,20 @@ def test_collect_observation_reads_linux_signals_without_raw_machine_id(tmp_path
     _write(root / "sys/class/thermal/thermal_zone0/temp", "63000\n")
     _write(root / "sys/class/hwmon/hwmon0/name", "nvme\n")
     _write(root / "sys/class/hwmon/hwmon0/temp1_input", "42000\n")
+    _write(root / "sys/class/hwmon/hwmon1/name", "thinkpad\n")
+    _write(root / "sys/class/hwmon/hwmon1/fan1_input", "2840\n")
+    _write(
+        root / "sys/class/nvme/nvme0/smart_log",
+        "\n".join(
+            [
+                "critical_warning : 1",
+                "available_spare : 9%",
+                "percentage_used : 12%",
+                "media_errors : 2",
+            ]
+        )
+        + "\n",
+    )
     _write(
         root / "var/log/quipu/kernel.log",
         "\n".join(
@@ -71,6 +85,14 @@ def test_collect_observation_reads_linux_signals_without_raw_machine_id(tmp_path
     assert metrics["battery.capacity_percent"]["unit"] == "percent"
     assert metrics["battery.ac_online"]["value"] == 0.0
     assert metrics["battery.ac_online"]["unit"] == "boolean"
+    assert metrics["fan.rpm"]["value"] == 2840.0
+    assert metrics["fan.rpm"]["unit"] == "rpm"
+    assert metrics["nvme.critical_warning"]["value"] == 1.0
+    assert metrics["nvme.critical_warning"]["unit"] == "boolean"
+    assert metrics["nvme.available_spare_percent"]["value"] == 9.0
+    assert metrics["nvme.percentage_used_percent"]["value"] == 12.0
+    assert metrics["nvme.media_errors"]["value"] == 2.0
+    assert metrics["nvme.media_errors"]["unit"] == "count"
     events = {(event["category"], event["source"]): event for event in batch["events"]}
     assert events[("thermal", "kernel")]["severity"] == "warning"
     assert "cpu clock throttled" in events[("thermal", "kernel")]["message_summary"]

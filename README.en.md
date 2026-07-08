@@ -2,7 +2,7 @@
 
 <p align="center">
   <img alt="CI" src="https://github.com/chquandogong/Quipu/actions/workflows/ci.yml/badge.svg">
-  <img alt="Version" src="https://img.shields.io/badge/version-v0.5.0-2f6f7e">
+  <img alt="Version" src="https://img.shields.io/badge/version-v0.6.0-2f6f7e">
   <img alt="Status" src="https://img.shields.io/badge/status-local--first%20prototype-5b6b73">
   <img alt="License" src="https://img.shields.io/badge/license-not%20selected-lightgrey">
 </p>
@@ -62,10 +62,10 @@ and next check. For example, Load is explicitly described as the Linux
 
 CPU, Load, and NVMe are useful for thermal triage, but they are not enough for
 team-level root-cause work. Quipu now promotes Wi-Fi signal into the core
-signals and uses a `Telemetry Matrix` for Memory, Disk Health, Battery Power,
-Network Events, Reconnect History, Thermal Throttling, Kernel Warnings, and
-Agent Freshness. Fan and deeper SMART/NVMe health can expand through the same
-matrix structure later.
+signals and uses a `Telemetry Matrix` for Memory, Fan RPM, NVMe Health, Disk
+Health, Battery Power, Network Events, Reconnect History, Thermal Throttling,
+Kernel Warnings, and Agent Freshness. Deeper SMART/NVMe health and fan-context
+analysis can expand through the same matrix structure later.
 
 Creator and version information stays as compact header metadata. The large
 creator/reference image drawer was removed because it did not help the
@@ -128,6 +128,7 @@ Implemented:
 - Collector metrics for root filesystem usage, battery capacity, and AC online
   state
 - Best-effort collector summaries for kernel storage and power warning events
+- Collector metrics for hwmon Fan RPM and sysfs NVMe SMART-lite health
 - Intervention records for investigation items
 - Before/after verification results for interventions
 - Vite React investigation-first UI
@@ -135,8 +136,9 @@ Implemented:
   expansion panels
 - Per-metric Korean explanation, English technical term, time window, reading
   guidance, and next-check tooltip for CPU, Load, NVMe, and Wi-Fi
-- Telemetry Matrix for Memory, Disk Health, Battery Power, Network Events,
-  Reconnect History, Thermal Throttling, Kernel Warnings, and Agent Freshness
+- Telemetry Matrix for Memory, Fan RPM, NVMe Health, Disk Health, Battery Power,
+  Network Events, Reconnect History, Thermal Throttling, Kernel Warnings, and
+  Agent Freshness
 - Compact Made by, About, and Version metadata chips
 - GitHub Actions CI for server, collector, and web checks
 
@@ -181,6 +183,10 @@ Current key signals:
 - `disk.root_used_percent`: root filesystem usage
 - `cpu.package_temp_c`, `thermal.*.temp_c`: sysfs thermal zone temperatures
 - `nvme.temp_c`: NVMe temperature exposed through hwmon
+- `fan.rpm`: first fan RPM exposed through hwmon
+- `nvme.critical_warning`, `nvme.available_spare_percent`,
+  `nvme.percentage_used_percent`, `nvme.media_errors`: NVMe SMART-lite health
+  exposed through sysfs-style files
 - `wifi.signal_dbm`: Wi-Fi signal from `/proc/net/wireless`
 - `battery.capacity_percent`, `battery.ac_online`: battery and AC state from
   `/sys/class/power_supply`

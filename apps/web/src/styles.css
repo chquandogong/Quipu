@@ -400,6 +400,12 @@ h2 {
   flex: 1 1 180px;
 }
 
+.fleet-brief {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+}
+
 .brief-reading {
   display: inline-flex;
   align-items: center;
@@ -483,6 +489,47 @@ h2 {
 
 .fleet-queue strong {
   color: #67e8f9;
+}
+
+.fleet-source {
+  display: grid;
+  grid-column: 1 / -1;
+  gap: 3px;
+  min-width: 0;
+  padding-top: 7px;
+  border-top: 1px solid rgba(148, 163, 184, 0.16);
+}
+
+.fleet-source span {
+  color: #fbbf24;
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.fleet-source strong {
+  color: #ffffff;
+  font-size: 12px;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.fleet-source em {
+  color: #9fb0c8;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 700;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.fleet-source.fleet-critical span {
+  color: #fca5a5;
+}
+
+.fleet-source.fleet-neutral span {
+  color: #94a3b8;
 }
 
 .signal-nominal {

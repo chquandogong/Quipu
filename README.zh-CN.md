@@ -48,7 +48,8 @@ DTIHAVR 也不再用 7 个大型固定步骤块展示，而是用轻量 `Workflo
 只强调当前阶段、下一阶段和下一步动作。`D T I H A V R` 首字母仍以紧凑
 阶段 rail 显示，鼠标 hover 或键盘 focus 时可以看到 Detect 到 Report 的
 完整名称和含义。Fleet 的 Total/Critical/Warning/Queue 也改为紧凑
-`Fleet Brief`，不再占用大块数字区域：
+`Fleet Brief`，不再占用大块数字区域。`Warning` 这类状态词不会孤立显示，
+而是绑定到设备、类别和调查标题，例如 `build-xps / thermal`：
 
 - 现在应该检查什么？
 - 为什么重要？

@@ -50,6 +50,8 @@ Implemented:
   Detect through Report.
 - Fleet Brief that collapses Total, Critical, Warning, and Queue into the same
   compact density as Telemetry Brief.
+- Source-linked risk labels so `Warning` points to the device/category and
+  selected investigation instead of standing alone.
 - Metric Ledger that keeps core metric explanations in one dense row-based box.
 - Telemetry Matrix for Memory, Fan RPM, NVMe Health, Network Events,
   Reconnect History, Thermal Throttling, Disk Health, Battery Power, Kernel

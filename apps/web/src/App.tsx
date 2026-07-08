@@ -450,6 +450,30 @@ function stageGoal(stage: string): string {
   return stageGoals[stage] ?? '현재 단계의 조사 목표를 좁히는 중입니다.';
 }
 
+function sourceLabelForItem(detail: InvestigationDetail | null, item: InvestigationItem | null | undefined): string | null {
+  const sourceItem = detail?.item ?? item;
+  if (!sourceItem) return null;
+  const hostname = detail?.fleet_context.device.hostname ?? sourceItem.device_hostname;
+  return `${hostname} / ${sourceItem.category}`;
+}
+
+function riskChipLabel(level: RiskLevel | undefined, detail: InvestigationDetail | null, item: InvestigationItem | null | undefined): string {
+  if (!level) return 'No risk';
+  const category = detail?.item.category ?? item?.category;
+  return category ? `${riskLabels[level]} · ${category}` : riskLabels[level];
+}
+
+function selectedRiskSourceDescription(
+  level: RiskLevel | undefined,
+  detail: InvestigationDetail | null,
+  item: InvestigationItem | null | undefined,
+): string | null {
+  const sourceItem = detail?.item ?? item;
+  const source = sourceLabelForItem(detail, item);
+  if (!level || !sourceItem || !source) return null;
+  return `선택된 ${level} 출처: ${source} - ${sourceItem.title}.`;
+}
+
 function StatusChip({
   className,
   description,
@@ -459,7 +483,7 @@ function StatusChip({
   title,
 }: {
   className?: string;
-  description: string;
+  description: string | string[];
   helpId: string;
   Icon: typeof Activity;
   label: string;
@@ -471,7 +495,9 @@ function StatusChip({
       <span className="status-chip-label">{label}</span>
       <span className="status-tooltip" id={helpId} role="tooltip">
         <strong>{title}</strong>
-        <span>{description}</span>
+        {Array.isArray(description)
+          ? description.map((line) => <span key={line}>{line}</span>)
+          : <span>{description}</span>}
       </span>
     </span>
   );
@@ -798,14 +824,23 @@ function WorkflowRail({
   );
 }
 
-function FleetBrief({ overview, queueLength }: { overview: FleetOverview | null; queueLength: number }) {
+function FleetBrief({ overview, queue }: { overview: FleetOverview | null; queue: InvestigationItem[] }) {
   const summary = overview?.summary;
+  const leadingSource = queue.find((item) => item.risk_level === 'critical')
+    ?? queue.find((item) => item.risk_level === 'warning')
+    ?? queue[0]
+    ?? null;
   const stats = [
     { label: 'Total', value: summary?.total ?? 0, tone: 'neutral' },
     { label: 'Critical', value: summary?.critical ?? 0, tone: 'critical' },
     { label: 'Warning', value: summary?.warning ?? 0, tone: 'warning' },
-    { label: 'Queue', value: queueLength, tone: 'queue' },
+    { label: 'Queue', value: queue.length, tone: 'queue' },
   ];
+  const sourceTone = leadingSource?.risk_level === 'critical'
+    ? 'critical'
+    : leadingSource?.risk_level === 'warning'
+      ? 'warning'
+      : 'neutral';
 
   return (
     <section className="fleet-brief" aria-label="Fleet Brief">
@@ -817,6 +852,11 @@ function FleetBrief({ overview, queueLength }: { overview: FleetOverview | null;
             <span>{stat.label}</span>
           </span>
         ))}
+      </div>
+      <div className={`fleet-source fleet-${sourceTone}`}>
+        <span>{leadingSource ? `${riskLabels[leadingSource.risk_level]} source` : 'No active source'}</span>
+        <strong>{leadingSource ? `${leadingSource.device_hostname} / ${leadingSource.category}` : 'No active warning'}</strong>
+        <em>{leadingSource?.title ?? 'All selected fleet signals are clear.'}</em>
       </div>
     </section>
   );
@@ -953,7 +993,11 @@ export default function App() {
   const selectedRiskLevel = detail?.item.risk_level ?? selectedItem?.risk_level;
   const deviceLabel = detail?.fleet_context.device.hostname ?? selectedItem?.device_hostname ?? 'No device selected';
   const caseTitle = detail?.item.title ?? selectedItem?.title ?? 'Select an investigation';
-  const riskLabel = selectedRiskLevel ? riskLabels[selectedRiskLevel] : 'No risk';
+  const selectedRiskSource = selectedRiskSourceDescription(selectedRiskLevel, detail, selectedItem);
+  const selectedRiskDescription = selectedRiskSource
+    ? [riskDescription(selectedRiskLevel), selectedRiskSource]
+    : riskDescription(selectedRiskLevel);
+  const riskLabel = riskChipLabel(selectedRiskLevel, detail, selectedItem);
   const whyNow = detail?.item.evidence ?? selectedItem?.why_now ?? 'Choose a queue item to see the evidence.';
   const whyDetail = detail?.item.category === 'agent'
     ? 'Fresh telemetry is required before trusting older thermal, load, or storage readings.'
@@ -1073,7 +1117,7 @@ export default function App() {
             />
             <StatusChip
               className={selectedRiskLevel ? riskClass(selectedRiskLevel) : 'status-neutral'}
-              description={riskDescription(selectedRiskLevel)}
+              description={selectedRiskDescription}
               helpId="selected-risk-help"
               Icon={ShieldCheck}
               label={riskLabel}
@@ -1139,7 +1183,7 @@ export default function App() {
         </div>
 
         <div className="command-footer">
-          <FleetBrief overview={overview} queueLength={queue.length} />
+          <FleetBrief overview={overview} queue={queue} />
           <WorkflowRail actionLabel={actionLabel} proofSummary={proofSummary} stage={selectedStage} />
         </div>
       </section>

@@ -50,7 +50,9 @@ fixed boxes; it becomes a thin `Workflow Rail` focused on the current stage,
 next stage, and next action. The `D T I H A V R` initials remain visible as a
 compact stage rail, with hover/focus tooltips for Detect through Report.
 Fleet Total/Critical/Warning/Queue also moves into a compact `Fleet Brief`
-instead of a large number block.
+instead of a large number block. Status words such as `Warning` are never left
+unattached; they are tied to a device, category, and investigation title such
+as `build-xps / thermal`.
 
 - What should we inspect now?
 - Why does it matter?

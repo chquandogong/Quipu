@@ -316,6 +316,8 @@ describe('App', () => {
     expect(container.querySelector('.stage-strip')).not.toBeInTheDocument();
     expect(screen.getByRole('region', { name: 'Fleet Brief' })).toBeInTheDocument();
     expect(screen.getByText('Fleet Brief')).toBeInTheDocument();
+    expect(screen.getByText('Warning source')).toBeInTheDocument();
+    expect(screen.getByText('build-xps / thermal')).toBeInTheDocument();
     expect(container.querySelector('.health-strip')).not.toBeInTheDocument();
     expect(container.querySelector('.metric-strip')).not.toBeInTheDocument();
     expect(container.querySelector('.metric-card')).not.toBeInTheDocument();
@@ -326,7 +328,9 @@ describe('App', () => {
     expect(screen.getByText('Priority / 우선순위')).toBeInTheDocument();
     expect(screen.getByText('Medium은 지금 queue에 남겨 확인할 항목이지만 즉시 장애 수준은 아니라는 뜻입니다.')).toBeInTheDocument();
     expect(screen.getByText('Risk level / 위험도')).toBeInTheDocument();
+    expect(screen.getByText('Warning · thermal')).toBeInTheDocument();
     expect(screen.getByText('Warning은 경고 근거가 있어 확인이 필요하다는 뜻입니다. Critical은 더 높은 위험, Stale은 데이터가 오래됨입니다.')).toBeInTheDocument();
+    expect(screen.getByText('선택된 warning 출처: build-xps / thermal - CPU package temperature is elevated.')).toBeInTheDocument();
     expect(screen.getByText('Workflow stage / 진행 단계')).toBeInTheDocument();
     expect(screen.getAllByText('Triage는 감지된 근거를 분류하고 다음 조사 항목을 고르는 단계입니다.').length).toBeGreaterThan(0);
     expect(screen.getByRole('region', { name: 'Operations Rail' })).toBeInTheDocument();

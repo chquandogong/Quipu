@@ -23,6 +23,8 @@ row-based `Metric Ledger`. Fleet totals collapse into a `Fleet Brief` with the
 same visual density. The workflow becomes a `Workflow Rail` that shows current
 stage, next stage, and next action instead of a seven-box step strip, while
 preserving compact `D T I H A V R` initials with hover/focus definitions.
+Risk labels are source-linked: `Warning` must name the device/category and the
+investigation title instead of appearing as an unattached status word.
 Pattern Explorer also adds component signatures so repeated graphics, Wi-Fi,
 and NVMe issues are grouped by actionable subsystem, not only by
 category/model/kernel.
@@ -35,6 +37,10 @@ category/model/kernel.
   typography.
 - CPU/Load/NVMe/Wi-Fi signal chips become one `Telemetry Brief`.
 - Total/Critical/Warning/Queue become one `Fleet Brief`.
+- Fleet Brief includes the leading warning/critical source, such as
+  `build-xps / thermal`.
+- Selected case risk chips show both severity and category, such as
+  `Warning · thermal`, with tooltip detail for the source item.
 - DTIHAVR fixed labels become a thin `Workflow Rail` with small stage initials
   and hover/focus explanations for Detect through Report.
 - Core metric explanations become one row-based `Metric Ledger`.

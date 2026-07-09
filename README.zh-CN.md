@@ -2,7 +2,7 @@
 
 <p align="center">
   <img alt="CI" src="https://github.com/chquandogong/Quipu/actions/workflows/ci.yml/badge.svg">
-  <img alt="Version" src="https://img.shields.io/badge/version-v0.13.3-2f6f7e">
+  <img alt="Version" src="https://img.shields.io/badge/version-v0.13.4-2f6f7e">
   <img alt="Status" src="https://img.shields.io/badge/status-local--first%20workstation%20health-5b6b73">
   <img alt="License" src="https://img.shields.io/badge/license-not%20selected-lightgrey">
 </p>
@@ -33,8 +33,13 @@ Detect -> Triage -> Investigate -> Hypothesize -> Act -> Verify -> Report
 
 Quipu 不是远程修复工具。collector 是只读的，server 使用确定性的规则分析。
 
-## v0.13.3 重点
+## v0.13.4 重点
 
+- Windows NVMe R/W 速度 collection 现在会把
+  `Win32_PerfFormattedData_PerfDisk_PhysicalDisk` 和 `Get-PhysicalDisk`
+  映射起来，上报总量和每个 NVMe 设备的 read/write bytes/sec。
+- Windows native WMI fallback 现在也会读取 `Win32_TemperatureProbe`、
+  `Win32_Fan`、`Win32_Tachometer`。
 - Windows NVMe 温度 collection 现在会在可用时使用
   `Get-PhysicalDisk | Get-StorageReliabilityCounter`，并上报
   `nvme.temp_c` 和 `nvme.<device>.temp_c`。

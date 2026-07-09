@@ -126,11 +126,13 @@ Implemented:
   LibreHardwareMonitor/OpenHardwareMonitor WMI temperature sensors.
 - Windows missing telemetry patch for Storage Reliability Counter NVMe
   temperature, hardware-monitor fan RPM, and Windows Event Log classification.
+- Windows native fallback patch for NVMe R/W bytes/sec from performance
+  counters, Win32 temperature probes, and Win32 fan/tachometer readings.
 - Private LAN UI/API access from Vite origins on ports 5173 and 5174.
 
 Remaining:
 
-- Install v0.13.3 on the currently connected Windows laptop and restart the
+- Install v0.13.4 on the currently connected Windows laptop and restart the
   scheduled task so partial Windows telemetry is replaced by the patched metric
   set.
 - Additional CPU/core/package thermal label variants if real hardware exposes

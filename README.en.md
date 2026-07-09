@@ -2,7 +2,7 @@
 
 <p align="center">
   <img alt="CI" src="https://github.com/chquandogong/Quipu/actions/workflows/ci.yml/badge.svg">
-  <img alt="Version" src="https://img.shields.io/badge/version-v0.13.3-2f6f7e">
+  <img alt="Version" src="https://img.shields.io/badge/version-v0.13.4-2f6f7e">
   <img alt="Status" src="https://img.shields.io/badge/status-local--first%20workstation%20health-5b6b73">
   <img alt="License" src="https://img.shields.io/badge/license-not%20selected-lightgrey">
 </p>
@@ -35,8 +35,13 @@ Detect -> Triage -> Investigate -> Hypothesize -> Act -> Verify -> Report
 The product is not a remote repair tool. The collector is read-only and the
 server uses deterministic rule-based analysis.
 
-## v0.13.3 Highlights
+## v0.13.4 Highlights
 
+- Windows NVMe R/W rate collection now maps
+  `Win32_PerfFormattedData_PerfDisk_PhysicalDisk` to NVMe devices from
+  `Get-PhysicalDisk`, reporting aggregate and per-device read/write bytes/sec.
+- Windows native WMI fallback now also reads `Win32_TemperatureProbe`,
+  `Win32_Fan`, and `Win32_Tachometer` when firmware exposes those classes.
 - Windows NVMe temperature collection now uses the
   `Get-PhysicalDisk | Get-StorageReliabilityCounter` path when available and
   reports `nvme.temp_c` plus `nvme.<device>.temp_c`.
@@ -73,7 +78,7 @@ server uses deterministic rule-based analysis.
 - Browser UI sessions opened from private LAN Vite origins on ports 5173 or
   5174 can read the API without the previous local-only CORS failure.
 - Version metadata across the collector, server, schema, and web app is now
-  `0.13.3`.
+  `0.13.4`.
 
 ## v0.11.0 Highlights
 

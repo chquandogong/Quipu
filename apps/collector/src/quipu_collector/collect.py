@@ -1412,6 +1412,56 @@ def _windows_nvme_metrics(observed_at: str, command_runner: CommandRunner | None
     if total_capacity > 0:
         metrics.insert(0, _metric("nvme.capacity_bytes", total_capacity, "bytes", observed_at))
     metrics.extend(_windows_nvme_reliability_metrics(observed_at, command_runner))
+    metrics.extend(_windows_nvme_io_metrics(observed_at, command_runner))
+    return metrics
+
+
+def _windows_nvme_io_metrics(
+    observed_at: str,
+    command_runner: CommandRunner | None,
+) -> list[dict[str, Any]]:
+    payload = _powershell_json(
+        "$physical=@{};"
+        "Get-PhysicalDisk -ErrorAction SilentlyContinue | ForEach-Object { $physical[[string]$_.DeviceId]=$_ };"
+        "Get-CimInstance Win32_PerfFormattedData_PerfDisk_PhysicalDisk -ErrorAction SilentlyContinue | "
+        "Where-Object {$_.Name -ne '_Total'} | ForEach-Object {"
+        "$name=[string]$_.Name;"
+        "$diskId=$name;"
+        "if ($name -match '^\\d+') { $diskId=$Matches[0] };"
+        "$disk=$physical[$diskId];"
+        "[pscustomobject]@{DeviceId=$diskId;Name=$name;FriendlyName=$disk.FriendlyName;"
+        "BusType=$disk.BusType;MediaType=$disk.MediaType;"
+        "DiskReadBytesPersec=$_.DiskReadBytesPersec;DiskWriteBytesPersec=$_.DiskWriteBytesPersec}"
+        "} | ConvertTo-Json -Compress",
+        command_runner,
+    )
+    metrics: list[dict[str, Any]] = []
+    total_read_bps = 0.0
+    total_write_bps = 0.0
+    read_samples = 0
+    write_samples = 0
+    recorded_devices: set[str] = set()
+    for index, disk in enumerate(_json_items(payload)):
+        if not _windows_disk_is_nvme(disk):
+            continue
+        device_name = _windows_disk_device_name(disk, index)
+        if device_name in recorded_devices:
+            continue
+        recorded_devices.add(device_name)
+        read_bps = _coerce_metric_number(disk.get("DiskReadBytesPersec"))
+        write_bps = _coerce_metric_number(disk.get("DiskWriteBytesPersec"))
+        if read_bps is not None and read_bps >= 0:
+            metrics.append(_metric(f"nvme.{device_name}.read_bytes_per_sec", read_bps, "bytes_per_sec", observed_at))
+            total_read_bps += read_bps
+            read_samples += 1
+        if write_bps is not None and write_bps >= 0:
+            metrics.append(_metric(f"nvme.{device_name}.write_bytes_per_sec", write_bps, "bytes_per_sec", observed_at))
+            total_write_bps += write_bps
+            write_samples += 1
+    if write_samples:
+        metrics.insert(0, _metric("nvme.write_bytes_per_sec", total_write_bps, "bytes_per_sec", observed_at))
+    if read_samples:
+        metrics.insert(0, _metric("nvme.read_bytes_per_sec", total_read_bps, "bytes_per_sec", observed_at))
     return metrics
 
 
@@ -1466,8 +1516,41 @@ def _windows_thermal_metrics(observed_at: str, command_runner: CommandRunner | N
         celsius = (float(raw_temperature) / 10.0) - 273.15
         if 0 < celsius < 150:
             metrics.append(_metric(f"thermal.windows_zone_{index}.temp_c", celsius, "celsius", observed_at))
+    metrics.extend(_windows_temperature_probe_metrics(observed_at, command_runner))
     metrics.extend(_windows_hardware_monitor_temperature_metrics(observed_at, command_runner))
     return metrics
+
+
+def _windows_temperature_probe_metrics(
+    observed_at: str,
+    command_runner: CommandRunner | None,
+) -> list[dict[str, Any]]:
+    payload = _powershell_json(
+        "Get-CimInstance Win32_TemperatureProbe -ErrorAction SilentlyContinue | "
+        "Select-Object Name,DeviceID,CurrentReading | ConvertTo-Json -Compress",
+        command_runner,
+    )
+    metrics_by_name: dict[str, dict[str, Any]] = {}
+    for index, probe in enumerate(_json_items(payload)):
+        raw_value = _coerce_metric_number(probe.get("CurrentReading"))
+        if raw_value is None:
+            continue
+        celsius = (raw_value / 10.0) - 273.15 if raw_value > 1000 else raw_value
+        if not 0 < celsius < 150:
+            continue
+        label = " ".join(str(probe.get(key) or "") for key in ("Name", "DeviceID")).strip()
+        normalized_label = label.lower()
+        if "cpu" in normalized_label and any(token in normalized_label for token in ("package", "tctl", "tdie")):
+            metric_name = "cpu.package_temp_c"
+        else:
+            core_match = re.search(r"\bcore\s*#?\s*(\d+)\b", normalized_label)
+            if "cpu" in normalized_label and core_match:
+                metric_name = f"cpu.core_{core_match.group(1)}.temp_c"
+            else:
+                sensor_name = _safe_metric_part(label or f"temperature_probe_{index}")
+                metric_name = f"thermal.windows_probe_{sensor_name}.temp_c"
+        metrics_by_name.setdefault(metric_name, _metric(metric_name, celsius, "celsius", observed_at))
+    return list(metrics_by_name.values())
 
 
 def _windows_hardware_monitor_temperature_metrics(
@@ -1514,6 +1597,39 @@ def _windows_hardware_monitor_temperature_metrics(
     return list(metrics_by_name.values())
 
 
+def _windows_native_fan_metrics(
+    observed_at: str,
+    command_runner: CommandRunner | None,
+) -> list[dict[str, Any]]:
+    payload = _powershell_json(
+        "$items=@();"
+        "$items += Get-CimInstance Win32_Fan -ErrorAction SilentlyContinue | "
+        "Select-Object Name,DeviceID,CurrentReading,DesiredSpeed;"
+        "$items += Get-CimInstance Win32_Tachometer -ErrorAction SilentlyContinue | "
+        "Select-Object Name,DeviceID,CurrentReading,DesiredSpeed;"
+        "$items | ConvertTo-Json -Compress",
+        command_runner,
+    )
+    metrics_by_name: dict[str, dict[str, Any]] = {}
+    generic_recorded = False
+    for index, fan in enumerate(_json_items(payload)):
+        rpm = _coerce_metric_number(fan.get("CurrentReading"))
+        if rpm is None or rpm <= 0:
+            rpm = _coerce_metric_number(fan.get("DesiredSpeed"))
+        if rpm is None or not 0 <= rpm < 50000:
+            continue
+        label = " ".join(str(fan.get(key) or "") for key in ("Name", "DeviceID")).strip()
+        device_name = _safe_metric_part(label or f"fan{index}")
+        if device_name == "unknown":
+            device_name = f"fan{index}"
+        if not generic_recorded:
+            metrics_by_name.setdefault("fan.rpm", _metric("fan.rpm", rpm, "rpm", observed_at))
+            generic_recorded = True
+        metric_name = f"fan.{device_name}.rpm"
+        metrics_by_name.setdefault(metric_name, _metric(metric_name, rpm, "rpm", observed_at))
+    return list(metrics_by_name.values())
+
+
 def _windows_hardware_monitor_fan_metrics(
     observed_at: str,
     command_runner: CommandRunner | None,
@@ -1556,6 +1672,7 @@ def _windows_metrics(observed_at: str, command_runner: CommandRunner | None) -> 
     metrics.extend(_windows_wifi_metrics(observed_at, command_runner))
     metrics.extend(_windows_nvme_metrics(observed_at, command_runner))
     metrics.extend(_windows_thermal_metrics(observed_at, command_runner))
+    metrics.extend(_windows_native_fan_metrics(observed_at, command_runner))
     metrics.extend(_windows_hardware_monitor_fan_metrics(observed_at, command_runner))
     return metrics
 

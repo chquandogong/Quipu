@@ -448,8 +448,19 @@ def test_collect_observation_reads_windows_reliability_fans_and_events(monkeypat
             return '{"TotalVisibleMemorySize":32000000,"FreePhysicalMemory":16000000}'
         if "Get-StorageReliabilityCounter" in script:
             return '{"DeviceId":0,"FriendlyName":"Samsung PM9A1","BusType":"NVMe","MediaType":"SSD","Size":1024000000000,"Temperature":47}'
+        if "Win32_PerfFormattedData_PerfDisk_PhysicalDisk" in script:
+            return (
+                "["
+                '{"DeviceId":"0","Name":"0 C:","FriendlyName":"Samsung PM9A1","BusType":"NVMe","MediaType":"SSD",'
+                '"DiskReadBytesPersec":4096,"DiskWriteBytesPersec":8192},'
+                '{"DeviceId":"1","Name":"1 D:","FriendlyName":"USB Disk","BusType":"USB","MediaType":"SSD",'
+                '"DiskReadBytesPersec":9999,"DiskWriteBytesPersec":9999}'
+                "]"
+            )
         if "Get-PhysicalDisk" in script:
             return '{"DeviceId":0,"FriendlyName":"Samsung PM9A1","BusType":"NVMe","MediaType":"SSD","Size":1024000000000}'
+        if "Win32_TemperatureProbe" in script:
+            return '{"Name":"CPU Package","DeviceID":"CPU0","CurrentReading":3315}'
         if "root/LibreHardwareMonitor" in script and "SensorType -eq 'Fan'" in script:
             return '{"Name":"CPU Fan","Parent":"Embedded Controller","Value":2410}'
         if "Get-WinEvent" in script:
@@ -481,6 +492,11 @@ def test_collect_observation_reads_windows_reliability_fans_and_events(monkeypat
     assert metrics["nvme.samsung_pm9a1.capacity_bytes"]["value"] == 1024000000000.0
     assert metrics["nvme.temp_c"]["value"] == 47.0
     assert metrics["nvme.samsung_pm9a1.temp_c"]["value"] == 47.0
+    assert metrics["nvme.read_bytes_per_sec"]["value"] == 4096.0
+    assert metrics["nvme.write_bytes_per_sec"]["value"] == 8192.0
+    assert metrics["nvme.samsung_pm9a1.read_bytes_per_sec"]["value"] == 4096.0
+    assert metrics["nvme.samsung_pm9a1.write_bytes_per_sec"]["value"] == 8192.0
+    assert metrics["cpu.package_temp_c"]["value"] == 58.35
     assert metrics["fan.rpm"]["value"] == 2410.0
     assert metrics["fan.embedded_controller_cpu_fan.rpm"]["value"] == 2410.0
 
@@ -488,3 +504,37 @@ def test_collect_observation_reads_windows_reliability_fans_and_events(monkeypat
     assert events[("storage", "stornvme")]["severity"] == "warning"
     assert events[("network", "Microsoft-Windows-WLAN-AutoConfig")]["severity"] == "warning"
     assert events[("reboot", "Microsoft-Windows-Kernel-Power")]["severity"] == "critical"
+
+
+def test_collect_observation_reads_windows_native_fan(monkeypatch, tmp_path) -> None:
+    monkeypatch.setattr("quipu_collector.collect.platform.system", lambda: "Windows")
+
+    def fake_command_runner(args: list[str]) -> str | None:
+        if args[:3] == ["netsh", "wlan", "show"] or args[:3] == [r"C:\Windows\System32\netsh.exe", "wlan", "show"]:
+            return None
+        if args[:4] != ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass"]:
+            return None
+        script = args[-1]
+        if "netsh.exe" in script:
+            return None
+        if "Win32_ComputerSystem" in script:
+            return '{"Model":"Windows Laptop","OsName":"Microsoft Windows 11 Pro","CpuModel":"13th Gen Intel(R) Core(TM) i5-1340P"}'
+        if "Win32_Processor" in script:
+            return '{"Name":"13th Gen Intel(R) Core(TM) i5-1340P","NumberOfCores":12,"NumberOfLogicalProcessors":16}'
+        if "Win32_OperatingSystem" in script:
+            return '{"TotalVisibleMemorySize":32000000,"FreePhysicalMemory":16000000}'
+        if "Win32_Fan" in script:
+            return '{"Name":"System Fan","DeviceID":"Fan0","CurrentReading":1820,"DesiredSpeed":0}'
+        return None
+
+    batch = collect_observation(
+        root=tmp_path,
+        observed_at=datetime(2026, 7, 9, 5, 25, tzinfo=timezone.utc),
+        device_id="windows",
+        device_alias="윈도우",
+        command_runner=fake_command_runner,
+    )
+
+    metrics = {metric["name"]: metric for metric in batch["metrics"]}
+    assert metrics["fan.rpm"]["value"] == 1820.0
+    assert metrics["fan.system_fan_fan0.rpm"]["value"] == 1820.0

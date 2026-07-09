@@ -2,6 +2,31 @@
 
 All notable changes to Quipu are documented in this file.
 
+## v0.13.4 - 2026-07-09
+
+Windows native fallback patch.
+
+### Added
+
+- Windows NVMe R/W throughput collection through
+  `Win32_PerfFormattedData_PerfDisk_PhysicalDisk`, mapped to NVMe devices from
+  `Get-PhysicalDisk`, reporting aggregate and per-device read/write bytes/sec.
+- Windows native WMI temperature fallback through `Win32_TemperatureProbe` when
+  firmware exposes probe readings.
+- Windows native fan fallback through `Win32_Fan` and `Win32_Tachometer` when
+  firmware exposes fan RPM readings.
+
+### Changed
+
+- Updated package, app, API, schema, and UI versions to `0.13.4`.
+
+### Verified
+
+- Server test suite: 37 tests passed, 1 Starlette deprecation warning.
+- Collector test suite: 25 tests passed.
+- Web test suite: 3 tests passed.
+- Web production build succeeded.
+
 ## v0.13.3 - 2026-07-09
 
 Windows missing telemetry patch.

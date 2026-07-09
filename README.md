@@ -2,7 +2,7 @@
 
 <p align="center">
   <img alt="CI" src="https://github.com/chquandogong/Quipu/actions/workflows/ci.yml/badge.svg">
-  <img alt="Version" src="https://img.shields.io/badge/version-v0.13.3-2f6f7e">
+  <img alt="Version" src="https://img.shields.io/badge/version-v0.13.4-2f6f7e">
   <img alt="Status" src="https://img.shields.io/badge/status-local--first%20workstation%20health-5b6b73">
   <img alt="License" src="https://img.shields.io/badge/license-not%20selected-lightgrey">
 </p>
@@ -35,8 +35,13 @@ procfs를 읽고, Windows에서는 PowerShell/CIM/netsh/Get-NetAdapter가 노출
 Detect -> Triage -> Investigate -> Hypothesize -> Act -> Verify -> Report
 ```
 
-## v0.13.3 핵심
+## v0.13.4 핵심
 
+- Windows NVMe R/W 속도는 `Win32_PerfFormattedData_PerfDisk_PhysicalDisk`와
+  `Get-PhysicalDisk`를 매핑해 `nvme.read_bytes_per_sec`,
+  `nvme.write_bytes_per_sec`, 장치별 R/W metric으로 보냅니다.
+- Windows native WMI fallback으로 `Win32_TemperatureProbe`,
+  `Win32_Fan`, `Win32_Tachometer`를 추가로 읽습니다.
 - Windows NVMe 온도는 `Get-PhysicalDisk | Get-StorageReliabilityCounter`
   경로를 추가로 사용해 `nvme.temp_c`와 `nvme.<device>.temp_c`로 보냅니다.
 - Windows 팬 RPM은 LibreHardwareMonitor/OpenHardwareMonitor WMI fan sensor가

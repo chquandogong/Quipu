@@ -36,7 +36,7 @@ def test_ingest_batch_preserves_existing_alias_when_next_batch_omits_it(conn, sa
                 device_id="thinkpad-p1",
                 display_name=None,
                 hostname="dev-p1-renamed",
-                model="ThinkPad P1",
+                model=None,
                 cpu_model=None,
                 os_name="Ubuntu 24.04",
                 kernel_version="6.14.1",
@@ -57,6 +57,7 @@ def test_ingest_batch_preserves_existing_alias_when_next_batch_omits_it(conn, sa
     snapshot = list_device_snapshots(conn)[0]
 
     assert snapshot["device"]["display_name"] == "Dev P1"
+    assert snapshot["device"]["model"] == "ThinkPad P1"
     assert snapshot["device"]["cpu_model"] == "Intel Core Ultra 5 125H"
     assert snapshot["device"]["hostname"] == "dev-p1-renamed"
     assert snapshot["device"]["kernel_version"] == "6.14.1"

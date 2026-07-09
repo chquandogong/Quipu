@@ -2,7 +2,7 @@
 
 <p align="center">
   <img alt="CI" src="https://github.com/chquandogong/Quipu/actions/workflows/ci.yml/badge.svg">
-  <img alt="Version" src="https://img.shields.io/badge/version-v0.13.0-2f6f7e">
+  <img alt="Version" src="https://img.shields.io/badge/version-v0.13.1-2f6f7e">
   <img alt="Status" src="https://img.shields.io/badge/status-local--first%20workstation%20health-5b6b73">
   <img alt="License" src="https://img.shields.io/badge/license-not%20selected-lightgrey">
 </p>
@@ -35,8 +35,11 @@ Detect -> Triage -> Investigate -> Hypothesize -> Act -> Verify -> Report
 The product is not a remote repair tool. The collector is read-only and the
 server uses deterministic rule-based analysis.
 
-## v0.13.0 Highlights
+## v0.13.1 Highlights
 
+- Windows collector compatibility is improved with longer PowerShell/CIM
+  command timeouts, localized `netsh` Wi-Fi parsing, and `Get-PhysicalDisk`
+  NVMe capacity detection.
 - The left side of the UI is now device-first: `Devices` lists every reporting
   machine, including healthy machines with no active investigation item.
 - `Device Issues` shows only the active issues for the selected device.
@@ -55,7 +58,7 @@ server uses deterministic rule-based analysis.
 - Browser UI sessions opened from private LAN Vite origins on ports 5173 or
   5174 can read the API without the previous local-only CORS failure.
 - Version metadata across the collector, server, schema, and web app is now
-  `0.13.0`.
+  `0.13.1`.
 
 ## v0.11.0 Highlights
 

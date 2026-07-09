@@ -343,14 +343,14 @@ def _events_from_text(
     return events[-20:]
 
 
-def _run_command(args: list[str]) -> str | None:
+def _run_command(args: list[str], *, timeout: float = 2.0) -> str | None:
     try:
         completed = subprocess.run(
             args,
             capture_output=True,
             check=False,
             text=True,
-            timeout=2,
+            timeout=timeout,
         )
     except (OSError, subprocess.TimeoutExpired):
         return None
@@ -359,13 +359,27 @@ def _run_command(args: list[str]) -> str | None:
     return completed.stdout
 
 
+def _run_observation_command(
+    args: list[str],
+    command_runner: CommandRunner | None,
+    *,
+    timeout: float = 2.0,
+) -> str | None:
+    if command_runner is not None:
+        return command_runner(args)
+    return _run_command(args, timeout=timeout)
+
+
 def _is_windows_runtime(root: Path) -> bool:
     return platform.system().lower() == "windows"
 
 
 def _powershell_json(script: str, command_runner: CommandRunner | None) -> Any:
-    runner = command_runner or _run_command
-    output = runner(["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", script])
+    output = _run_observation_command(
+        ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", script],
+        command_runner,
+        timeout=15.0,
+    )
     if not output:
         return None
     try:
@@ -396,6 +410,33 @@ def _windows_device_info(command_runner: CommandRunner | None) -> dict[str, str]
             value = item.get(source_key)
             if isinstance(value, str) and value.strip():
                 info[target_key] = value.strip()
+    if "model" not in info:
+        payload = _powershell_json(
+            "Get-CimInstance Win32_ComputerSystem | Select-Object Model | ConvertTo-Json -Compress",
+            command_runner,
+        )
+        for item in _json_items(payload)[:1]:
+            value = item.get("Model")
+            if isinstance(value, str) and value.strip():
+                info["model"] = value.strip()
+    if "os_name" not in info:
+        payload = _powershell_json(
+            "Get-CimInstance Win32_OperatingSystem | Select-Object Caption | ConvertTo-Json -Compress",
+            command_runner,
+        )
+        for item in _json_items(payload)[:1]:
+            value = item.get("Caption")
+            if isinstance(value, str) and value.strip():
+                info["os_name"] = value.strip()
+    if "cpu_model" not in info:
+        payload = _powershell_json(
+            "Get-CimInstance Win32_Processor | Select-Object -First 1 Name | ConvertTo-Json -Compress",
+            command_runner,
+        )
+        for item in _json_items(payload)[:1]:
+            value = item.get("Name")
+            if isinstance(value, str) and value.strip():
+                info["cpu_model"] = value.strip()
     return info
 
 
@@ -1001,13 +1042,16 @@ def _network_speed_mbps(value: str) -> float | None:
 
 
 def _windows_netsh_wifi_metrics(observed_at: str, command_runner: CommandRunner | None) -> list[dict[str, Any]]:
-    runner = command_runner or _run_command
-    output = runner(["netsh", "wlan", "show", "interfaces"])
+    output = _run_observation_command(
+        ["netsh", "wlan", "show", "interfaces"],
+        command_runner,
+        timeout=8.0,
+    )
     if not output:
         return []
 
-    sections: list[dict[str, str]] = []
-    current: dict[str, str] = {}
+    sections: list[list[tuple[str, str]]] = []
+    current: list[tuple[str, str]] = []
     for line in output.splitlines():
         if ":" not in line:
             continue
@@ -1015,8 +1059,8 @@ def _windows_netsh_wifi_metrics(observed_at: str, command_runner: CommandRunner 
         normalized_key = _safe_metric_part(key)
         if normalized_key == "name" and current:
             sections.append(current)
-            current = {}
-        current[normalized_key] = value
+            current = []
+        current.append((key, value))
     if current:
         sections.append(current)
 
@@ -1024,32 +1068,47 @@ def _windows_netsh_wifi_metrics(observed_at: str, command_runner: CommandRunner 
     generic_signal_recorded = False
     generic_bitrates_recorded: set[str] = set()
     for index, section in enumerate(sections):
-        interface = _safe_metric_part(section.get("name") or f"wifi{index}")
-        signal_raw = section.get("signal")
-        if signal_raw:
-            signal_percent = _parse_metric_number(signal_raw)
-            if signal_percent is not None and 0 <= signal_percent <= 100:
-                # Windows netsh exposes signal quality as percent. Approximate
-                # dBm so the existing Wi-Fi signal UI can classify it.
-                signal_dbm = (signal_percent / 2.0) - 100.0
-                if not generic_signal_recorded:
-                    metrics.append(_metric("wifi.signal_dbm", signal_dbm, "dbm", observed_at))
-                    generic_signal_recorded = True
-                metrics.append(_metric(f"wifi.{interface}.signal_dbm", signal_dbm, "dbm", observed_at))
-
-        for section_key, metric_suffix, generic_name in (
-            ("receive_rate_mbps", "rx_bitrate_mbps", "wifi.rx_bitrate_mbps"),
-            ("transmit_rate_mbps", "tx_bitrate_mbps", "wifi.tx_bitrate_mbps"),
-        ):
-            value = section.get(section_key)
-            if not value:
-                continue
+        section_values: dict[str, str] = {}
+        unnamed_bitrates: list[float] = []
+        interface = f"wifi{index}"
+        signal_percent: float | None = None
+        for raw_key, value in section:
+            normalized_key = _safe_metric_part(raw_key)
+            section_values[normalized_key] = value
+            if normalized_key == "name" and value:
+                parsed_interface = _safe_metric_part(value)
+                interface = parsed_interface if parsed_interface != "unknown" else f"wifi{index}"
             parsed = _parse_metric_number(value)
-            if parsed is None:
+            if normalized_key == "signal" or (value.strip().endswith("%") and parsed is not None and 0 <= parsed <= 100):
+                signal_percent = parsed
+            if "mbps" in raw_key.lower() and parsed is not None:
+                unnamed_bitrates.append(parsed)
+
+        if signal_percent is not None:
+            # Windows netsh exposes signal quality as percent. Approximate dBm
+            # so the existing Wi-Fi signal UI can classify it.
+            signal_dbm = (signal_percent / 2.0) - 100.0
+            if not generic_signal_recorded:
+                metrics.append(_metric("wifi.signal_dbm", signal_dbm, "dbm", observed_at))
+                generic_signal_recorded = True
+            metrics.append(_metric(f"wifi.{interface}.signal_dbm", signal_dbm, "dbm", observed_at))
+
+        rx_value = _parse_metric_number(section_values.get("receive_rate_mbps", ""))
+        tx_value = _parse_metric_number(section_values.get("transmit_rate_mbps", ""))
+        if rx_value is None and unnamed_bitrates:
+            rx_value = unnamed_bitrates[0]
+        if tx_value is None and len(unnamed_bitrates) > 1:
+            tx_value = unnamed_bitrates[1]
+
+        for value, metric_suffix, generic_name in (
+            (rx_value, "rx_bitrate_mbps", "wifi.rx_bitrate_mbps"),
+            (tx_value, "tx_bitrate_mbps", "wifi.tx_bitrate_mbps"),
+        ):
+            if value is None:
                 continue
-            metrics.append(_metric(f"wifi.{interface}.{metric_suffix}", parsed, "mbps", observed_at))
+            metrics.append(_metric(f"wifi.{interface}.{metric_suffix}", value, "mbps", observed_at))
             if generic_name not in generic_bitrates_recorded:
-                metrics.append(_metric(generic_name, parsed, "mbps", observed_at))
+                metrics.append(_metric(generic_name, value, "mbps", observed_at))
                 generic_bitrates_recorded.add(generic_name)
     return metrics
 
@@ -1057,14 +1116,29 @@ def _windows_netsh_wifi_metrics(observed_at: str, command_runner: CommandRunner 
 def _windows_adapter_wifi_metrics(observed_at: str, command_runner: CommandRunner | None) -> list[dict[str, Any]]:
     payload = _powershell_json(
         "Get-NetAdapter -Physical | "
-        "Where-Object {$_.Status -eq 'Up' -and ($_.Name -match 'Wi-Fi|Wireless|WLAN' -or $_.InterfaceDescription -match 'Wi-Fi|Wireless|WLAN|802.11')} | "
-        "Select-Object Name,InterfaceDescription,LinkSpeed | ConvertTo-Json -Compress",
+        "Select-Object Name,InterfaceDescription,Status,LinkSpeed,NdisPhysicalMedium | ConvertTo-Json -Compress",
         command_runner,
     )
     metrics: list[dict[str, Any]] = []
     generic_recorded = False
     for index, adapter in enumerate(_json_items(payload)):
-        interface = _safe_metric_part(str(adapter.get("Name") or adapter.get("InterfaceDescription") or f"wifi{index}"))
+        status = str(adapter.get("Status") or "").lower()
+        if status and status != "up":
+            continue
+        descriptor = " ".join(
+            str(adapter.get(key) or "")
+            for key in ("Name", "InterfaceDescription", "NdisPhysicalMedium")
+        ).lower()
+        ndis_physical_medium = adapter.get("NdisPhysicalMedium")
+        is_wifi_medium = isinstance(ndis_physical_medium, (int, float)) and int(ndis_physical_medium) in {9, 10}
+        if not is_wifi_medium and not any(
+            marker in descriptor for marker in ("wi-fi", "wifi", "wireless", "wlan", "802.11", "802_11")
+        ):
+            continue
+        raw_interface = str(adapter.get("Name") or adapter.get("InterfaceDescription") or f"wifi{index}")
+        interface = _safe_metric_part(raw_interface)
+        if interface == "unknown":
+            interface = f"wifi{index}"
         link_speed = adapter.get("LinkSpeed")
         if not isinstance(link_speed, str):
             continue
@@ -1087,28 +1161,42 @@ def _windows_wifi_metrics(observed_at: str, command_runner: CommandRunner | None
 
 
 def _windows_nvme_metrics(observed_at: str, command_runner: CommandRunner | None) -> list[dict[str, Any]]:
-    payload = _powershell_json(
-        "Get-CimInstance Win32_DiskDrive | "
-        "Select-Object Index,Model,InterfaceType,MediaType,Size | ConvertTo-Json -Compress",
-        command_runner,
-    )
+    payloads = [
+        _powershell_json(
+            "Get-CimInstance Win32_DiskDrive | "
+            "Select-Object Index,Model,InterfaceType,MediaType,Size | ConvertTo-Json -Compress",
+            command_runner,
+        ),
+        _powershell_json(
+            "Get-PhysicalDisk | "
+            "Select-Object DeviceId,FriendlyName,BusType,MediaType,Size | ConvertTo-Json -Compress",
+            command_runner,
+        ),
+    ]
     metrics: list[dict[str, Any]] = []
     total_capacity = 0.0
-    for index, disk in enumerate(_json_items(payload)):
-        descriptor = " ".join(
-            str(disk.get(key) or "")
-            for key in ("Model", "InterfaceType", "MediaType")
-        ).lower()
-        if "nvme" not in descriptor:
-            continue
-        size = disk.get("Size")
-        if not isinstance(size, (int, float)) or size <= 0:
-            continue
-        capacity_bytes = float(size)
-        total_capacity += capacity_bytes
-        label_source = str(disk.get("Model") or disk.get("Index") or f"nvme{index}")
-        device_name = _safe_metric_part(label_source)
-        metrics.append(_metric(f"nvme.{device_name}.capacity_bytes", capacity_bytes, "bytes", observed_at))
+    recorded_devices: set[str] = set()
+    for payload in payloads:
+        for index, disk in enumerate(_json_items(payload)):
+            descriptor = " ".join(
+                str(disk.get(key) or "")
+                for key in ("Model", "FriendlyName", "InterfaceType", "BusType", "MediaType")
+            ).lower()
+            bus_type = disk.get("BusType")
+            is_nvme = "nvme" in descriptor or bus_type == 17
+            if not is_nvme:
+                continue
+            size = disk.get("Size")
+            if not isinstance(size, (int, float)) or size <= 0:
+                continue
+            label_source = str(disk.get("Model") or disk.get("FriendlyName") or disk.get("DeviceId") or disk.get("Index") or f"nvme{index}")
+            device_name = _safe_metric_part(label_source)
+            if device_name in recorded_devices:
+                continue
+            recorded_devices.add(device_name)
+            capacity_bytes = float(size)
+            total_capacity += capacity_bytes
+            metrics.append(_metric(f"nvme.{device_name}.capacity_bytes", capacity_bytes, "bytes", observed_at))
     if total_capacity > 0:
         metrics.insert(0, _metric("nvme.capacity_bytes", total_capacity, "bytes", observed_at))
     return metrics

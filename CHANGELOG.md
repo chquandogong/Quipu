@@ -2,6 +2,29 @@
 
 All notable changes to Quipu are documented in this file.
 
+## v0.13.1 - 2026-07-09
+
+Windows collector compatibility patch.
+
+### Fixed
+
+- Increased the real Windows command timeout for PowerShell/CIM collection so
+  cold `Get-CimInstance` and `Get-NetAdapter` calls do not silently drop most
+  Windows metrics.
+- Parsed localized `netsh wlan show interfaces` output by reading signal
+  percentages and `(Mbps)` rate rows instead of depending only on English key
+  names.
+- Added a `Get-PhysicalDisk` fallback for Windows NVMe capacity so devices
+  reported as SCSI by `Win32_DiskDrive` can still be identified by `BusType =
+  NVMe`.
+- Preserved an existing device model when a later batch omits `model`, matching
+  the existing alias and CPU model preservation behavior.
+
+### Verified
+
+- Server test suite: 37 tests passed, 1 Starlette deprecation warning.
+- Collector test suite: 22 tests passed.
+
 ## v0.13.0 - 2026-07-09
 
 Device-first fleet UI and Windows telemetry collection release.

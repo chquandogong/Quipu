@@ -1,9 +1,9 @@
 # Quipu Ship Checklist
 
-> Status: v0.13.0 release checklist for device-first fleet UI and Windows telemetry collection
+> Status: v0.13.1 patch release checklist for device-first fleet UI and Windows telemetry collection
 > Date: 2026-07-09
 > Owner: chquan
-> Release: v0.13.0
+> Release: v0.13.1
 
 ## Scope
 
@@ -101,17 +101,17 @@ Excluded:
 ## Tests
 
 - Server tests: `.venv/bin/python -m pytest` -> 37 passed, 1 Starlette deprecation warning.
-- Collector tests: `pytest -v` -> 21 passed.
+- Collector tests: `pytest -v` -> 22 passed.
 - Web tests: `npm test -- --run` -> 3 passed.
 - Web build: `npm run build` -> succeeded.
 - Whitespace check: `git diff --check` -> passed.
-- Browser DOM smoke check: `Version v0.13.0`, `Devices`, `Device Issues`,
+- Browser DOM smoke check: `Version v0.13.1`, `Devices`, `Device Issues`,
   `우분투 · chquan-17ZD90SP-GX56K`, `윈도우 · DOGU_CHQUAN`, and `Telemetry Matrix`
   rendered from the LAN UI without `Failed to fetch`.
 
 Evidence source:
 
-- Latest verified local commit before release prep: v0.13.0 release candidate.
+- Latest verified local commit before release prep: v0.13.1 patch release candidate.
 
 ## Risks
 
@@ -131,7 +131,7 @@ Known risks:
 - Enrollment tokens are stored as hashes, but role-aware admin auth is still a
   future hardening item.
 - Current analysis is deterministic and intentionally conservative.
-- Windows telemetry coverage depends on the Windows task running the v0.13.0
+- Windows telemetry coverage depends on the Windows task running the v0.13.1
   collector package. The current observed Windows device is visible, but an
   older task may keep sending only smoke-level telemetry until the release is
   installed and the task is restarted on that machine.
@@ -159,7 +159,7 @@ Unapproved risks:
 Rollback method:
 
 - Delete or supersede the private GitHub release if the release note is wrong.
-- Move forward with a patch tag such as `v0.13.1` for code or documentation fixes.
+- Move forward with a patch tag such as `v0.13.2` for code or documentation fixes.
 - Avoid force-push and history rewrite.
 
 Rollback owner:
@@ -187,15 +187,15 @@ Check after release:
 - README: updated for device-first UI, Windows best-effort telemetry, LAN UI
   access, and rollout guidance.
 - User manual: includes Windows collector verification and updated screen guide.
-- Dashboard: current v0.13.0 release state recorded.
+- Dashboard: current v0.13.1 patch release state recorded.
 - Roadmap: device-first, Windows telemetry, and connected-laptop rollout tracks
   recorded.
-- Changelog: `v0.13.0` prepared.
+- Changelog: `v0.13.1` prepared.
 - Security policy: present.
 
 ## Final Judgment
 
-GitHub release is ready for `v0.13.0` after the local test/build/browser checks
+GitHub release is ready for `v0.13.1` after the local test/build/browser checks
 pass. Windows full telemetry display on the currently connected laptop requires
 deploying this release to that laptop and restarting its scheduled task.
 

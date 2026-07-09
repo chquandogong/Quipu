@@ -118,12 +118,15 @@ Implemented:
 - Windows best-effort metric collection through PowerShell/CIM, netsh, and
   Get-NetAdapter for CPU core/thread counts, memory, battery, Wi-Fi link,
   NVMe capacity, and ACPI thermal zones when exposed by Windows.
+- Windows compatibility patch for longer PowerShell/CIM collection timeout,
+  localized `netsh` Wi-Fi output, `Get-PhysicalDisk` NVMe fallback, and model
+  preservation when later batches omit it.
 - Private LAN UI/API access from Vite origins on ports 5173 and 5174.
 
 Remaining:
 
-- Install v0.13.0 on the currently connected Windows laptop and restart the
-  scheduled task so smoke-only telemetry is replaced by the new Windows metric
+- Install v0.13.1 on the currently connected Windows laptop and restart the
+  scheduled task so partial Windows telemetry is replaced by the patched metric
   set.
 - CPU/core/package thermals with richer sensor naming.
 - Richer multi-fan naming.

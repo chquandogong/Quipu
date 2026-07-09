@@ -2,7 +2,7 @@
 
 <p align="center">
   <img alt="CI" src="https://github.com/chquandogong/Quipu/actions/workflows/ci.yml/badge.svg">
-  <img alt="Version" src="https://img.shields.io/badge/version-v0.13.0-2f6f7e">
+  <img alt="Version" src="https://img.shields.io/badge/version-v0.13.1-2f6f7e">
   <img alt="Status" src="https://img.shields.io/badge/status-local--first%20workstation%20health-5b6b73">
   <img alt="License" src="https://img.shields.io/badge/license-not%20selected-lightgrey">
 </p>
@@ -33,8 +33,10 @@ Detect -> Triage -> Investigate -> Hypothesize -> Act -> Verify -> Report
 
 Quipu 不是远程修复工具。collector 是只读的，server 使用确定性的规则分析。
 
-## v0.13.0 重点
+## v0.13.1 重点
 
+- Windows collector 兼容性增强：PowerShell/CIM 命令 timeout 更长，支持本地化
+  `netsh` Wi-Fi 输出，并用 `Get-PhysicalDisk` 识别 NVMe 容量。
 - UI 左侧改为以 `Devices` 为中心：所有上报的机器都会显示，包括没有活跃调查
   项的 healthy 设备。
 - `Device Issues` 只显示当前选中设备的活跃问题。

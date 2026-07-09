@@ -311,3 +311,55 @@ def test_collect_observation_reads_windows_signals(monkeypatch, tmp_path) -> Non
     assert metrics["nvme.capacity_bytes"]["value"] == 512000000000.0
     assert metrics["nvme.samsung_nvme_ssd.capacity_bytes"]["value"] == 512000000000.0
     assert metrics["thermal.windows_zone_0.temp_c"]["value"] == 28.05
+
+
+def test_collect_observation_reads_localized_windows_wifi_and_physical_disk(monkeypatch, tmp_path) -> None:
+    monkeypatch.setattr("quipu_collector.collect.platform.system", lambda: "Windows")
+
+    def fake_command_runner(args: list[str]) -> str | None:
+        if args == ["netsh", "wlan", "show", "interfaces"]:
+            return "\n".join(
+                [
+                    "이름                   : Wi-Fi",
+                    "신호                   : 78%",
+                    "수신 속도(Mbps)        : 650",
+                    "전송 속도(Mbps)        : 390",
+                ]
+            )
+        if args[:4] != ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass"]:
+            return None
+        script = args[-1]
+        if "Win32_ComputerSystem" in script:
+            return '{"Model":"Windows Laptop","OsName":"Microsoft Windows 11 Pro","CpuModel":"Intel(R) Core(TM) Ultra 7"}'
+        if "Win32_Processor" in script:
+            return '{"Name":"Intel(R) Core(TM) Ultra 7","NumberOfCores":12,"NumberOfLogicalProcessors":16}'
+        if "Win32_OperatingSystem" in script:
+            return '{"TotalVisibleMemorySize":32000000,"FreePhysicalMemory":8000000}'
+        if "Win32_Battery" in script:
+            return None
+        if "Get-NetAdapter" in script:
+            return '{"Name":"무선랜","InterfaceDescription":"Intel(R) Wireless-AC","Status":"Up","LinkSpeed":"866.7 Mbps","NdisPhysicalMedium":9}'
+        if "Win32_DiskDrive" in script:
+            return '{"Index":0,"Model":"Samsung MZVL","InterfaceType":"SCSI","MediaType":"SSD","Size":1024000000000}'
+        if "Get-PhysicalDisk" in script:
+            return '{"DeviceId":0,"FriendlyName":"Samsung MZVL","BusType":"NVMe","MediaType":"SSD","Size":1024000000000}'
+        return None
+
+    batch = collect_observation(
+        root=tmp_path,
+        observed_at=datetime(2026, 7, 9, 4, 20, tzinfo=timezone.utc),
+        device_id="windows",
+        device_alias="윈도우",
+        command_runner=fake_command_runner,
+    )
+
+    metrics = {metric["name"]: metric for metric in batch["metrics"]}
+    assert metrics["wifi.signal_dbm"]["value"] == -61.0
+    assert metrics["wifi.wifi0.signal_dbm"]["value"] == -61.0
+    assert metrics["wifi.rx_bitrate_mbps"]["value"] == 650.0
+    assert metrics["wifi.tx_bitrate_mbps"]["value"] == 390.0
+    assert metrics["wifi.wifi0.rx_bitrate_mbps"]["value"] == 650.0
+    assert metrics["wifi.wifi0.tx_bitrate_mbps"]["value"] == 390.0
+    assert metrics["wifi.wifi0.link_bitrate_mbps"]["value"] == 866.7
+    assert metrics["nvme.capacity_bytes"]["value"] == 1024000000000.0
+    assert metrics["nvme.samsung_mzvl.capacity_bytes"]["value"] == 1024000000000.0

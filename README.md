@@ -2,7 +2,7 @@
 
 <p align="center">
   <img alt="CI" src="https://github.com/chquandogong/Quipu/actions/workflows/ci.yml/badge.svg">
-  <img alt="Version" src="https://img.shields.io/badge/version-v0.13.0-2f6f7e">
+  <img alt="Version" src="https://img.shields.io/badge/version-v0.13.1-2f6f7e">
   <img alt="Status" src="https://img.shields.io/badge/status-local--first%20workstation%20health-5b6b73">
   <img alt="License" src="https://img.shields.io/badge/license-not%20selected-lightgrey">
 </p>
@@ -35,8 +35,11 @@ procfs를 읽고, Windows에서는 PowerShell/CIM/netsh/Get-NetAdapter가 노출
 Detect -> Triage -> Investigate -> Hypothesize -> Act -> Verify -> Report
 ```
 
-## v0.13.0 핵심
+## v0.13.1 핵심
 
+- Windows collector가 PowerShell/CIM 호출을 더 오래 기다리고, 한국어 `netsh`
+  출력과 `Get-PhysicalDisk` NVMe 판별을 처리해 Wi-Fi/NVMe/장비 model 누락을
+  줄였습니다.
 - 좌측 화면을 `Devices` 중심으로 재구성했습니다. healthy 장비도 선택하면 상세
   Telemetry Matrix, Metric Ledger, Report가 표시됩니다.
 - 선택한 장비의 활성 이슈만 `Device Issues`에 표시합니다. 이슈가 없으면

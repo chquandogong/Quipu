@@ -2,14 +2,14 @@
 
 <p align="center">
   <img alt="CI" src="https://github.com/chquandogong/Quipu/actions/workflows/ci.yml/badge.svg">
-  <img alt="Version" src="https://img.shields.io/badge/version-v0.12.0-2f6f7e">
+  <img alt="Version" src="https://img.shields.io/badge/version-v0.13.0-2f6f7e">
   <img alt="Status" src="https://img.shields.io/badge/status-local--first%20workstation%20health-5b6b73">
   <img alt="License" src="https://img.shields.io/badge/license-not%20selected-lightgrey">
 </p>
 
 <p align="center">
-  <strong>Linux workstation health investigation</strong><br>
-  Quipu turns read-only Linux signals into evidence, actions, verification, and team handoff.
+  <strong>Workstation health investigation</strong><br>
+  Quipu turns read-only workstation signals into evidence, actions, verification, and team handoff.
 </p>
 
 <p align="center">
@@ -20,9 +20,13 @@
 
 ## What It Is
 
-Quipu is a local-first tool for investigating Linux laptop and workstation
-health. It collects thermal, load, NVMe, Wi-Fi, memory, disk, battery, fan,
-kernel, graphics, reboot, and update signals, then presents them as a workflow:
+Quipu is a local-first tool for investigating laptop and workstation health.
+The bundled collector is read-only. On Linux it reads procfs/sysfs signals; on
+Windows it reads best-effort PowerShell/CIM/netsh/Get-NetAdapter signals when
+the OS exposes them. Other collectors can appear in the same UI when they post
+the same ingest API contract. Quipu collects thermal, load, NVMe, Wi-Fi, memory,
+disk, battery, fan, kernel, graphics, reboot, and update signals when the
+collector reports them, then presents them as a workflow:
 
 ```text
 Detect -> Triage -> Investigate -> Hypothesize -> Act -> Verify -> Report
@@ -31,16 +35,27 @@ Detect -> Triage -> Investigate -> Hypothesize -> Act -> Verify -> Report
 The product is not a remote repair tool. The collector is read-only and the
 server uses deterministic rule-based analysis.
 
-## v0.12.0 Highlights
+## v0.13.0 Highlights
 
-- Windows collector operations are now packaged beside the Ubuntu systemd
-  collector: environment file, startup wrapper, scheduled-task install script,
-  and uninstall script.
+- The left side of the UI is now device-first: `Devices` lists every reporting
+  machine, including healthy machines with no active investigation item.
+- `Device Issues` shows only the active issues for the selected device.
+- Fleet Brief now says `Open issues` instead of `Queue cases`.
+- The server preserves an existing display alias and CPU model when a later
+  batch for the same `device-id` omits those optional fields.
+- Windows collector operations and best-effort telemetry are packaged beside
+  the Ubuntu systemd collector: environment file, startup wrapper,
+  scheduled-task install script, and uninstall script.
 - The Windows startup wrapper runs hidden at user logon, prevents duplicate
   collector loops, keeps the offline buffer enabled, and posts every five
   minutes by default.
+- The Windows collector now reports best-effort CPU core/thread, memory,
+  battery, Wi-Fi, NVMe capacity, and thermal-zone metrics through CIM, netsh,
+  and Get-NetAdapter when Windows exposes them.
+- Browser UI sessions opened from private LAN Vite origins on ports 5173 or
+  5174 can read the API without the previous local-only CORS failure.
 - Version metadata across the collector, server, schema, and web app is now
-  `0.12.0`.
+  `0.13.0`.
 
 ## v0.11.0 Highlights
 
@@ -108,7 +123,7 @@ quipu-collector \
 
 Refresh the web UI.
 
-## Connect Another Laptop
+## Connect Another Laptop Or Computer
 
 Run the server on a LAN-reachable address, then send collector batches from each
 Linux laptop:
@@ -141,6 +156,28 @@ The scheduled task starts `apps/collector/ops/windows/start-quipu-collector.ps1`
 hidden in the background. It keeps the offline buffer enabled and sends a batch
 every five minutes.
 
+The Windows flow uses the same Python collector package through the scheduled
+task wrapper. After installing or updating this release on the Windows machine,
+reinstall the collector package and register or restart the scheduled task:
+
+```powershell
+cd C:\path\to\Quipu\apps\collector
+py -3 -m venv .venv
+.\.venv\Scripts\pip.exe install -e .
+cd C:\path\to\Quipu
+powershell.exe -ExecutionPolicy Bypass -File scripts\install-collector-scheduled-task.ps1 `
+  -ServerUrl http://<server-ip>:8000 `
+  -Token dev-token `
+  -DeviceId windows `
+  -DeviceAlias "Windows"
+```
+
+External Windows collectors can also post the same observation batch contract
+to the ingest API. Use a stable `device_id`, a friendly `display_name` or alias,
+and metric names that match Quipu's telemetry matrix where possible. Missing
+Windows rows usually mean the current Windows task is still running an older
+collector or has not reported those metric names yet.
+
 ## Main Surfaces
 
 - Command Center: selected case, priority, risk, next action.
@@ -150,6 +187,9 @@ every five minutes.
 - Telemetry Matrix: coverage across CPU profile, memory, disk, fan, NVMe
   health/capacity/I/O, power, Wi-Fi link, network, thermal, kernel, and
   freshness.
+- Devices: connected machines, alias/hostname, hardware label, telemetry count,
+  last seen time, issue summary, and risk.
+- Device Issues: active issues scoped to the selected device.
 - Pattern Explorer: repeated signals by category, component, model, and kernel.
 
 ## Collector Signals

@@ -910,6 +910,12 @@ h2 {
   min-width: 0;
 }
 
+.side-stack {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
 .panel {
   padding: 16px;
 }
@@ -1017,6 +1023,12 @@ h2 {
   margin-top: 12px;
 }
 
+.fleet-device-list {
+  display: grid;
+  gap: 9px;
+  margin-top: 12px;
+}
+
 .queue-item {
   width: 100%;
   display: grid;
@@ -1044,6 +1056,72 @@ h2 {
   color: #9fb0c8;
   font-style: normal;
   line-height: 1.35;
+}
+
+.fleet-device-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: start;
+  width: 100%;
+  padding: 11px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.58);
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.fleet-device-row.selected {
+  border-color: #2dd4bf;
+  background: rgba(13, 31, 38, 0.72);
+  box-shadow: 0 0 0 3px rgba(45, 212, 191, 0.14);
+}
+
+.fleet-device-row > div {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.fleet-device-row strong,
+.fleet-device-row span,
+.fleet-device-row small {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.fleet-device-row strong {
+  color: #ffffff;
+  font-size: 14px;
+}
+
+.fleet-device-row > div > span {
+  color: #cbd5e1;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.fleet-device-row small {
+  color: #91a4bd;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.fleet-device-row em {
+  color: #fbbf24;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.fleet-device-row .risk {
+  align-self: start;
+  min-height: 22px;
+  padding: 0 8px;
+  font-size: 11px;
 }
 
 .detail-grid {
@@ -1715,6 +1793,7 @@ code {
   .meta-chips,
   .command-center,
   .answer-grid,
+  .side-stack,
   .fleet-brief,
   .panel {
     width: 100%;

@@ -30,7 +30,8 @@ Goal: make the product feel like a guided diagnostic workflow.
 
 Implemented:
 
-- Investigation Queue.
+- Device-first `Devices` list.
+- `Device Issues` scoped to the selected device.
 - Incident detail surface.
 - Evidence timeline.
 - Hypothesis board.
@@ -48,7 +49,7 @@ Implemented:
   next stage, and next action.
 - Compact `D T I H A V R` stage initials with hover/focus definitions for
   Detect through Report.
-- Fleet Brief that collapses Total, Critical, Warning, and Queue into the same
+- Fleet Brief that collapses Total, Critical, Warning, and Open issues into the same
   compact density as Telemetry Brief.
 - Source-linked risk labels so `Warning` points to the device/category and
   selected investigation instead of standing alone.
@@ -69,6 +70,8 @@ Implemented:
   and pattern radar.
 - Team Handoff notes attached to each investigation item.
 - Pattern Explorer grouped by category, component, model, and kernel.
+- Healthy device overview detail that still shows telemetry, verification
+  status, and report text even when no active investigation item exists.
 
 Remaining:
 
@@ -76,9 +79,12 @@ Remaining:
 
 ## Phase 3: Native Read-Only Agent
 
-Status: systemd operations and offline-buffer kit implemented.
+Status: systemd operations, offline-buffer kit, and best-effort Windows
+telemetry implemented; connected Windows laptop rollout in progress.
 
-Goal: collect real Linux workstation signals safely.
+Goal: collect real workstation signals safely. The bundled collector focuses on
+Linux, and compatible external collectors can post the same ingest API contract
+for other operating systems.
 
 Implemented:
 
@@ -107,9 +113,18 @@ Implemented:
 - UI metric breakdown rows for CPU cores, load windows, NVMe devices, and Wi-Fi interfaces.
 - Telemetry Matrix coverage wording that separates observed-signal coverage from risk status.
 - Best-effort graphics/session, memory, update, and reboot markers.
+- Preservation of stable device alias and CPU model when later batches omit
+  those optional metadata fields.
+- Windows best-effort metric collection through PowerShell/CIM, netsh, and
+  Get-NetAdapter for CPU core/thread counts, memory, battery, Wi-Fi link,
+  NVMe capacity, and ACPI thermal zones when exposed by Windows.
+- Private LAN UI/API access from Vite origins on ports 5173 and 5174.
 
 Remaining:
 
+- Install v0.13.0 on the currently connected Windows laptop and restart the
+  scheduled task so smoke-only telemetry is replaced by the new Windows metric
+  set.
 - CPU/core/package thermals with richer sensor naming.
 - Richer multi-fan naming.
 - Deeper SMART/NVMe health where available without external dependencies.

@@ -51,7 +51,7 @@ def create_app(
         finally:
             app.state.conn.close()
 
-    app = FastAPI(title="Quipu Server", version="0.12.0", lifespan=lifespan)
+    app = FastAPI(title="Quipu Server", version="0.13.0", lifespan=lifespan)
     app.state.conn = conn
     app.state.db_lock = db_lock
     app.state.dev_agent_token = token
@@ -64,6 +64,7 @@ def create_app(
             "http://localhost:5174",
             "http://127.0.0.1:5174",
         ],
+        allow_origin_regex=r"^http://(192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+):(5173|5174)$",
         allow_credentials=False,
         allow_methods=["GET", "POST"],
         allow_headers=["Content-Type", "X-Quipu-Agent-Token"],

@@ -11,7 +11,7 @@ afterEach(() => {
 
 const fleetResponse = {
   generated_at: '2026-07-07T03:05:00+00:00',
-  summary: { total: 1, healthy: 0, warning: 1, critical: 0, stale: 0 },
+  summary: { total: 2, healthy: 1, warning: 1, critical: 0, stale: 0 },
   devices: [
     {
       device: {
@@ -86,6 +86,25 @@ const fleetResponse = {
           confidence: 'medium',
         },
       ],
+    },
+    {
+      device: {
+        device_id: 'windows',
+        display_name: '윈도우',
+        hostname: 'DOGU_CHQUAN',
+        model: null,
+        cpu_model: 'Intel64 Family 6 Model 186 Stepping 2, GenuineIntel',
+        os_name: null,
+        kernel_version: '11',
+        first_seen_at: '2026-07-07T02:56:00+00:00',
+        last_seen_at: '2026-07-07T03:03:00+00:00',
+      },
+      latest_metrics: {
+        'disk.root_used_percent': { value: 45.2, unit: 'percent', observed_at: '2026-07-07T03:00:00+00:00' },
+      },
+      recent_events: [],
+      risk_level: 'healthy',
+      findings: [],
     },
   ],
 };
@@ -312,7 +331,7 @@ describe('App', () => {
 
     const { container } = render(<App />);
 
-    await waitFor(() => expect(screen.getByText('Investigation Queue')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole('region', { name: 'Devices' })).toBeInTheDocument());
     expect(container.querySelector('.page-command-dark')).toBeInTheDocument();
     expect(screen.getByRole('region', { name: 'Investigation command center' })).toBeInTheDocument();
     expect(screen.getByText('Inspect now')).toBeInTheDocument();
@@ -347,14 +366,19 @@ describe('App', () => {
     expect(screen.getByRole('region', { name: 'Fleet Brief' })).toBeInTheDocument();
     const fleetBrief = screen.getByRole('region', { name: 'Fleet Brief' });
     expect(screen.getByText('Fleet Brief')).toBeInTheDocument();
-    expect(within(fleetBrief).getByLabelText('Total devices: 1')).toBeInTheDocument();
+    expect(within(fleetBrief).getByLabelText('Total devices: 2')).toBeInTheDocument();
     expect(within(fleetBrief).getByLabelText('Critical devices: 0')).toBeInTheDocument();
     expect(within(fleetBrief).getByLabelText('Warning devices: 1')).toBeInTheDocument();
-    expect(within(fleetBrief).getByLabelText('Queue cases: 1')).toBeInTheDocument();
+    expect(within(fleetBrief).getByLabelText('Open issues: 1')).toBeInTheDocument();
     expect(within(fleetBrief).getByText('Total은 현재 fleet에서 관측된 장비 수입니다.')).toBeInTheDocument();
-    expect(within(fleetBrief).getByText('Queue는 지금 조사 queue에 올라온 case 수입니다. 장비 수와 다를 수 있습니다.')).toBeInTheDocument();
+    expect(within(fleetBrief).getByText('Open은 현재 조사 중인 이슈 수입니다. 장비 수와 다를 수 있습니다.')).toBeInTheDocument();
     expect(screen.getByText('Warning source')).toBeInTheDocument();
     expect(screen.getByText('Build laptop · build-xps / thermal')).toBeInTheDocument();
+    const fleetDevices = screen.getByRole('region', { name: 'Devices' });
+    expect(within(fleetDevices).getByText('Build laptop · build-xps')).toBeInTheDocument();
+    expect(within(fleetDevices).getByText('윈도우 · DOGU_CHQUAN')).toBeInTheDocument();
+    expect(within(fleetDevices).getByText(/1 metric \/ 0 events/)).toBeInTheDocument();
+    expect(within(fleetDevices).getByText('Healthy')).toBeInTheDocument();
     expect(container.querySelector('.health-strip')).not.toBeInTheDocument();
     expect(container.querySelector('.metric-strip')).not.toBeInTheDocument();
     expect(container.querySelector('.metric-card')).not.toBeInTheDocument();
@@ -363,7 +387,7 @@ describe('App', () => {
     expect(screen.getByText('Project info')).toBeInTheDocument();
     expect(screen.getByText('Made by Dr. 권성호')).toBeInTheDocument();
     expect(screen.getByText('About: workstation health investigation')).toBeInTheDocument();
-    expect(screen.getByText('Version v0.12.0')).toBeInTheDocument();
+    expect(screen.getByText('Version v0.13.0')).toBeInTheDocument();
     expect(screen.queryByText('Detect - triage - verify with evidence')).not.toBeInTheDocument();
     expect(screen.getAllByText('Build laptop · build-xps').length).toBeGreaterThan(0);
     const selectedCaseStatus = screen.getByLabelText('Selected case status');
@@ -484,6 +508,16 @@ describe('App', () => {
     const notePostCall = fetchMock.mock.calls.find(([input, init]) => String(input).includes('/notes') && init?.method === 'POST');
     expect(notePostCall).toBeDefined();
     expect(JSON.parse(String(notePostCall?.[1]?.body)).body).toBe('Thermal result handed off to the next operator.');
+
+    const windowsDeviceButton = within(fleetDevices).getByText('윈도우 · DOGU_CHQUAN').closest('button');
+    expect(windowsDeviceButton).not.toBeNull();
+    fireEvent.click(windowsDeviceButton as HTMLButtonElement);
+
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Device telemetry overview' })).toBeInTheDocument());
+    expect(screen.getByText('No active investigations for this device.')).toBeInTheDocument();
+    expect(screen.getByText('Healthy · device')).toBeInTheDocument();
+    expect(screen.getAllByText('윈도우 · DOGU_CHQUAN is visible in Devices and currently has no active issue.').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('45.2%').length).toBeGreaterThan(0);
   });
 
   it('groups Intel Core Ultra 5 125H core sensors by core type', async () => {

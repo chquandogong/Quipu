@@ -160,6 +160,9 @@ def _cpu_model(root: Path) -> str | None:
 def _os_name(root: Path) -> str | None:
     os_release = _read_text(_root_path(root, "/etc/os-release"))
     if not os_release:
+        if _is_windows_runtime(root):
+            detected = platform.platform().strip()
+            return detected or None
         return None
     for line in os_release.splitlines():
         if line.startswith("PRETTY_NAME="):
@@ -354,6 +357,46 @@ def _run_command(args: list[str]) -> str | None:
     if completed.returncode != 0:
         return None
     return completed.stdout
+
+
+def _is_windows_runtime(root: Path) -> bool:
+    return platform.system().lower() == "windows"
+
+
+def _powershell_json(script: str, command_runner: CommandRunner | None) -> Any:
+    runner = command_runner or _run_command
+    output = runner(["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", script])
+    if not output:
+        return None
+    try:
+        return json.loads(output)
+    except json.JSONDecodeError:
+        return None
+
+
+def _json_items(payload: Any) -> list[dict[str, Any]]:
+    if isinstance(payload, list):
+        return [item for item in payload if isinstance(item, dict)]
+    if isinstance(payload, dict):
+        return [payload]
+    return []
+
+
+def _windows_device_info(command_runner: CommandRunner | None) -> dict[str, str]:
+    payload = _powershell_json(
+        "$cs=Get-CimInstance Win32_ComputerSystem;"
+        "$os=Get-CimInstance Win32_OperatingSystem;"
+        "$cpu=Get-CimInstance Win32_Processor | Select-Object -First 1;"
+        "[pscustomobject]@{Model=$cs.Model;OsName=$os.Caption;CpuModel=$cpu.Name} | ConvertTo-Json -Compress",
+        command_runner,
+    )
+    info: dict[str, str] = {}
+    for item in _json_items(payload):
+        for source_key, target_key in (("Model", "model"), ("OsName", "os_name"), ("CpuModel", "cpu_model")):
+            value = item.get(source_key)
+            if isinstance(value, str) and value.strip():
+                info[target_key] = value.strip()
+    return info
 
 
 def _event_logs(root: Path, observed_at: str, command_runner: CommandRunner | None) -> list[dict[str, Any]]:
@@ -893,6 +936,214 @@ def _power_supply_metrics(root: Path, observed_at: str) -> list[dict[str, Any]]:
     return metrics
 
 
+def _windows_processor_metrics(observed_at: str, command_runner: CommandRunner | None) -> list[dict[str, Any]]:
+    payload = _powershell_json(
+        "Get-CimInstance Win32_Processor | "
+        "Select-Object Name,NumberOfCores,NumberOfLogicalProcessors | ConvertTo-Json -Compress",
+        command_runner,
+    )
+    physical_cores = 0.0
+    logical_threads = 0.0
+    for processor in _json_items(payload):
+        cores = processor.get("NumberOfCores")
+        threads = processor.get("NumberOfLogicalProcessors")
+        if isinstance(cores, (int, float)):
+            physical_cores += float(cores)
+        if isinstance(threads, (int, float)):
+            logical_threads += float(threads)
+
+    metrics: list[dict[str, Any]] = []
+    if physical_cores > 0:
+        metrics.append(_metric("cpu.physical_cores", physical_cores, "count", observed_at))
+    if logical_threads > 0:
+        metrics.append(_metric("cpu.logical_threads", logical_threads, "count", observed_at))
+    return metrics
+
+
+def _windows_memory_metric(observed_at: str, command_runner: CommandRunner | None) -> dict[str, Any] | None:
+    payload = _powershell_json(
+        "Get-CimInstance Win32_OperatingSystem | "
+        "Select-Object TotalVisibleMemorySize,FreePhysicalMemory | ConvertTo-Json -Compress",
+        command_runner,
+    )
+    items = _json_items(payload)
+    if not items:
+        return None
+    total = items[0].get("TotalVisibleMemorySize")
+    free = items[0].get("FreePhysicalMemory")
+    if not isinstance(total, (int, float)) or not isinstance(free, (int, float)) or total <= 0:
+        return None
+    return _metric("memory.used_percent", ((float(total) - float(free)) / float(total)) * 100, "percent", observed_at)
+
+
+def _windows_battery_metrics(observed_at: str, command_runner: CommandRunner | None) -> list[dict[str, Any]]:
+    payload = _powershell_json(
+        "Get-CimInstance Win32_Battery | "
+        "Select-Object EstimatedChargeRemaining,BatteryStatus | ConvertTo-Json -Compress",
+        command_runner,
+    )
+    metrics: list[dict[str, Any]] = []
+    for battery in _json_items(payload)[:1]:
+        charge = battery.get("EstimatedChargeRemaining")
+        if isinstance(charge, (int, float)) and 0 <= charge <= 100:
+            metrics.append(_metric("battery.capacity_percent", float(charge), "percent", observed_at))
+        status = battery.get("BatteryStatus")
+        if isinstance(status, (int, float)):
+            metrics.append(_metric("battery.ac_online", 0.0 if int(status) == 1 else 1.0, "boolean", observed_at))
+    return metrics
+
+
+def _network_speed_mbps(value: str) -> float | None:
+    match = re.search(r"([0-9.]+)\s*([GMK]?)\s*(?:b(?:it)?/s|bps)", value, flags=re.IGNORECASE)
+    if not match:
+        return None
+    return _wifi_bitrate_value_mbps(match.group(1), f"{match.group(2)}bit/s")
+
+
+def _windows_netsh_wifi_metrics(observed_at: str, command_runner: CommandRunner | None) -> list[dict[str, Any]]:
+    runner = command_runner or _run_command
+    output = runner(["netsh", "wlan", "show", "interfaces"])
+    if not output:
+        return []
+
+    sections: list[dict[str, str]] = []
+    current: dict[str, str] = {}
+    for line in output.splitlines():
+        if ":" not in line:
+            continue
+        key, value = [part.strip() for part in line.split(":", 1)]
+        normalized_key = _safe_metric_part(key)
+        if normalized_key == "name" and current:
+            sections.append(current)
+            current = {}
+        current[normalized_key] = value
+    if current:
+        sections.append(current)
+
+    metrics: list[dict[str, Any]] = []
+    generic_signal_recorded = False
+    generic_bitrates_recorded: set[str] = set()
+    for index, section in enumerate(sections):
+        interface = _safe_metric_part(section.get("name") or f"wifi{index}")
+        signal_raw = section.get("signal")
+        if signal_raw:
+            signal_percent = _parse_metric_number(signal_raw)
+            if signal_percent is not None and 0 <= signal_percent <= 100:
+                # Windows netsh exposes signal quality as percent. Approximate
+                # dBm so the existing Wi-Fi signal UI can classify it.
+                signal_dbm = (signal_percent / 2.0) - 100.0
+                if not generic_signal_recorded:
+                    metrics.append(_metric("wifi.signal_dbm", signal_dbm, "dbm", observed_at))
+                    generic_signal_recorded = True
+                metrics.append(_metric(f"wifi.{interface}.signal_dbm", signal_dbm, "dbm", observed_at))
+
+        for section_key, metric_suffix, generic_name in (
+            ("receive_rate_mbps", "rx_bitrate_mbps", "wifi.rx_bitrate_mbps"),
+            ("transmit_rate_mbps", "tx_bitrate_mbps", "wifi.tx_bitrate_mbps"),
+        ):
+            value = section.get(section_key)
+            if not value:
+                continue
+            parsed = _parse_metric_number(value)
+            if parsed is None:
+                continue
+            metrics.append(_metric(f"wifi.{interface}.{metric_suffix}", parsed, "mbps", observed_at))
+            if generic_name not in generic_bitrates_recorded:
+                metrics.append(_metric(generic_name, parsed, "mbps", observed_at))
+                generic_bitrates_recorded.add(generic_name)
+    return metrics
+
+
+def _windows_adapter_wifi_metrics(observed_at: str, command_runner: CommandRunner | None) -> list[dict[str, Any]]:
+    payload = _powershell_json(
+        "Get-NetAdapter -Physical | "
+        "Where-Object {$_.Status -eq 'Up' -and ($_.Name -match 'Wi-Fi|Wireless|WLAN' -or $_.InterfaceDescription -match 'Wi-Fi|Wireless|WLAN|802.11')} | "
+        "Select-Object Name,InterfaceDescription,LinkSpeed | ConvertTo-Json -Compress",
+        command_runner,
+    )
+    metrics: list[dict[str, Any]] = []
+    generic_recorded = False
+    for index, adapter in enumerate(_json_items(payload)):
+        interface = _safe_metric_part(str(adapter.get("Name") or adapter.get("InterfaceDescription") or f"wifi{index}"))
+        link_speed = adapter.get("LinkSpeed")
+        if not isinstance(link_speed, str):
+            continue
+        value = _network_speed_mbps(link_speed)
+        if value is None:
+            continue
+        metrics.append(_metric(f"wifi.{interface}.link_bitrate_mbps", value, "mbps", observed_at))
+        if not generic_recorded:
+            metrics.append(_metric("wifi.link_bitrate_mbps", value, "mbps", observed_at))
+            generic_recorded = True
+    return metrics
+
+
+def _windows_wifi_metrics(observed_at: str, command_runner: CommandRunner | None) -> list[dict[str, Any]]:
+    netsh_metrics = _windows_netsh_wifi_metrics(observed_at, command_runner)
+    adapter_metrics = _windows_adapter_wifi_metrics(observed_at, command_runner)
+    by_name = {metric["name"]: metric for metric in adapter_metrics}
+    by_name.update({metric["name"]: metric for metric in netsh_metrics})
+    return list(by_name.values())
+
+
+def _windows_nvme_metrics(observed_at: str, command_runner: CommandRunner | None) -> list[dict[str, Any]]:
+    payload = _powershell_json(
+        "Get-CimInstance Win32_DiskDrive | "
+        "Select-Object Index,Model,InterfaceType,MediaType,Size | ConvertTo-Json -Compress",
+        command_runner,
+    )
+    metrics: list[dict[str, Any]] = []
+    total_capacity = 0.0
+    for index, disk in enumerate(_json_items(payload)):
+        descriptor = " ".join(
+            str(disk.get(key) or "")
+            for key in ("Model", "InterfaceType", "MediaType")
+        ).lower()
+        if "nvme" not in descriptor:
+            continue
+        size = disk.get("Size")
+        if not isinstance(size, (int, float)) or size <= 0:
+            continue
+        capacity_bytes = float(size)
+        total_capacity += capacity_bytes
+        label_source = str(disk.get("Model") or disk.get("Index") or f"nvme{index}")
+        device_name = _safe_metric_part(label_source)
+        metrics.append(_metric(f"nvme.{device_name}.capacity_bytes", capacity_bytes, "bytes", observed_at))
+    if total_capacity > 0:
+        metrics.insert(0, _metric("nvme.capacity_bytes", total_capacity, "bytes", observed_at))
+    return metrics
+
+
+def _windows_thermal_metrics(observed_at: str, command_runner: CommandRunner | None) -> list[dict[str, Any]]:
+    payload = _powershell_json(
+        "Get-CimInstance -Namespace root/wmi MSAcpi_ThermalZoneTemperature | "
+        "Select-Object CurrentTemperature | ConvertTo-Json -Compress",
+        command_runner,
+    )
+    metrics: list[dict[str, Any]] = []
+    for index, sensor in enumerate(_json_items(payload)):
+        raw_temperature = sensor.get("CurrentTemperature")
+        if not isinstance(raw_temperature, (int, float)):
+            continue
+        celsius = (float(raw_temperature) / 10.0) - 273.15
+        if 0 < celsius < 150:
+            metrics.append(_metric(f"thermal.windows_zone_{index}.temp_c", celsius, "celsius", observed_at))
+    return metrics
+
+
+def _windows_metrics(observed_at: str, command_runner: CommandRunner | None) -> list[dict[str, Any]]:
+    metrics: list[dict[str, Any]] = []
+    metrics.extend(_windows_processor_metrics(observed_at, command_runner))
+    memory_metric = _windows_memory_metric(observed_at, command_runner)
+    if memory_metric is not None:
+        metrics.append(memory_metric)
+    metrics.extend(_windows_battery_metrics(observed_at, command_runner))
+    metrics.extend(_windows_wifi_metrics(observed_at, command_runner))
+    metrics.extend(_windows_nvme_metrics(observed_at, command_runner))
+    metrics.extend(_windows_thermal_metrics(observed_at, command_runner))
+    return metrics
+
+
 def collect_observation(
     *,
     root: Path | str = Path("/"),
@@ -907,7 +1158,11 @@ def collect_observation(
     observed = _utc(observed_at)
     observed_iso = observed.isoformat()
     collected_device_id = _device_id(root_path, device_id)
-    cpu_model = _cpu_model(root_path)
+    windows_runtime = _is_windows_runtime(root_path)
+    windows_device_info = _windows_device_info(command_runner) if windows_runtime else {}
+    cpu_model = windows_device_info.get("cpu_model") if windows_runtime else None
+    if not cpu_model:
+        cpu_model = _cpu_model(root_path)
     metrics = _load_metrics(root_path, observed_iso)
     metrics.extend(_cpu_metrics(root_path, observed_iso, cpu_model))
     metrics.extend(
@@ -925,10 +1180,13 @@ def collect_observation(
     metrics.extend(_fan_metrics(root_path, observed_iso))
     metrics.extend(_nvme_health_metrics(root_path, observed_iso))
     metrics.extend(_power_supply_metrics(root_path, observed_iso))
+    if windows_runtime:
+        metrics.extend(_windows_metrics(observed_iso, command_runner))
     events = _event_logs(root_path, observed_iso, command_runner)
+    metrics = list({metric["name"]: metric for metric in metrics}.values())
 
     if not metrics and not events:
-        raise RuntimeError("no readable Linux signals found")
+        raise RuntimeError("no readable system signals found")
 
     batch_seed = f"{collected_device_id}:{observed_iso}"
     batch_hash = hashlib.sha256(batch_seed.encode("utf-8")).hexdigest()[:12]
@@ -939,9 +1197,9 @@ def collect_observation(
             "device_id": collected_device_id,
             "display_name": device_alias.strip() if device_alias and device_alias.strip() else None,
             "hostname": _hostname(root_path),
-            "model": _model(root_path),
+            "model": windows_device_info.get("model") or _model(root_path),
             "cpu_model": cpu_model,
-            "os_name": _os_name(root_path),
+            "os_name": windows_device_info.get("os_name") or _os_name(root_path),
             "kernel_version": platform.release(),
         },
         "metrics": metrics,

@@ -221,10 +221,10 @@ def ingest_batch(
             )
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(device_id) DO UPDATE SET
-              display_name = excluded.display_name,
+              display_name = COALESCE(excluded.display_name, devices.display_name),
               hostname = excluded.hostname,
               model = excluded.model,
-              cpu_model = excluded.cpu_model,
+              cpu_model = COALESCE(excluded.cpu_model, devices.cpu_model),
               os_name = excluded.os_name,
               kernel_version = excluded.kernel_version,
               last_seen_at = excluded.last_seen_at

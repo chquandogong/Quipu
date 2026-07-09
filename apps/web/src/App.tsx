@@ -37,6 +37,7 @@ import {
   recordInvestigationNote,
 } from './api';
 import type {
+  DeviceSnapshot,
   FleetOverview,
   InvestigationDetail,
   InvestigationItem,
@@ -50,7 +51,7 @@ import type {
 import './styles.css';
 
 const flowStages = ['Detect', 'Triage', 'Investigate', 'Hypothesize', 'Act', 'Verify', 'Report'];
-const appVersion = 'v0.12.0';
+const appVersion = 'v0.13.0';
 
 const riskLabels: Record<RiskLevel, string> = {
   healthy: 'Healthy',
@@ -1376,11 +1377,11 @@ function FleetBrief({ overview, queue }: { overview: FleetOverview | null; queue
       tone: 'warning',
     },
     {
-      description: 'Queue는 지금 조사 queue에 올라온 case 수입니다. 장비 수와 다를 수 있습니다.',
-      label: 'Queue',
-      metricLabel: 'cases',
-      singularUnit: 'case',
-      pluralUnit: 'cases',
+      description: 'Open은 현재 조사 중인 이슈 수입니다. 장비 수와 다를 수 있습니다.',
+      label: 'Open',
+      metricLabel: 'issues',
+      singularUnit: 'issue',
+      pluralUnit: 'issues',
       value: queue.length,
       tone: 'queue',
     },
@@ -1416,6 +1417,200 @@ function FleetBrief({ overview, queue }: { overview: FleetOverview | null; queue
         <span>{leadingSource ? `${riskLabels[leadingSource.risk_level]} source` : 'No active source'}</span>
         <strong>{leadingSource ? `${itemDeviceDisplayLabel(leadingSource)} / ${leadingSource.category}` : 'No active warning'}</strong>
         <em>{leadingSource?.title ?? 'All selected fleet signals are clear.'}</em>
+      </div>
+    </section>
+  );
+}
+
+function deviceSnapshotSummary(snapshot: DeviceSnapshot): string {
+  const metricCount = Object.keys(snapshot.latest_metrics).length;
+  const eventCount = snapshot.recent_events.length;
+  const metricLabel = metricCount === 1 ? 'metric' : 'metrics';
+  const eventLabel = eventCount === 1 ? 'event' : 'events';
+  return `${metricCount} ${metricLabel} / ${eventCount} ${eventLabel}`;
+}
+
+function deviceLastSeenLabel(snapshot: DeviceSnapshot): string {
+  return `Last seen ${new Date(snapshot.device.last_seen_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+}
+
+function deviceHardwareLabel(snapshot: DeviceSnapshot): string {
+  return snapshot.device.cpu_model
+    ?? snapshot.device.model
+    ?? snapshot.device.os_name
+    ?? snapshot.device.kernel_version
+    ?? 'Hardware profile pending';
+}
+
+function deviceIssues(queue: InvestigationItem[], deviceId: string): InvestigationItem[] {
+  return queue.filter((item) => item.device_id === deviceId);
+}
+
+function deviceIssueSummary(issues: InvestigationItem[]): string {
+  if (issues.length === 0) return 'No active issues';
+  if (issues.length === 1) return `1 issue: ${issues[0].title}`;
+  return `${issues.length} issues: ${issues[0].title}`;
+}
+
+function snapshotToInvestigationDetail(
+  snapshot: DeviceSnapshot,
+  issues: InvestigationItem[],
+): InvestigationDetail {
+  const primaryIssue = issues[0];
+  const deviceLabel = deviceDisplayLabel(snapshot.device);
+  const metricCount = Object.keys(snapshot.latest_metrics).length;
+  const fallbackItem: InvestigationItem = {
+    id: `${snapshot.device.device_id}:overview`,
+    priority: 'Low',
+    stage: 'Detect',
+    risk_level: snapshot.risk_level,
+    device_id: snapshot.device.device_id,
+    device_display_name: snapshot.device.display_name,
+    device_hostname: snapshot.device.hostname,
+    title: issues.length > 0 ? primaryIssue.title : 'Device telemetry overview',
+    category: issues.length > 0 ? primaryIssue.category : 'device',
+    confidence: issues.length > 0 ? primaryIssue.confidence : 'high',
+    why_now: issues.length > 0 ? primaryIssue.why_now : `${deviceLabel} has no active issue.`,
+    evidence: issues.length > 0
+      ? primaryIssue.evidence
+      : `${metricCount} telemetry metric${metricCount === 1 ? '' : 's'} collected. Risk is ${riskLabels[snapshot.risk_level]}.`,
+    next_step: issues.length > 0
+      ? primaryIssue.next_step
+      : 'Review telemetry coverage and recent events for this device.',
+    updated_at: snapshot.device.last_seen_at,
+  };
+  const item = primaryIssue ?? fallbackItem;
+  return {
+    item,
+    timeline: snapshot.recent_events.map((event) => ({
+      observed_at: event.observed_at,
+      category: event.category,
+      severity: event.severity,
+      source: event.source,
+      summary: event.message_summary,
+      raw_ref: event.raw_ref,
+    })),
+    hypotheses: issues.length > 0
+      ? []
+      : [
+          {
+            category: 'device',
+            title: 'No active investigation for this device',
+            confidence: 'high',
+            supporting_evidence: [`${deviceSnapshotSummary(snapshot)} reported by collector.`],
+            contradicting_evidence: ['No warning or critical finding is currently queued for this device.'],
+            missing_checks: ['Review telemetry coverage to see which hardware signals are unavailable.'],
+          },
+        ],
+    actions: issues.length > 0
+      ? []
+      : [
+          {
+            label: 'Review telemetry coverage',
+            description: 'Check which CPU, Wi-Fi, NVMe, disk, memory, battery, fan, and event signals are available for this device.',
+          },
+        ],
+    interventions: [],
+    verification: {
+      status: issues.length > 0 ? 'Pending' : 'No active issues',
+      summary: issues.length > 0
+        ? 'Open the investigation before recording or verifying an intervention.'
+        : `${deviceLabel} has no active issue awaiting verification.`,
+      signals: Object.keys(snapshot.latest_metrics).slice(0, 6),
+    },
+    report: {
+      summary: issues.length > 0
+        ? `${deviceLabel} has ${deviceIssueSummary(issues)}.`
+        : `${deviceLabel} is visible in Devices and currently has no active issue.`,
+      recommended_next_step: issues.length > 0
+        ? item.next_step
+        : 'Use Telemetry Matrix to inspect available and missing signals.',
+    },
+    fleet_context: snapshot,
+  };
+}
+
+function FleetDevices({
+  onSelect,
+  overview,
+  queue,
+  selectedDeviceId,
+}: {
+  onSelect: (deviceId: string) => void;
+  overview: FleetOverview | null;
+  queue: InvestigationItem[];
+  selectedDeviceId: string | null;
+}) {
+  return (
+    <section className="panel fleet-devices-panel" aria-label="Devices">
+      <div className="panel-head">
+        <h2>Devices</h2>
+        <span>{overview?.devices.length ?? 0} devices</span>
+      </div>
+      <div className="fleet-device-list">
+        {overview?.devices.length ? (
+          overview.devices.map((snapshot) => {
+            const issues = deviceIssues(queue, snapshot.device.device_id);
+            const selected = snapshot.device.device_id === selectedDeviceId;
+            return (
+              <button
+                aria-pressed={selected}
+                className={selected ? 'fleet-device-row selected' : 'fleet-device-row'}
+                key={snapshot.device.device_id}
+                onClick={() => onSelect(snapshot.device.device_id)}
+                type="button"
+              >
+                <div>
+                  <strong>{deviceDisplayLabel(snapshot.device)}</strong>
+                  <span>{deviceHardwareLabel(snapshot)}</span>
+                  <small>{deviceSnapshotSummary(snapshot)} · {deviceLastSeenLabel(snapshot)}</small>
+                  <em>{deviceIssueSummary(issues)}</em>
+                </div>
+                <span className={riskClass(snapshot.risk_level)}>{riskLabels[snapshot.risk_level]}</span>
+              </button>
+            );
+          })
+        ) : (
+          <p className="status">No devices reported yet.</p>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function DeviceIssueList({
+  issues,
+  selectedId,
+  onSelect,
+}: {
+  issues: InvestigationItem[];
+  selectedId: string | null;
+  onSelect: (issue: InvestigationItem) => void;
+}) {
+  return (
+    <section className="panel queue-panel" aria-label="Device Issues">
+      <div className="panel-head">
+        <h2>Device Issues</h2>
+        <span>{issues.length} items</span>
+      </div>
+      <div className="queue-list">
+        {issues.length === 0 ? (
+          <p className="status">No active investigations for this device.</p>
+        ) : (
+          issues.map((item) => (
+            <button
+              className={item.id === selectedId ? 'queue-item selected' : 'queue-item'}
+              key={item.id}
+              onClick={() => onSelect(item)}
+              type="button"
+            >
+              <span className={priorityClass(item.priority)}>{item.priority}</span>
+              <strong>{item.title}</strong>
+              <em>{item.why_now}</em>
+              <small>{item.next_step}</small>
+            </button>
+          ))
+        )}
       </div>
     </section>
   );
@@ -1485,6 +1680,7 @@ function scrollToPanel(panelId: string) {
 export default function App() {
   const [overview, setOverview] = useState<FleetOverview | null>(null);
   const [queue, setQueue] = useState<InvestigationItem[]>([]);
+  const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detail, setDetail] = useState<InvestigationDetail | null>(null);
   const [patterns, setPatterns] = useState<PatternOverview | null>(null);
@@ -1502,10 +1698,15 @@ export default function App() {
     Promise.all([fetchFleetOverview(), fetchInvestigationQueue(), fetchPatternOverview()])
       .then(([fleetData, queueData, patternData]) => {
         if (!active) return;
+        const initialDeviceId = queueData.items[0]?.device_id ?? fleetData.devices[0]?.device.device_id ?? null;
+        const initialItemId = initialDeviceId
+          ? queueData.items.find((item) => item.device_id === initialDeviceId)?.id ?? null
+          : null;
         setOverview(fleetData);
         setQueue(queueData.items);
         setPatterns(patternData);
-        setSelectedId(queueData.items[0]?.id ?? null);
+        setSelectedDeviceId(initialDeviceId);
+        setSelectedId(initialItemId);
         setError(null);
       })
       .catch((err: unknown) => {
@@ -1522,6 +1723,7 @@ export default function App() {
   useEffect(() => {
     if (!selectedId) {
       setDetail(null);
+      setNotes([]);
       return;
     }
     let active = true;
@@ -1539,37 +1741,72 @@ export default function App() {
     };
   }, [selectedId]);
 
+  const selectedSnapshot = useMemo(
+    () => overview?.devices.find((snapshot) => snapshot.device.device_id === selectedDeviceId)
+      ?? overview?.devices[0]
+      ?? null,
+    [overview, selectedDeviceId],
+  );
+  const selectedDeviceIssues = useMemo(
+    () => selectedSnapshot ? deviceIssues(queue, selectedSnapshot.device.device_id) : [],
+    [queue, selectedSnapshot],
+  );
   const selectedItem = useMemo(
-    () => queue.find((item) => item.id === selectedId) ?? queue[0] ?? null,
-    [queue, selectedId],
+    () => queue.find((item) => item.id === selectedId)
+      ?? selectedDeviceIssues[0]
+      ?? null,
+    [queue, selectedDeviceIssues, selectedId],
+  );
+  const selectedDetail = useMemo(
+    () => {
+      if (!selectedSnapshot) return null;
+      if (detail && detail.fleet_context.device.device_id === selectedSnapshot.device.device_id) {
+        return detail;
+      }
+      return snapshotToInvestigationDetail(selectedSnapshot, selectedDeviceIssues);
+    },
+    [detail, selectedDeviceIssues, selectedSnapshot],
   );
   const latestVerificationResult = detail?.interventions[detail.interventions.length - 1]?.verification_result;
-  const nextAction = detail?.actions[0];
-  const primaryEvidence = detail?.item.evidence ?? detail?.timeline[0]?.summary ?? 'Select a queue item to inspect evidence.';
-  const verificationLabel = detail?.verification.status ?? 'Pending';
-  const verificationSummary = detail?.verification.summary ?? 'Record an intervention before verification.';
+  const nextAction = selectedDetail?.actions[0];
+  const primaryEvidence = selectedDetail?.item.evidence ?? selectedDetail?.timeline[0]?.summary ?? 'Select a device to inspect telemetry.';
+  const verificationLabel = detail?.verification.status ?? selectedDetail?.verification.status ?? 'No active issues';
+  const verificationSummary = detail?.verification.summary ?? selectedDetail?.verification.summary ?? 'No verification is pending for this device.';
   const selectedStage = selectedItem?.stage ?? 'Detect';
-  const selectedRiskLevel = detail?.item.risk_level ?? selectedItem?.risk_level;
-  const deviceLabel = detail
-    ? deviceDisplayLabel(detail.fleet_context.device)
-    : selectedItem
-      ? itemDeviceDisplayLabel(selectedItem)
-      : 'No device selected';
-  const caseTitle = detail?.item.title ?? selectedItem?.title ?? 'Select an investigation';
-  const selectedRiskSource = selectedRiskSourceDescription(selectedRiskLevel, detail, selectedItem);
+  const selectedRiskLevel = selectedDetail?.item.risk_level ?? selectedSnapshot?.risk_level;
+  const deviceLabel = selectedDetail
+    ? deviceDisplayLabel(selectedDetail.fleet_context.device)
+    : 'No device selected';
+  const caseTitle = selectedItem?.title ?? selectedDetail?.item.title ?? 'Select a device';
+  const selectedRiskSource = selectedRiskSourceDescription(selectedRiskLevel, selectedDetail, selectedItem);
   const selectedRiskDescription = selectedRiskSource
     ? [riskDescription(selectedRiskLevel), selectedRiskSource]
     : riskDescription(selectedRiskLevel);
-  const riskLabel = riskChipLabel(selectedRiskLevel, detail, selectedItem);
-  const whyNow = detail?.item.evidence ?? selectedItem?.why_now ?? 'Choose a queue item to see the evidence.';
-  const whyDetail = detail?.item.category === 'agent'
+  const riskLabel = riskChipLabel(selectedRiskLevel, selectedDetail, selectedItem);
+  const whyNow = selectedDetail?.item.evidence ?? selectedItem?.why_now ?? 'Choose a device to see telemetry evidence.';
+  const whyDetail = selectedDetail?.item.category === 'agent'
     ? 'Fresh telemetry is required before trusting older thermal, load, or storage readings.'
-    : detail?.hypotheses[0]?.contradicting_evidence[0]
-      ?? detail?.hypotheses[0]?.supporting_evidence[0]
-      ?? 'Evidence appears after selecting an investigation.';
-  const actionLabel = nextAction?.label ?? selectedItem?.next_step ?? 'Select a queue item';
-  const actionSummary = nextAction?.description ?? selectedItem?.next_step ?? 'Choose an investigation before recording action.';
+    : selectedDetail?.hypotheses[0]?.contradicting_evidence[0]
+      ?? selectedDetail?.hypotheses[0]?.supporting_evidence[0]
+      ?? 'Telemetry appears after selecting a device.';
+  const actionLabel = nextAction?.label ?? selectedItem?.next_step ?? 'Review telemetry coverage';
+  const actionSummary = nextAction?.description ?? selectedItem?.next_step ?? 'Inspect available and missing signals for the selected device.';
   const proofSummary = latestVerificationResult?.summary ?? verificationSummary;
+
+  function handleSelectDevice(deviceId: string) {
+    const firstIssue = queue.find((item) => item.device_id === deviceId) ?? null;
+    setSelectedDeviceId(deviceId);
+    setSelectedId(firstIssue?.id ?? null);
+    setDetail(null);
+    setNotes([]);
+  }
+
+  function handleSelectIssue(issue: InvestigationItem) {
+    setSelectedDeviceId(issue.device_id);
+    setSelectedId(issue.id);
+    setDetail(null);
+    setNotes([]);
+  }
 
   async function handleRecordIntervention(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -1663,7 +1900,7 @@ export default function App() {
               description={priorityDescription(selectedItem?.priority)}
               helpId="selected-priority-help"
               Icon={AlertTriangle}
-              label={selectedItem?.priority ?? 'No priority'}
+              label={selectedItem?.priority ?? 'No active issue'}
               title="Priority / 우선순위"
             />
             <StatusChip
@@ -1716,7 +1953,7 @@ export default function App() {
           </article>
         </div>
 
-        <TelemetryBrief detail={detail} />
+        <TelemetryBrief detail={selectedDetail} />
 
         <div className="command-actions" aria-label="Primary investigation actions">
           <button onClick={() => scrollToPanel('evidence-panel')} type="button">
@@ -1739,54 +1976,38 @@ export default function App() {
         </div>
       </section>
 
-      <OperationsRail overview={overview} patterns={patterns} detail={detail} />
+      <OperationsRail overview={overview} patterns={patterns} detail={selectedDetail} />
 
       <section className="investigation-layout">
-        <aside className="panel queue-panel">
-          <div className="panel-head">
-            <h2>Investigation Queue</h2>
-            <span>{queue.length} items</span>
-          </div>
-          <div className="queue-list">
-            {queue.length === 0 ? (
-              <p className="status">No active investigations.</p>
-            ) : (
-              queue.map((item) => (
-                <button
-                  className={item.id === selectedItem?.id ? 'queue-item selected' : 'queue-item'}
-                  key={item.id}
-                  onClick={() => setSelectedId(item.id)}
-                  type="button"
-                >
-                  <span className={priorityClass(item.priority)}>{item.priority}</span>
-                  <strong>{itemDeviceDisplayLabel(item)}</strong>
-                  <em>{item.why_now}</em>
-                  <small>{item.next_step}</small>
-                </button>
-              ))
-            )}
-          </div>
+        <aside className="side-stack">
+          <FleetDevices
+            onSelect={handleSelectDevice}
+            overview={overview}
+            queue={queue}
+            selectedDeviceId={selectedSnapshot?.device.device_id ?? selectedDeviceId}
+          />
+          <DeviceIssueList issues={selectedDeviceIssues} selectedId={selectedId} onSelect={handleSelectIssue} />
         </aside>
 
         <section className="detail-grid">
           <article className="panel hero-panel">
             <div className="panel-head">
-              <h2>{detail?.item.title ?? 'Select an investigation'}</h2>
-              {detail && <span className={riskClass(detail.item.risk_level)}>{riskLabels[detail.item.risk_level]}</span>}
+              <h2>{selectedDetail?.item.title ?? 'Select a device'}</h2>
+              {selectedDetail && <span className={riskClass(selectedDetail.item.risk_level)}>{riskLabels[selectedDetail.item.risk_level]}</span>}
             </div>
-            <p className="lead">{detail?.item.evidence ?? 'Choose an item from the investigation queue.'}</p>
-            {detail && <MetricLedger detail={detail} />}
-            <TelemetryMatrix detail={detail} overview={overview} />
+            <p className="lead">{selectedDetail?.item.evidence ?? 'Choose a device from the list.'}</p>
+            {selectedDetail && <MetricLedger detail={selectedDetail} />}
+            <TelemetryMatrix detail={selectedDetail} overview={overview} />
           </article>
 
           <article className="panel collapsible-panel" id="evidence-panel" tabIndex={-1}>
             <div className="panel-head">
               <h2>Evidence timeline</h2>
-              <span>{detail?.timeline.length ?? 0} events</span>
+              <span>{selectedDetail?.timeline.length ?? 0} events</span>
             </div>
-            <p className="panel-summary">{detail?.timeline[0]?.summary ?? 'No events selected.'}</p>
+            <p className="panel-summary">{selectedDetail?.timeline[0]?.summary ?? 'No events selected.'}</p>
             <div className="panel-body timeline">
-              {detail?.timeline.map((event) => (
+              {selectedDetail?.timeline.map((event) => (
                 <div className="timeline-row" key={`${event.observed_at}-${event.category}-${event.summary}`}>
                   <time>{new Date(event.observed_at).toLocaleString()}</time>
                   <strong>{event.category} / {event.severity}</strong>
@@ -1800,11 +2021,11 @@ export default function App() {
           <article className="panel collapsible-panel" id="hypotheses-panel" tabIndex={-1}>
             <div className="panel-head">
               <h2>Top hypotheses</h2>
-              <span>{detail?.hypotheses.length ?? 0}</span>
+              <span>{selectedDetail?.hypotheses.length ?? 0}</span>
             </div>
-            <p className="panel-summary">{detail?.hypotheses[0]?.title ?? 'No hypotheses yet.'}</p>
+            <p className="panel-summary">{selectedDetail?.hypotheses[0]?.title ?? 'No hypotheses yet.'}</p>
             <div className="panel-body">
-              {detail?.hypotheses.map((hypothesis) => (
+              {selectedDetail?.hypotheses.map((hypothesis) => (
                 <section className="hypothesis" key={hypothesis.category}>
                   <strong>{hypothesis.title}</strong>
                   <span>{hypothesis.category} / {hypothesis.confidence}</span>
@@ -1818,11 +2039,11 @@ export default function App() {
           <article className="panel collapsible-panel action-panel" id="action-plan" tabIndex={-1}>
             <div className="panel-head">
               <h2>Action plan</h2>
-              <span>{detail?.actions.length ?? 0}</span>
+              <span>{selectedDetail?.actions.length ?? 0}</span>
             </div>
             <p className="panel-summary">{nextAction?.description ?? 'No action selected.'}</p>
             <div className="panel-body">
-              {detail?.actions.map((action) => (
+              {selectedDetail?.actions.map((action) => (
                 <div className="action" key={action.label}>
                   <strong>{action.label}</strong>
                   <p>{action.description}</p>
@@ -1881,13 +2102,13 @@ export default function App() {
           <article className="panel collapsible-panel" id="verification-panel" tabIndex={-1}>
             <div className="panel-head">
               <h2>Verification</h2>
-              <span>{detail?.verification.status ?? 'Pending'}</span>
+              <span>{detail?.verification.status ?? selectedDetail?.verification.status ?? 'Pending'}</span>
             </div>
             <p className="panel-summary">{verificationSummary}</p>
             <div className="panel-body">
-              <p className="lead">{detail?.verification.summary}</p>
+              <p className="lead">{detail?.verification.summary ?? selectedDetail?.verification.summary}</p>
               <div className="signal-list">
-                {detail?.verification.signals.map((signal) => <span key={signal}>{signal}</span>)}
+                {(detail?.verification.signals ?? selectedDetail?.verification.signals ?? []).map((signal) => <span key={signal}>{signal}</span>)}
               </div>
               {latestVerificationResult && <VerificationResultView result={latestVerificationResult} />}
             </div>
@@ -1908,10 +2129,10 @@ export default function App() {
               <h2>Report</h2>
               <span>Draft</span>
             </div>
-            <p className="panel-summary">{detail?.report.summary ?? 'No report selected.'}</p>
+            <p className="panel-summary">{selectedDetail?.report.summary ?? 'No report selected.'}</p>
             <div className="panel-body">
-              <p className="lead">{detail?.report.summary}</p>
-              <p className="next-step">{detail?.report.recommended_next_step}</p>
+              <p className="lead">{selectedDetail?.report.summary}</p>
+              <p className="next-step">{selectedDetail?.report.recommended_next_step}</p>
             </div>
           </article>
         </section>

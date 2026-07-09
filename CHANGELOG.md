@@ -2,6 +2,65 @@
 
 All notable changes to Quipu are documented in this file.
 
+## v0.13.0 - 2026-07-09
+
+Device-first fleet UI and Windows telemetry collection release.
+
+### Added
+
+- Device-first UI navigation: `Devices` lists every reporting machine and
+  `Device Issues` scopes active investigations to the selected device.
+- Synthetic device overview detail for healthy devices with no active
+  investigation item, so Metric Ledger, Telemetry Matrix, Verification, and
+  Report remain available.
+- Test fixture coverage for a healthy Windows-named device (`윈도우 · DOGU_CHQUAN`)
+  that has telemetry but no active issue.
+- Windows scheduled-task collector packaging that mirrors the Ubuntu systemd
+  collector flow: environment file, hidden startup wrapper, duplicate-process
+  guard, offline buffer, and five-minute background collection loop.
+- Windows best-effort collector metrics for CPU core/thread counts, memory
+  usage, battery charge/AC state, Wi-Fi signal/link speed, NVMe capacity, and
+  ACPI thermal zones when Windows exposes them through CIM, netsh, or
+  Get-NetAdapter.
+- Documentation for reading healthy device detail, interpreting missing
+  Windows rows, and verifying Windows metric keys from the fleet API.
+
+### Changed
+
+- Fleet Brief now labels investigation count as `Open issues` instead of
+  `Queue cases`.
+- The UI no longer presents a global `Investigation Queue` beside `Fleet
+  Devices`; the primary list is the device list, with issues scoped below it.
+- README editions and the user manual now describe Quipu as a workstation
+  health investigator with a bundled read-only collector that has Linux and
+  Windows best-effort paths, plus a compatible ingest contract for external
+  collectors.
+- The server accepts browser UI requests from private LAN Vite origins on
+  ports 5173 and 5174.
+- Updated package, app, API, schema, and UI versions to `0.13.0`.
+
+### Fixed
+
+- Device aliases and CPU models are preserved when a later batch for the same
+  `device_id` omits optional `display_name` or `cpu_model`.
+- LAN UI sessions opened as `http://<server-ip>:5174` no longer fail API reads
+  because of local-only CORS configuration.
+
+### Verified
+
+- Server test suite: 37 tests passed, 1 Starlette deprecation warning.
+- Collector test suite: 21 tests passed.
+- Web test suite: 3 tests passed.
+- Web production build succeeded.
+- Whitespace check passed.
+- Browser DOM smoke check confirmed the LAN UI rendered `Version v0.13.0`,
+  `Devices`, `우분투`, `윈도우`, `Telemetry Matrix`, and no `Failed to fetch`
+  state.
+- Running local server showed `우분투 · chquan-17ZD90SP-GX56K` and
+  `윈도우 · DOGU_CHQUAN` in the `Devices` list. The currently connected
+  Windows scheduled task still needs this release deployed before it can send
+  the new best-effort Windows metric set.
+
 ## v0.12.0 - 2026-07-08
 
 Windows scheduled collector operations release.

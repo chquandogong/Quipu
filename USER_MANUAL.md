@@ -1,7 +1,10 @@
 # Quipu User Manual
 
-이 문서는 Quipu를 로컬에서 실행하고, Linux 노트북 데이터를 수집하고, 화면의
-조사 정보를 해석하는 운영자용 매뉴얼입니다.
+이 문서는 Quipu를 로컬에서 실행하고, 노트북/컴퓨터 데이터를 수집하고, 화면의
+조사 정보를 해석하는 운영자용 매뉴얼입니다. 저장소에 포함된 collector는 읽기
+전용 collector입니다. Linux에서는 procfs/sysfs를 읽고, Windows에서는
+PowerShell/CIM/netsh/Get-NetAdapter가 노출하는 신호를 best-effort로 읽습니다.
+외부 collector도 같은 ingest API 계약으로 관측값을 보내면 같은 화면에 표시됩니다.
 
 ## 1. 대상 사용자
 
@@ -21,7 +24,9 @@ Quipu는 원격 수리 도구가 아닙니다. collector는 읽기 전용이고,
 - Python 3.11 이상
 - Node.js 20 이상
 - npm
-- Linux 환경
+- Linux 환경: 저장소에 포함된 collector와 systemd timer를 직접 실행할 때 필요합니다.
+- Windows 환경: 같은 collector 패키지를 PowerShell scheduled-task wrapper로
+  실행할 수 있습니다.
 
 저장소 루트는 이 문서에서 `/home/chquan/Quipu`로 가정합니다. 다른 경로를 쓰면
 명령의 경로만 바꾸면 됩니다.
@@ -89,8 +94,8 @@ quipu-collector \
 
 ## 5. 다른 노트북/컴퓨터 연결
 
-Quipu는 여러 Linux 노트북이나 워크스테이션이 같은 서버로 관측값을 보내는
-구조입니다. 서버가 떠 있는 컴퓨터의 LAN IP를 확인합니다.
+Quipu는 여러 노트북이나 워크스테이션이 같은 서버로 관측값을 보내는 구조입니다.
+서버가 떠 있는 컴퓨터의 LAN IP를 확인합니다.
 
 ```bash
 hostname -I
@@ -106,7 +111,7 @@ QUIPU_DATABASE_PATH=../../data/quipu.sqlite3 uvicorn quipu_server.app:app --host
 
 방화벽을 쓰고 있다면 TCP `8000` 접근을 허용해야 합니다.
 
-다른 Linux 노트북에서 collector를 설치하고 전송합니다.
+다른 Linux 노트북에서 저장소에 포함된 collector를 설치하고 전송합니다.
 
 ```bash
 cd /path/to/Quipu/apps/collector
@@ -127,6 +132,76 @@ quipu-collector \
   업데이트됩니다.
 - 별명이 있으면 UI는 `사무실 그램 · office-hostname`처럼 표시합니다.
 - 빠른 테스트는 `dev-token`으로 가능하지만, 반복 운용은 장치별 token을 권장합니다.
+
+Windows에서는 같은 collector 패키지를 PowerShell scheduled-task wrapper로 실행할
+수 있습니다. 같은 server URL, token, 안정적인 `device_id`, 화면용 `display_name`
+또는 별명을 사용해 observation batch를 보내면 UI의 `Devices` 목록에 함께 표시됩니다.
+
+Windows 장비에 최신 릴리스를 반영하려면 Windows 장비에서 다음을 실행합니다.
+
+```powershell
+cd C:\path\to\Quipu\apps\collector
+py -3 -m venv .venv
+.\.venv\Scripts\pip.exe install -e .
+cd C:\path\to\Quipu
+powershell.exe -ExecutionPolicy Bypass -File scripts\install-collector-scheduled-task.ps1 `
+  -ServerUrl http://<server-ip>:8000 `
+  -Token dev-token `
+  -DeviceId windows `
+  -DeviceAlias "윈도우"
+```
+
+이미 scheduled task가 있으면 위 설치 스크립트가 같은 이름의 task를 다시 등록하고
+시작합니다. 수동으로 재시작하려면 Windows 작업 스케줄러에서 `Quipu Collector
+Windows`를 실행하거나 PowerShell에서 `Start-ScheduledTask -TaskName "Quipu
+Collector Windows"`를 사용합니다.
+
+Windows collector 배포 확인 기준:
+
+- `Devices` 목록에 `윈도우 · <hostname>`처럼 별명이 보입니다.
+- `last_seen_at`이 collector 실행 시각에 맞게 갱신됩니다.
+- `latest_metrics`가 smoke metric 하나만이 아니라 Windows collector가 의도한 CPU,
+  memory, disk, Wi-Fi, NVMe, battery 등 신호를 포함합니다.
+- healthy 장비라도 클릭하면 `Device telemetry overview`, Metric Ledger,
+  Telemetry Matrix, Report가 표시됩니다.
+
+서버에서 Windows 장비 수신 상태를 확인하려면:
+
+```bash
+curl -s http://127.0.0.1:8000/api/fleet/overview | python3 -c '
+import json, sys
+payload = json.load(sys.stdin)
+for snap in payload["devices"]:
+    device = snap["device"]
+    if device.get("display_name") == "윈도우" or device["device_id"] == "windows":
+        print(device["device_id"], device.get("display_name"), device["hostname"],
+              snap["risk_level"], len(snap["latest_metrics"]), len(snap["recent_events"]))
+        print(sorted(snap["latest_metrics"].keys()))
+'
+```
+
+Windows에서 Linux 전용 metric이 비어 있는 것은 오류가 아닐 수 있습니다. 예를 들어
+Linux load average는 Windows에 같은 개념이 없으므로 비어 있을 수 있습니다. 다만
+CPU core/thread, memory, battery, Wi-Fi, NVMe capacity까지 비어 있다면 Windows
+장비가 아직 이전 collector를 실행 중이거나 scheduled task가 새 가상환경을 사용하지
+않는지 먼저 확인합니다. UI에 표시되는 세부 범위는 collector가 보낸 metric/event
+이름에 따라 결정됩니다.
+
+현재 Windows collector는 Windows가 CIM, `netsh`, `Get-NetAdapter`로 노출하는
+범위에서 다음 metric을 best-effort로 보냅니다.
+
+- `cpu.physical_cores`, `cpu.logical_threads`
+- `memory.used_percent`
+- `disk.root_used_percent`
+- `battery.capacity_percent`, `battery.ac_online`
+- `wifi.signal_dbm`, `wifi.rx_bitrate_mbps`, `wifi.tx_bitrate_mbps`,
+  `wifi.link_bitrate_mbps`
+- `nvme.capacity_bytes`, `nvme.<device>.capacity_bytes`
+- `thermal.windows_zone_<n>.temp_c`
+
+Windows에서 보낸 metric 이름이 위 목록과 일치하면 기존 UI의 CPU Profile,
+Memory Used, Disk Health, Battery Power, Wi-Fi Link, NVMe Capacity,
+Telemetry Matrix에 바로 표시됩니다.
 
 장치별 token을 만들려면 서버에서 다음을 실행합니다.
 
@@ -246,9 +321,10 @@ sudo scripts/uninstall-collector-systemd.sh
 
 ### Command Center
 
-첫 화면은 선택된 조사 항목을 보여줍니다.
+첫 화면은 선택된 장비 또는 조사 이슈를 보여줍니다.
 
-- `Medium`: queue 우선순위입니다.
+- `Medium`: 선택한 장비에 활성 이슈가 있을 때의 우선순위입니다. healthy 장비를
+  선택하면 `No active issue`로 표시될 수 있습니다.
 - `Warning`: 위험도입니다.
 - `Triage`: 현재 DTIHAVR 단계입니다.
 - `Problem Guide`: 문제, 먼저 볼 근거, 다음 행동입니다.
@@ -326,9 +402,18 @@ uptime
 14개 범주의 관측 상태를 보여줍니다. `13/14 observed`는 위험 점수가 아니라
 14개 범주 중 13개가 들어왔다는 뜻입니다.
 
-### Investigation Queue
+### Devices
 
-가장 먼저 볼 조사 항목입니다. 항목을 선택하면 오른쪽 상세 영역이 바뀝니다.
+연결된 장비 목록입니다. 각 행은 별명/hostname, hardware label, metric/event 수,
+마지막 수집 시각, 활성 이슈 요약, risk를 표시합니다.
+
+healthy 장비도 클릭할 수 있습니다. 활성 이슈가 없어도 오른쪽 상세 영역에는
+`Device telemetry overview`, Metric Ledger, Telemetry Matrix, Report가 표시됩니다.
+
+### Device Issues
+
+선택한 장비에만 해당하는 활성 조사 이슈입니다. 이 영역이 비어 있으면 현재 선택한
+장비에 조사 queue에 올라온 이슈가 없다는 뜻입니다.
 
 ### Evidence, Hypotheses, Action, Verification
 
@@ -361,7 +446,17 @@ API 서버가 떠 있는지 확인합니다.
 curl http://127.0.0.1:8000/api/health
 ```
 
-웹 UI가 API를 찾는 기본 주소는 `http://127.0.0.1:8000`입니다.
+웹 UI가 API를 찾는 기본 주소는 `http://127.0.0.1:8000`입니다. 다른 노트북에서 UI를
+열려면 Vite 또는 배포된 웹 서버도 `0.0.0.0`에 바인딩하고, 웹 빌드가 접근 가능한
+API 주소를 보도록 설정해야 합니다. 개발 서버에서는 예를 들어 다음처럼 실행합니다.
+
+```bash
+cd /home/chquan/Quipu/apps/web
+VITE_API_BASE_URL=http://<server-ip>:8000 npm run dev -- --host 0.0.0.0 --port 5174
+```
+
+서버는 `http://<server-ip>:5173` 또는 `http://<server-ip>:5174` 같은 private LAN
+UI origin을 허용합니다.
 
 ### 샘플 장비가 계속 보임
 
@@ -384,6 +479,11 @@ curl http://<server-ip>:8000/api/health
 접근이 안 되면 서버가 `--host 0.0.0.0`으로 떠 있는지, 방화벽이 TCP `8000`을
 허용하는지 확인합니다. 접근은 되는데 화면에 안 보이면 collector의
 `--device-id`, `--token`, `--server-url`을 확인합니다.
+
+Windows 장비가 보이지만 metric이 거의 없으면 Windows collector가 아직 이전 버전의
+최소 smoke metric만 보내고 있을 수 있습니다. `/api/fleet/overview`의
+`latest_metrics` 키 목록을 확인해 collector 배포가 의도한 신호를 모두 보내는지
+점검합니다.
 
 ### 별명을 바꾸고 싶음
 

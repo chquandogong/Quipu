@@ -2,14 +2,14 @@
 
 <p align="center">
   <img alt="CI" src="https://github.com/chquandogong/Quipu/actions/workflows/ci.yml/badge.svg">
-  <img alt="Version" src="https://img.shields.io/badge/version-v0.12.0-2f6f7e">
+  <img alt="Version" src="https://img.shields.io/badge/version-v0.13.0-2f6f7e">
   <img alt="Status" src="https://img.shields.io/badge/status-local--first%20workstation%20health-5b6b73">
   <img alt="License" src="https://img.shields.io/badge/license-not%20selected-lightgrey">
 </p>
 
 <p align="center">
-  <strong>Linux 워크스테이션 건강 조사 도구</strong><br>
-  Quipu는 지표 대시보드가 아니라, 문제를 발견하고 근거로 조사하고 조치 결과를 남기는 로컬 우선 운영 도구입니다.
+  <strong>워크스테이션 건강 조사 도구</strong><br>
+  Quipu는 지표 대시보드가 아니라, 여러 노트북/컴퓨터의 문제를 발견하고 근거로 조사하고 조치 결과를 남기는 로컬 우선 운영 도구입니다.
 </p>
 
 <p align="center">
@@ -20,8 +20,12 @@
 
 ## 무엇인가
 
-Quipu는 Linux 노트북과 개발 워크스테이션에서 발생하는 발열, 그래픽 오류,
+Quipu는 노트북과 개발 워크스테이션에서 발생하는 발열, 그래픽 오류,
 Wi-Fi 불안정, 저장장치 경고, 전원 문제, 재부팅 흔적을 한 화면에 모읍니다.
+저장소에 포함된 collector는 읽기 전용 collector입니다. Linux에서는 sysfs와
+procfs를 읽고, Windows에서는 PowerShell/CIM/netsh/Get-NetAdapter가 노출하는
+신호를 best-effort로 읽습니다. 다른 운영체제 collector도 같은 ingest API 계약으로
+관측값을 보내면 같은 화면에 표시됩니다.
 첫 질문은 “CPU가 몇 도인가?”가 아니라 “지금 무엇을 조사해야 하며, 근거는
 무엇인가?”입니다.
 
@@ -31,8 +35,24 @@ Wi-Fi 불안정, 저장장치 경고, 전원 문제, 재부팅 흔적을 한 화
 Detect -> Triage -> Investigate -> Hypothesize -> Act -> Verify -> Report
 ```
 
-## v0.12.0 핵심
+## v0.13.0 핵심
 
+- 좌측 화면을 `Devices` 중심으로 재구성했습니다. healthy 장비도 선택하면 상세
+  Telemetry Matrix, Metric Ledger, Report가 표시됩니다.
+- 선택한 장비의 활성 이슈만 `Device Issues`에 표시합니다. 이슈가 없으면
+  `No active investigations for this device.`로 표시합니다.
+- Fleet Brief의 `Queue cases` 표현을 `Open issues`로 바꿔 장비 수와 조사 이슈
+  수를 분리했습니다.
+- 같은 `device-id`의 다음 batch가 `display_name`이나 `cpu_model`을 생략해도
+  기존 별명과 CPU 모델을 보존합니다.
+- Windows scheduled-task collector packaging과 best-effort telemetry 수집을
+  연결했습니다. Windows에서도 환경 파일, 숨김 실행 wrapper, 중복 실행 방지,
+  offline buffer, 5분 반복 수집 흐름을 사용할 수 있습니다.
+- Windows collector가 CIM/netsh/Get-NetAdapter에서 가능한 경우 CPU core/thread,
+  memory, battery, Wi-Fi, NVMe capacity, thermal zone 정보를 같은 metric 이름으로
+  보냅니다. 현재 Windows 장비에 값이 비어 있으면 먼저 최신 collector가 배포되어
+  실행 중인지 확인합니다.
+- Windows install/uninstall PowerShell 스크립트를 추가했습니다.
 - 다른 노트북/컴퓨터를 같은 서버에 연결하는 collector 절차를 문서화했습니다.
 - collector `--device-alias`와 systemd `QUIPU_COLLECTOR_DEVICE_ALIAS`로 장비별
   별명을 보낼 수 있습니다.
@@ -47,6 +67,8 @@ Detect -> Triage -> Investigate -> Hypothesize -> Act -> Verify -> Report
   수집합니다.
 - Telemetry Matrix와 Metric Ledger가 NVMe/Wi-Fi 상세값을 장치/인터페이스별로
   같은 chip 패턴으로 표시합니다.
+- LAN에서 `http://<server-ip>:5173` 또는 `:5174`로 연 UI가 API를 읽을 수 있도록
+  private-address CORS 설정을 추가했습니다.
 - v0.10.0의 Metric Ledger 개선도 유지합니다. Load average는 `1m / 5m / 15m`
   창으로 표시하고, CPU core/NVMe/Wi-Fi는 실제 관측된 개별 값만 보여줍니다.
 
@@ -71,7 +93,10 @@ Detect -> Triage -> Investigate -> Hypothesize -> Act -> Verify -> Report
 - **Telemetry Matrix**: CPU Profile, Memory, Fan, NVMe Health/Capacity/I/O,
   Disk, Battery, Wi-Fi Link, Network, Thermal, Kernel, Agent freshness 범주별
   관측 상태.
-- **Investigation Queue**: 지금 확인해야 할 장비/사건 목록.
+- **Devices**: 연결된 장비 목록. 별명, hostname, hardware label, metric/event 수,
+  마지막 수집 시각, 활성 이슈 요약, risk를 함께 표시합니다.
+- **Device Issues**: 선택한 장비에만 해당하는 활성 조사 이슈입니다. healthy 장비는
+  이 영역이 비어 있어도 상세 텔레메트리를 볼 수 있습니다.
 - **Evidence / Hypotheses / Action / Verification / Report**: 근거, 가설,
   조치, 전후 검증, 인계용 결론.
 - **Pattern Explorer**: category, component, model, kernel 기준 반복 신호.
@@ -137,7 +162,7 @@ cd apps/server
 QUIPU_DATABASE_PATH=../../data/quipu.sqlite3 uvicorn quipu_server.app:app --host 0.0.0.0 --port 8000
 ```
 
-다른 Linux 노트북에서 collector를 설치하고 같은 서버로 전송합니다.
+다른 Linux 노트북에서 포함된 collector를 설치하고 같은 서버로 전송합니다.
 
 ```bash
 cd apps/collector
@@ -154,11 +179,33 @@ quipu-collector \
 여러 대를 연결할 때는 `--device-id`를 장비마다 다르게 유지합니다. 운영 반복
 수집에서는 `dev-token` 대신 장치별 enrollment token을 쓰는 것을 권장합니다.
 
+Windows에서는 같은 collector 패키지를 PowerShell scheduled-task wrapper로
+실행할 수 있습니다. 처음 설치하거나 최신 릴리스로 갱신한 뒤에는 Windows 장비에서
+가상환경을 다시 설치하고 scheduled task를 재등록하거나 재시작합니다.
+
+```powershell
+cd C:\path\to\Quipu\apps\collector
+py -3 -m venv .venv
+.\.venv\Scripts\pip.exe install -e .
+cd C:\path\to\Quipu
+powershell.exe -ExecutionPolicy Bypass -File scripts\install-collector-scheduled-task.ps1 `
+  -ServerUrl http://<server-ip>:8000 `
+  -Token dev-token `
+  -DeviceId windows `
+  -DeviceAlias "윈도우"
+```
+
+같은 ingest API로 `device_id`, `display_name` 또는 별명, `hostname`, `metrics`,
+`events`를 보내는 외부 collector도 UI의 `Devices` 목록에 함께 표시됩니다.
+Windows 장비에서 Linux load average가 없거나 NVMe/Wi-Fi 세부값이 일부만 보이는
+것은 collector가 아직 해당 metric을 보내지 않았다는 뜻일 수 있습니다.
+
 ## Collector가 읽는 신호
 
-collector는 시스템 신호를 읽기 전용으로 수집합니다. 원격 명령 실행이나 자동
-수리는 하지 않습니다. NVMe R/W 처리량 계산을 위해 collector state directory에
-이전 sector counter를 저장할 수 있습니다.
+저장소의 Linux collector는 시스템 신호를 읽기 전용으로 수집합니다. 원격 명령
+실행이나 자동 수리는 하지 않습니다. NVMe R/W 처리량 계산을 위해 collector state
+directory에 이전 sector counter를 저장할 수 있습니다. Windows collector도 같은
+원칙으로 읽기 전용 관측값만 보내는 구현을 권장합니다.
 
 - `cpu.load_1m`, `cpu.load_5m`, `cpu.load_15m`: `/proc/loadavg`의 1/5/15분 load average.
 - `cpu.physical_cores`, `cpu.logical_threads`, `cpu.performance_cores`,
@@ -213,7 +260,7 @@ scripts/install-collector-systemd.sh --dry-run
 ## 아키텍처
 
 ```text
-Linux collector
+Linux collector / compatible Windows collector
       |
       v
 FastAPI ingest API
@@ -258,7 +305,7 @@ npm run build
 
 ```text
 apps/
-  collector/     Read-only Linux collector
+  collector/     Read-only Linux collector; compatible external collectors can use the same ingest API
   server/        FastAPI API, SQLite persistence, rule-based analysis
   web/           Vite React UI
 docs/

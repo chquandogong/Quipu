@@ -2,14 +2,14 @@
 
 <p align="center">
   <img alt="CI" src="https://github.com/chquandogong/Quipu/actions/workflows/ci.yml/badge.svg">
-  <img alt="Version" src="https://img.shields.io/badge/version-v0.12.0-2f6f7e">
+  <img alt="Version" src="https://img.shields.io/badge/version-v0.13.0-2f6f7e">
   <img alt="Status" src="https://img.shields.io/badge/status-local--first%20workstation%20health-5b6b73">
   <img alt="License" src="https://img.shields.io/badge/license-not%20selected-lightgrey">
 </p>
 
 <p align="center">
-  <strong>Linux 工作站健康调查工具</strong><br>
-  Quipu 把只读 Linux 信号整理成证据、行动、验证和团队交接。
+  <strong>工作站健康调查工具</strong><br>
+  Quipu 把只读工作站信号整理成证据、行动、验证和团队交接。
 </p>
 
 <p align="center">
@@ -20,9 +20,12 @@
 
 ## 这是什么
 
-Quipu 是本地优先的 Linux 笔记本和开发工作站健康调查工具。它收集温度、
-load、NVMe、Wi-Fi、内存、磁盘、电池、风扇、kernel、图形、重启和更新信号，
-并把它们放进一个调查流程：
+Quipu 是本地优先的笔记本和开发工作站健康调查工具。仓库内置的是只读
+collector：Linux 上读取 procfs/sysfs，Windows 上在系统暴露时 best-effort
+读取 PowerShell/CIM/netsh/Get-NetAdapter 信号。其他 collector 只要使用同一个
+ingest API 合约发送数据，也会显示在同一个 UI 中。Quipu 会在 collector 上报时
+收集温度、load、NVMe、Wi-Fi、内存、磁盘、电池、风扇、kernel、图形、重启和
+更新信号，并把它们放进一个调查流程：
 
 ```text
 Detect -> Triage -> Investigate -> Hypothesize -> Act -> Verify -> Report
@@ -30,8 +33,24 @@ Detect -> Triage -> Investigate -> Hypothesize -> Act -> Verify -> Report
 
 Quipu 不是远程修复工具。collector 是只读的，server 使用确定性的规则分析。
 
-## v0.12.0 重点
+## v0.13.0 重点
 
+- UI 左侧改为以 `Devices` 为中心：所有上报的机器都会显示，包括没有活跃调查
+  项的 healthy 设备。
+- `Device Issues` 只显示当前选中设备的活跃问题。
+- Fleet Brief 中的 `Queue cases` 改为 `Open issues`。
+- 同一个 `device-id` 后续 batch 如果省略 `display_name` 或 `cpu_model`，server
+  会保留已有别名和 CPU 型号。
+- Windows collector operations 和 best-effort telemetry 现在包含与 Ubuntu
+  systemd collector 对应的 scheduled-task packaging：环境文件、启动 wrapper、
+  安装脚本和卸载脚本。
+- Windows 启动 wrapper 会在用户登录时隐藏运行，避免重复 collector loop，保持
+  offline buffer，并默认每 5 分钟发送一次。
+- Windows collector 会在 Windows 通过 CIM、netsh、Get-NetAdapter 暴露信息时，
+  best-effort 上报 CPU core/thread、memory、battery、Wi-Fi、NVMe capacity 和
+  thermal-zone metrics。
+- 从私有 LAN 的 Vite 地址 `:5173` 或 `:5174` 打开的 UI 可以读取 API，不再受
+  local-only CORS 配置阻挡。
 - 多台 Linux 笔记本可以发送到同一个 server；用 `--device-id` 固定唯一 ID，
   用 `--device-alias` 设置 UI 友好名称。
 - 有别名时设备显示为 `alias · hostname`。
@@ -95,7 +114,7 @@ quipu-collector \
 
 刷新 Web UI。
 
-## 连接另一台笔记本
+## 连接另一台笔记本或电脑
 
 让 server 在 LAN 可访问地址上运行，然后在每台 Linux 笔记本上发送 collector batch：
 
@@ -110,6 +129,27 @@ quipu-collector \
 每台机器使用不同的 `--device-id`。重复运行时建议使用 enrollment token，而不是
 `dev-token`。
 
+Windows flow 使用同一个 Python collector package 和 scheduled-task wrapper。
+在 Windows 机器安装或更新到本版本后，重新安装 collector package，并注册或重启
+scheduled task：
+
+```powershell
+cd C:\path\to\Quipu\apps\collector
+py -3 -m venv .venv
+.\.venv\Scripts\pip.exe install -e .
+cd C:\path\to\Quipu
+powershell.exe -ExecutionPolicy Bypass -File scripts\install-collector-scheduled-task.ps1 `
+  -ServerUrl http://<server-ip>:8000 `
+  -Token dev-token `
+  -DeviceId windows `
+  -DeviceAlias "Windows"
+```
+
+外部 Windows collector 也可以发送同样的 observation batch 到 ingest API。建议
+使用稳定的 `device_id`、友好的 `display_name` 或别名，并尽量使用 Quipu
+Telemetry Matrix 已识别的 metric 名称。Windows 行缺失通常表示当前 Windows task
+仍在运行旧 collector，或者尚未上报对应 metric。
+
 ## 主要界面
 
 - Command Center：当前 case、优先级、风险、下一步。
@@ -118,6 +158,9 @@ quipu-collector \
 - Metric Ledger：core、load、device、interface 的详细 chip 和 tooltip。
 - Telemetry Matrix：CPU profile、memory、disk、fan、NVMe health/capacity/I/O、
   power、Wi-Fi link、network、thermal、kernel、freshness 覆盖情况。
+- Devices：已连接机器、别名/hostname、硬件标签、telemetry 数量、last seen、
+  issue 摘要和风险。
+- Device Issues：仅属于当前选中设备的活跃问题。
 - Pattern Explorer：按 category、component、model、kernel 聚合重复信号。
 
 ## Collector 信号

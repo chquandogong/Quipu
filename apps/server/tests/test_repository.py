@@ -22,6 +22,46 @@ def test_ingest_batch_persists_device_metrics_and_events(conn, sample_batch) -> 
     assert snapshots[0]["recent_events"][0]["category"] == "thermal"
 
 
+def test_ingest_batch_preserves_existing_alias_when_next_batch_omits_it(conn, sample_batch) -> None:
+    first_received_at = datetime(2026, 7, 7, 3, 1, tzinfo=timezone.utc)
+    second_observed_at = datetime(2026, 7, 7, 3, 6, tzinfo=timezone.utc)
+
+    ingest_batch(conn, sample_batch, received_at=first_received_at)
+    ingest_batch(
+        conn,
+        ObservationBatchIn(
+            batch_id="batch-002",
+            observed_at=second_observed_at,
+            device=DeviceIn(
+                device_id="thinkpad-p1",
+                display_name=None,
+                hostname="dev-p1-renamed",
+                model="ThinkPad P1",
+                cpu_model=None,
+                os_name="Ubuntu 24.04",
+                kernel_version="6.14.1",
+            ),
+            metrics=[
+                MetricSampleIn(
+                    name="cpu.load_1m",
+                    value=0.42,
+                    unit="load",
+                    observed_at=second_observed_at,
+                )
+            ],
+            events=[],
+        ),
+        received_at=second_observed_at,
+    )
+
+    snapshot = list_device_snapshots(conn)[0]
+
+    assert snapshot["device"]["display_name"] == "Dev P1"
+    assert snapshot["device"]["cpu_model"] == "Intel Core Ultra 5 125H"
+    assert snapshot["device"]["hostname"] == "dev-p1-renamed"
+    assert snapshot["device"]["kernel_version"] == "6.14.1"
+
+
 def test_initialize_adds_display_name_to_existing_device_table(tmp_path) -> None:
     db_path = tmp_path / "legacy.sqlite3"
     legacy = sqlite3.connect(db_path)

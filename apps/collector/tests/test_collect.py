@@ -249,3 +249,65 @@ def test_collect_observation_reads_iwconfig_bitrate_fallback(tmp_path) -> None:
     metrics = {metric["name"]: metric for metric in batch["metrics"]}
     assert metrics["wifi.link_bitrate_mbps"]["value"] == 720.6
     assert metrics["wifi.wlp0s20f3.link_bitrate_mbps"]["value"] == 720.6
+
+
+def test_collect_observation_reads_windows_signals(monkeypatch, tmp_path) -> None:
+    monkeypatch.setattr("quipu_collector.collect.platform.system", lambda: "Windows")
+
+    def fake_command_runner(args: list[str]) -> str | None:
+        if args == ["netsh", "wlan", "show", "interfaces"]:
+            return "\n".join(
+                [
+                    "Name                   : Wi-Fi",
+                    "Signal                 : 82%",
+                    "Receive rate (Mbps)    : 866.7",
+                    "Transmit rate (Mbps)   : 144.4",
+                ]
+            )
+        if args[:4] != ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass"]:
+            return None
+        script = args[-1]
+        if "Win32_ComputerSystem" in script:
+            return '{"Model":"17ZD90SP-GX56K","OsName":"Microsoft Windows 11 Pro","CpuModel":"Intel(R) Core(TM) Ultra 5 125H"}'
+        if "Win32_Processor" in script:
+            return '{"Name":"Intel(R) Core(TM) Ultra 5 125H","NumberOfCores":14,"NumberOfLogicalProcessors":18}'
+        if "Win32_OperatingSystem" in script:
+            return '{"TotalVisibleMemorySize":16000000,"FreePhysicalMemory":4000000}'
+        if "Win32_Battery" in script:
+            return '{"EstimatedChargeRemaining":73,"BatteryStatus":2}'
+        if "Get-NetAdapter" in script:
+            return '{"Name":"Wi-Fi","InterfaceDescription":"Intel(R) Wi-Fi 6E","LinkSpeed":"1.2 Gbps"}'
+        if "Win32_DiskDrive" in script:
+            return '{"Index":0,"Model":"Samsung NVMe SSD","InterfaceType":"NVMe","MediaType":"SSD","Size":512000000000}'
+        if "MSAcpi_ThermalZoneTemperature" in script:
+            return '{"CurrentTemperature":3012}'
+        return None
+
+    batch = collect_observation(
+        root=tmp_path,
+        observed_at=datetime(2026, 7, 9, 2, 45, tzinfo=timezone.utc),
+        device_id="windows",
+        device_alias="윈도우",
+        command_runner=fake_command_runner,
+    )
+
+    assert batch["device"]["device_id"] == "windows"
+    assert batch["device"]["display_name"] == "윈도우"
+    assert batch["device"]["model"] == "17ZD90SP-GX56K"
+    assert batch["device"]["cpu_model"] == "Intel(R) Core(TM) Ultra 5 125H"
+    assert batch["device"]["os_name"] == "Microsoft Windows 11 Pro"
+
+    metrics = {metric["name"]: metric for metric in batch["metrics"]}
+    assert metrics["cpu.physical_cores"]["value"] == 14.0
+    assert metrics["cpu.logical_threads"]["value"] == 18.0
+    assert metrics["memory.used_percent"]["value"] == 75.0
+    assert metrics["battery.capacity_percent"]["value"] == 73.0
+    assert metrics["battery.ac_online"]["value"] == 1.0
+    assert metrics["wifi.signal_dbm"]["value"] == -59.0
+    assert metrics["wifi.wi_fi.signal_dbm"]["value"] == -59.0
+    assert metrics["wifi.rx_bitrate_mbps"]["value"] == 866.7
+    assert metrics["wifi.tx_bitrate_mbps"]["value"] == 144.4
+    assert metrics["wifi.wi_fi.link_bitrate_mbps"]["value"] == 1200.0
+    assert metrics["nvme.capacity_bytes"]["value"] == 512000000000.0
+    assert metrics["nvme.samsung_nvme_ssd.capacity_bytes"]["value"] == 512000000000.0
+    assert metrics["thermal.windows_zone_0.temp_c"]["value"] == 28.05

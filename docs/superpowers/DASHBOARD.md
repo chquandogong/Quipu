@@ -1,20 +1,24 @@
 # Quipu Project Dashboard
 
-> Status: v0.11.0 multi-device naming, hardware telemetry, and explanation consistency release track
-> Date: 2026-07-08
+> Status: v0.13.0 release track for device-first fleet UI and Windows telemetry collection
+> Date: 2026-07-09
 > Owner: chquan
 
 ## Current Decision
 
 Quipu starts as a multi-device, team-oriented workstation health investigator,
-not as a single-laptop utility.
+not as a single-laptop utility. The bundled collector remains Linux-first, but
+the ingest API accepts compatible collectors from other operating systems.
 
 ## Scope
 
 - Initial users: one technical team.
-- Initial fleet: 3-20 Linux laptops or developer workstations.
+- Initial fleet: 3-20 Linux laptops, Windows laptops, or developer workstations.
 - Deployment: self-hosted team server on LAN or private network.
-- Collection: lightweight read-only agent per machine.
+- Collection: lightweight read-only agent per machine. Linux uses procfs/sysfs;
+  Windows uses the bundled best-effort PowerShell/CIM/netsh/Get-NetAdapter
+  collection path when the OS exposes those signals. Compatible external
+  collectors can also post the same ingest contract.
 - Primary value: explain incidents and recurring patterns across devices.
 
 ## Current Wedge
@@ -69,6 +73,11 @@ The second valuable question is:
 | Done | Multi-device naming | Collector `--device-alias`, systemd alias env, API persistence, and `alias · hostname` UI labels |
 | Done | Hardware detail telemetry | CPU model/topology, Wi-Fi link bitrate, NVMe capacity, and sample-to-sample NVMe I/O rate |
 | Done | Explanation consistency | Unified hover/focus popover behavior and single Project info metadata chip |
+| Done | Device-first fleet UI | `Devices` is the primary list; `Device Issues` is scoped to the selected device; healthy devices still show telemetry detail |
+| Done | Optional metadata preservation | Existing `display_name` and `cpu_model` survive later batches that omit those optional fields |
+| Done | Windows best-effort telemetry collector | CPU core/thread, memory, battery, Wi-Fi, NVMe capacity, and ACPI thermal-zone metrics are collected when Windows exposes them |
+| Done | Private LAN UI/API access | Vite UI origins on private LAN ports 5173/5174 can read the API without CORS failure |
+| In progress | Windows collector rollout on connected laptop | `윈도우 · DOGU_CHQUAN` is visible and healthy; install v0.13.0 and restart its scheduled task to replace smoke-only telemetry |
 | Approved | Private remote push and release | User requested commit, tag, push, and release on 2026-07-07 |
 | Approved | Public repository visibility after audit | User approved public visibility on 2026-07-07 |
 
@@ -88,3 +97,7 @@ Actual host systemd installation, package publishing, production deployment,
 destructive git operations, and any remote repair capability remain gated.
 Public repository visibility is allowed only after a final sensitive-content
 audit passes.
+
+The v0.13.0 release is allowed after local test/build/browser verification.
+Full Windows telemetry for the currently connected laptop is a rollout task:
+install this release on that machine and restart the scheduled task.

@@ -399,7 +399,7 @@ describe('App', () => {
     expect(screen.getByText('Project info')).toBeInTheDocument();
     expect(screen.getByText('Made by Dr. 권성호')).toBeInTheDocument();
     expect(screen.getByText('About: workstation health investigation')).toBeInTheDocument();
-    expect(screen.getByText('Version v0.13.2')).toBeInTheDocument();
+    expect(screen.getByText('Version v0.13.3')).toBeInTheDocument();
     expect(screen.queryByText('Detect - triage - verify with evidence')).not.toBeInTheDocument();
     expect(screen.getAllByText('Build laptop · build-xps').length).toBeGreaterThan(0);
     const selectedCaseStatus = screen.getByLabelText('Selected case status');

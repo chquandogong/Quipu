@@ -1,9 +1,9 @@
 # Quipu Ship Checklist
 
-> Status: v0.13.2 patch release checklist for device-first fleet UI and Windows telemetry collection
+> Status: v0.13.3 patch release checklist for Windows missing telemetry collection
 > Date: 2026-07-09
 > Owner: chquan
-> Release: v0.13.2
+> Release: v0.13.3
 
 ## Scope
 
@@ -88,6 +88,10 @@ Included:
   and WMI `MSNdis_80211_ReceivedSignalStrength`.
 - Windows LibreHardwareMonitor/OpenHardwareMonitor WMI temperature fallback for
   CPU package/core and NVMe/SSD sensors.
+- Windows Storage Reliability Counter fallback for NVMe temperature.
+- Windows LibreHardwareMonitor/OpenHardwareMonitor WMI fan RPM fallback.
+- Windows Event Log ingestion and category classification for recent
+  System/Application events.
 - Private LAN CORS allowance for Vite UI origins on ports `5173` and `5174`.
 - Preservation of existing `display_name` and `cpu_model` when later batches
   omit optional metadata.
@@ -106,17 +110,17 @@ Excluded:
 ## Tests
 
 - Server tests: `.venv/bin/python -m pytest` -> 37 passed, 1 Starlette deprecation warning.
-- Collector tests: `pytest -v` -> 23 passed.
+- Collector tests: `.venv/bin/python -m pytest` -> 24 passed.
 - Web tests: `npm test -- --run` -> 3 passed.
 - Web build: `npm run build` -> succeeded.
 - Whitespace check: `git diff --check` -> passed.
-- Browser DOM smoke check: `Version v0.13.2`, `Devices`, `Device Issues`,
+- Browser DOM smoke check: `Version v0.13.3`, `Devices`, `Device Issues`,
   `우분투 · chquan-17ZD90SP-GX56K`, `윈도우 · DOGU_CHQUAN`, and `Telemetry Matrix`
   rendered from the LAN UI without `Failed to fetch`.
 
 Evidence source:
 
-- Latest verified local commit before release prep: v0.13.2 patch release candidate.
+- Latest verified local commit before release prep: v0.13.3 patch release candidate.
 
 ## Risks
 
@@ -136,10 +140,13 @@ Known risks:
 - Enrollment tokens are stored as hashes, but role-aware admin auth is still a
   future hardening item.
 - Current analysis is deterministic and intentionally conservative.
-- Windows telemetry coverage depends on the Windows task running the v0.13.2
+- Windows telemetry coverage depends on the Windows task running the v0.13.3
   collector package. The current observed Windows device is visible, but an
   older task may keep sending only smoke-level telemetry until the release is
   installed and the task is restarted on that machine.
+- Windows fan RPM and CPU/NVMe hardware-monitor temperatures still depend on
+  Windows, firmware, and LibreHardwareMonitor/OpenHardwareMonitor exposing the
+  relevant WMI sensors.
 - Verification uses a fixed 30-minute window.
 - `npm ci` reports existing transitive web dependency vulnerabilities; no public
   production deployment is included in this release.
@@ -192,15 +199,15 @@ Check after release:
 - README: updated for device-first UI, Windows best-effort telemetry, LAN UI
   access, and rollout guidance.
 - User manual: includes Windows collector verification and updated screen guide.
-- Dashboard: current v0.13.2 patch release state recorded.
+- Dashboard: current v0.13.3 patch release state recorded.
 - Roadmap: device-first, Windows telemetry, and connected-laptop rollout tracks
   recorded.
-- Changelog: `v0.13.2` prepared.
+- Changelog: `v0.13.3` prepared.
 - Security policy: present.
 
 ## Final Judgment
 
-GitHub release is ready for `v0.13.2` after the local test/build/browser checks
+GitHub release is ready for `v0.13.3` after the local test/build/browser checks
 pass. Windows full telemetry display on the currently connected laptop requires
 deploying this release to that laptop and restarting its scheduled task.
 

@@ -124,15 +124,19 @@ Implemented:
 - Windows telemetry fallback patch for Intel Core i5-1340P P/E topology,
   WMI Wi-Fi RSSI, direct/full-path/PowerShell `netsh`, and
   LibreHardwareMonitor/OpenHardwareMonitor WMI temperature sensors.
+- Windows missing telemetry patch for Storage Reliability Counter NVMe
+  temperature, hardware-monitor fan RPM, and Windows Event Log classification.
 - Private LAN UI/API access from Vite origins on ports 5173 and 5174.
 
 Remaining:
 
-- Install v0.13.2 on the currently connected Windows laptop and restart the
+- Install v0.13.3 on the currently connected Windows laptop and restart the
   scheduled task so partial Windows telemetry is replaced by the patched metric
   set.
-- CPU/core/package thermals with richer sensor naming.
-- Richer multi-fan naming.
+- Additional CPU/core/package thermal label variants if real hardware exposes
+  new naming patterns.
+- Richer multi-fan naming if hardware monitor providers expose stable fan
+  labels.
 - Deeper SMART/NVMe health where available without external dependencies.
 
 ## Phase 4: Intervention Verification

@@ -397,7 +397,9 @@ def test_collect_observation_reads_windows_wmi_wifi_signal_and_monitor_temperatu
             return None
         if "MSAcpi_ThermalZoneTemperature" in script:
             return None
-        if "root/LibreHardwareMonitor" in script:
+        if "root/LibreHardwareMonitor" in script and "SensorType -eq 'Fan'" in script:
+            return None
+        if "root/LibreHardwareMonitor" in script and "SensorType -eq 'Temperature'" in script:
             return (
                 "["
                 '{"Name":"CPU Package","Parent":"Intel Core i5-1340P","Value":58.5},'
@@ -425,3 +427,64 @@ def test_collect_observation_reads_windows_wmi_wifi_signal_and_monitor_temperatu
     assert metrics["cpu.core_1.temp_c"]["value"] == 55.0
     assert metrics["nvme.temp_c"]["value"] == 42.0
     assert metrics["nvme.samsung_ssd_980_pro_1tb_temperature.temp_c"]["value"] == 42.0
+
+
+def test_collect_observation_reads_windows_reliability_fans_and_events(monkeypatch, tmp_path) -> None:
+    monkeypatch.setattr("quipu_collector.collect.platform.system", lambda: "Windows")
+
+    def fake_command_runner(args: list[str]) -> str | None:
+        if args[:3] == ["netsh", "wlan", "show"] or args[:3] == [r"C:\Windows\System32\netsh.exe", "wlan", "show"]:
+            return None
+        if args[:4] != ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass"]:
+            return None
+        script = args[-1]
+        if "netsh.exe" in script:
+            return None
+        if "Win32_ComputerSystem" in script:
+            return '{"Model":"Windows Laptop","OsName":"Microsoft Windows 11 Pro","CpuModel":"13th Gen Intel(R) Core(TM) i5-1340P"}'
+        if "Win32_Processor" in script:
+            return '{"Name":"13th Gen Intel(R) Core(TM) i5-1340P","NumberOfCores":12,"NumberOfLogicalProcessors":16}'
+        if "Win32_OperatingSystem" in script:
+            return '{"TotalVisibleMemorySize":32000000,"FreePhysicalMemory":16000000}'
+        if "Get-StorageReliabilityCounter" in script:
+            return '{"DeviceId":0,"FriendlyName":"Samsung PM9A1","BusType":"NVMe","MediaType":"SSD","Size":1024000000000,"Temperature":47}'
+        if "Get-PhysicalDisk" in script:
+            return '{"DeviceId":0,"FriendlyName":"Samsung PM9A1","BusType":"NVMe","MediaType":"SSD","Size":1024000000000}'
+        if "root/LibreHardwareMonitor" in script and "SensorType -eq 'Fan'" in script:
+            return '{"Name":"CPU Fan","Parent":"Embedded Controller","Value":2410}'
+        if "Get-WinEvent" in script:
+            return (
+                "["
+                '{"TimeCreated":"2026-07-09T05:10:00.0000000Z","ProviderName":"stornvme","Id":129,'
+                '"Level":3,"LevelDisplayName":"Warning","LogName":"System",'
+                '"Message":"Reset to device, \\\\Device\\\\RaidPort0, was issued."},'
+                '{"TimeCreated":"2026-07-09T05:11:00Z","ProviderName":"Microsoft-Windows-WLAN-AutoConfig","Id":11004,'
+                '"Level":3,"LevelDisplayName":"Warning","LogName":"System",'
+                '"Message":"Wireless network disconnected."},'
+                '{"TimeCreated":"2026-07-09T05:12:00Z","ProviderName":"Microsoft-Windows-Kernel-Power","Id":41,'
+                '"Level":1,"LevelDisplayName":"Critical","LogName":"System",'
+                '"Message":"The system has rebooted without cleanly shutting down first."}'
+                "]"
+            )
+        return None
+
+    batch = collect_observation(
+        root=tmp_path,
+        observed_at=datetime(2026, 7, 9, 5, 15, tzinfo=timezone.utc),
+        device_id="windows",
+        device_alias="윈도우",
+        command_runner=fake_command_runner,
+    )
+
+    metrics = {metric["name"]: metric for metric in batch["metrics"]}
+    assert metrics["nvme.capacity_bytes"]["value"] == 1024000000000.0
+    assert metrics["nvme.samsung_pm9a1.capacity_bytes"]["value"] == 1024000000000.0
+    assert metrics["nvme.temp_c"]["value"] == 47.0
+    assert metrics["nvme.samsung_pm9a1.temp_c"]["value"] == 47.0
+    assert metrics["fan.rpm"]["value"] == 2410.0
+    assert metrics["fan.embedded_controller_cpu_fan.rpm"]["value"] == 2410.0
+
+    events = {(event["category"], event["source"]): event for event in batch["events"]}
+    assert events[("storage", "stornvme")]["severity"] == "warning"
+    assert events[("network", "Microsoft-Windows-WLAN-AutoConfig")]["severity"] == "warning"
+    assert events[("reboot", "Microsoft-Windows-Kernel-Power")]["severity"] == "critical"

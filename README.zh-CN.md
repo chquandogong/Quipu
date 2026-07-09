@@ -2,7 +2,7 @@
 
 <p align="center">
   <img alt="CI" src="https://github.com/chquandogong/Quipu/actions/workflows/ci.yml/badge.svg">
-  <img alt="Version" src="https://img.shields.io/badge/version-v0.13.2-2f6f7e">
+  <img alt="Version" src="https://img.shields.io/badge/version-v0.13.3-2f6f7e">
   <img alt="Status" src="https://img.shields.io/badge/status-local--first%20workstation%20health-5b6b73">
   <img alt="License" src="https://img.shields.io/badge/license-not%20selected-lightgrey">
 </p>
@@ -33,8 +33,15 @@ Detect -> Triage -> Investigate -> Hypothesize -> Act -> Verify -> Report
 
 Quipu 不是远程修复工具。collector 是只读的，server 使用确定性的规则分析。
 
-## v0.13.2 重点
+## v0.13.3 重点
 
+- Windows NVMe 温度 collection 现在会在可用时使用
+  `Get-PhysicalDisk | Get-StorageReliabilityCounter`，并上报
+  `nvme.temp_c` 和 `nvme.<device>.temp_c`。
+- Windows 风扇 RPM collection 会在 LibreHardwareMonitor/OpenHardwareMonitor
+  暴露 WMI fan sensor 时读取并上报。
+- Windows Event Log collection 会把最近的 System/Application 事件分类为
+  storage、network、graphics、thermal、memory、power、reboot、update 调查事件。
 - Windows Intel Core i5-1340P 现在会上报 `P 4 / E 8 / 16 threads` topology。
 - Windows Wi-Fi collection 会依次尝试直接 `netsh`、system-path `netsh`、
   PowerShell `netsh` 和 WMI RSSI fallback。

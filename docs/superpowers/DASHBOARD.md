@@ -1,6 +1,6 @@
 # Quipu Project Dashboard
 
-> Status: v0.13.2 patch release track for device-first fleet UI and Windows telemetry collection
+> Status: v0.13.3 patch release track for Windows missing telemetry collection
 > Date: 2026-07-09
 > Owner: chquan
 
@@ -78,8 +78,9 @@ The second valuable question is:
 | Done | Optional metadata preservation | Existing `display_name` and `cpu_model` survive later batches that omit those optional fields |
 | Done | Windows best-effort telemetry collector | CPU core/thread, memory, battery, Wi-Fi, NVMe capacity, and ACPI thermal-zone metrics are collected when Windows exposes them |
 | Done | Windows telemetry fallback expansion | i5-1340P P/E topology, WMI Wi-Fi RSSI, multi-path netsh, and LibreHardwareMonitor/OpenHardwareMonitor WMI temperatures |
+| Done | Windows missing telemetry patch | Storage Reliability Counter NVMe temperature, hardware-monitor fan RPM, and Windows Event Log classification |
 | Done | Private LAN UI/API access | Vite UI origins on private LAN ports 5173/5174 can read the API without CORS failure |
-| In progress | Windows collector rollout on connected laptop | `윈도우 · DOGU_CHQUAN` is visible and healthy; install v0.13.2 and restart its scheduled task to pick up the Windows telemetry fallback patch |
+| In progress | Windows collector rollout on connected laptop | `윈도우 · DOGU_CHQUAN` is visible and healthy; install v0.13.3 and restart its scheduled task to pick up the Windows missing telemetry patch |
 | Approved | Private remote push and release | User requested commit, tag, push, and release on 2026-07-07 |
 | Approved | Public repository visibility after audit | User approved public visibility on 2026-07-07 |
 
@@ -100,6 +101,6 @@ destructive git operations, and any remote repair capability remain gated.
 Public repository visibility is allowed only after a final sensitive-content
 audit passes.
 
-The v0.13.2 patch release is allowed after local test/build/browser verification.
+The v0.13.3 patch release is allowed after local test/build/browser verification.
 Full Windows telemetry for the currently connected laptop is a rollout task:
 install this release on that machine and restart the scheduled task.

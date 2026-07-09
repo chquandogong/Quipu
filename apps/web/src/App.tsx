@@ -51,7 +51,7 @@ import type {
 import './styles.css';
 
 const flowStages = ['Detect', 'Triage', 'Investigate', 'Hypothesize', 'Act', 'Verify', 'Report'];
-const appVersion = 'v0.13.2';
+const appVersion = 'v0.13.3';
 
 const riskLabels: Record<RiskLevel, string> = {
   healthy: 'Healthy',

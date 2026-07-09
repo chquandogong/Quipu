@@ -2,6 +2,35 @@
 
 All notable changes to Quipu are documented in this file.
 
+## v0.13.3 - 2026-07-09
+
+Windows missing telemetry patch.
+
+### Added
+
+- Windows NVMe temperature fallback through
+  `Get-PhysicalDisk | Get-StorageReliabilityCounter`, reporting both
+  `nvme.temp_c` and per-device `nvme.<device>.temp_c` when Windows exposes the
+  counter.
+- Windows fan RPM collection through LibreHardwareMonitor/OpenHardwareMonitor
+  WMI fan sensors, reporting `fan.rpm` and per-sensor fan RPM metrics.
+- Windows Event Log ingestion for recent System/Application events, classified
+  into storage, network, graphics, thermal, memory, power, reboot, and update
+  investigation events.
+
+### Changed
+
+- Windows hardware-monitor CPU package detection now also recognizes `Tctl` and
+  `Tdie` temperature labels.
+- Updated package, app, API, schema, and UI versions to `0.13.3`.
+
+### Verified
+
+- Server test suite: 37 tests passed, 1 Starlette deprecation warning.
+- Collector test suite: 24 tests passed.
+- Web test suite: 3 tests passed.
+- Web production build succeeded.
+
 ## v0.13.2 - 2026-07-09
 
 Windows telemetry coverage patch.

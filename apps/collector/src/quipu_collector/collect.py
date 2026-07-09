@@ -487,6 +487,121 @@ def _event_logs(root: Path, observed_at: str, command_runner: CommandRunner | No
     return sorted(unique.values(), key=lambda event: event["observed_at"])[-20:]
 
 
+def _windows_event_observed_at(value: Any, fallback_observed_at: str) -> str:
+    if not isinstance(value, str) or not value.strip():
+        return fallback_observed_at
+    text = value.strip()
+    epoch_match = re.search(r"/Date\((\d+)", text)
+    if epoch_match:
+        try:
+            return _utc(datetime.fromtimestamp(int(epoch_match.group(1)) / 1000, tz=timezone.utc)).isoformat()
+        except (OSError, OverflowError, ValueError):
+            return fallback_observed_at
+    if text.endswith("Z"):
+        text = text[:-1] + "+00:00"
+    text = re.sub(r"(\.\d{6})\d+(?=[+-]\d\d:\d\d$)", r"\1", text)
+    try:
+        return _utc(datetime.fromisoformat(text)).isoformat()
+    except ValueError:
+        return fallback_observed_at
+
+
+def _windows_event_category(record: dict[str, Any]) -> str | None:
+    source = str(record.get("ProviderName") or record.get("Provider") or "")
+    message = str(record.get("Message") or "")
+    text = f"{source} {message}".lower()
+    event_id = int(_coerce_metric_number(record.get("Id")) or -1)
+    if event_id in {41, 1074, 1076, 6005, 6006, 6008} or any(pattern in text for pattern in REBOOT_EVENT_PATTERNS):
+        return "reboot"
+    if any(pattern in text for pattern in UPDATE_EVENT_PATTERNS) or any(
+        marker in text for marker in ("windowsupdate", "windows update", "servicing")
+    ):
+        return "update"
+    if any(pattern in text for pattern in THERMAL_EVENT_PATTERNS) or any(
+        marker in text for marker in ("thermal", "temperature")
+    ):
+        return "thermal"
+    if any(pattern in text for pattern in STORAGE_EVENT_PATTERNS) or any(
+        marker in text for marker in (" disk", "disk ", "stornvme", "storahci", "nvme", "ntfs", "volmgr")
+    ):
+        return "storage"
+    if any(pattern in text for pattern in NETWORK_EVENT_PATTERNS) or any(
+        marker in text for marker in ("wlan", "wi-fi", "wifi", "netwtw", "tcpip", "dhcp-client", "ndis")
+    ):
+        return "network"
+    if any(pattern in text for pattern in GRAPHICS_EVENT_PATTERNS) or any(
+        marker in text for marker in ("display", "graphics", "igfx", "nvlddmkm", "amdkmdag")
+    ):
+        return "graphics"
+    if any(pattern in text for pattern in MEMORY_EVENT_PATTERNS) or any(
+        marker in text for marker in ("resource-exhaustion", "memorydiagnostics", "memory diagnostic")
+    ):
+        return "memory"
+    if any(pattern in text for pattern in POWER_EVENT_PATTERNS) or "power" in text:
+        return "power"
+    return None
+
+
+def _windows_event_severity(record: dict[str, Any], category: str) -> str:
+    level_name = str(record.get("LevelDisplayName") or "").lower()
+    level = _coerce_metric_number(record.get("Level"))
+    if "critical" in level_name or level == 1:
+        return "critical"
+    if "error" in level_name or level == 2:
+        return "critical"
+    if "warning" in level_name or level == 3:
+        return "warning"
+    if category in {"reboot", "update"}:
+        return "info"
+    return "warning"
+
+
+def _windows_event_from_record(record: dict[str, Any], fallback_observed_at: str) -> dict[str, Any] | None:
+    category = _windows_event_category(record)
+    if category is None:
+        return None
+    source = str(record.get("ProviderName") or record.get("Provider") or record.get("LogName") or "Windows Event Log")
+    event_id = record.get("Id")
+    log_name = str(record.get("LogName") or "unknown")
+    message = str(record.get("Message") or "").strip()
+    if not message:
+        message = f"Windows event {event_id}"
+    return _event(
+        category=category,
+        severity=_windows_event_severity(record, category),
+        source=source,
+        message_summary=message,
+        raw_ref=f"windows-eventlog:{log_name}:{event_id}",
+        observed_at=_windows_event_observed_at(record.get("TimeCreated"), fallback_observed_at),
+    )
+
+
+def _windows_event_logs(observed_at: str, command_runner: CommandRunner | None) -> list[dict[str, Any]]:
+    payload = _powershell_json(
+        "$start=(Get-Date).AddMinutes(-60);"
+        "$events=@();"
+        "foreach ($log in @('System','Application')) {"
+        "$events += Get-WinEvent -FilterHashtable @{LogName=$log; StartTime=$start} "
+        "-MaxEvents 120 -ErrorAction SilentlyContinue"
+        "};"
+        "$events | Select-Object -First 160 | ForEach-Object {"
+        "[pscustomobject]@{TimeCreated=$_.TimeCreated.ToUniversalTime().ToString('o');"
+        "ProviderName=$_.ProviderName;Id=$_.Id;Level=$_.Level;"
+        "LevelDisplayName=$_.LevelDisplayName;LogName=$_.LogName;Message=$_.Message}"
+        "} | ConvertTo-Json -Compress",
+        command_runner,
+    )
+    events = [
+        event
+        for event in (_windows_event_from_record(record, observed_at) for record in _json_items(payload))
+        if event is not None
+    ]
+    unique: dict[str, dict[str, Any]] = {}
+    for event in events:
+        unique[event["fingerprint"]] = event
+    return sorted(unique.values(), key=lambda event: event["observed_at"])[-20:]
+
+
 def _load_metrics(root: Path, observed_at: str) -> list[dict[str, Any]]:
     loadavg = _read_text(_root_path(root, "/proc/loadavg"))
     if not loadavg:
@@ -622,6 +737,16 @@ def _parse_metric_number(value: str) -> float | None:
         return float(number_match.group(0))
     except ValueError:
         return None
+
+
+def _coerce_metric_number(value: Any) -> float | None:
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, (int, float)):
+        return float(value)
+    if isinstance(value, str):
+        return _parse_metric_number(value)
+    return None
 
 
 def _thermal_metrics(root: Path, observed_at: str) -> list[dict[str, Any]]:
@@ -1233,6 +1358,27 @@ def _windows_wifi_metrics(observed_at: str, command_runner: CommandRunner | None
     return list(by_name.values())
 
 
+def _windows_disk_is_nvme(disk: dict[str, Any]) -> bool:
+    descriptor = " ".join(
+        str(disk.get(key) or "")
+        for key in ("Model", "FriendlyName", "InterfaceType", "BusType", "MediaType", "Description")
+    ).lower()
+    bus_type = _coerce_metric_number(disk.get("BusType"))
+    return "nvme" in descriptor or bus_type == 17
+
+
+def _windows_disk_device_name(disk: dict[str, Any], fallback_index: int) -> str:
+    label_source = str(
+        disk.get("Model")
+        or disk.get("FriendlyName")
+        or disk.get("DeviceId")
+        or disk.get("Index")
+        or f"nvme{fallback_index}"
+    )
+    device_name = _safe_metric_part(label_source)
+    return device_name if device_name != "unknown" else f"nvme{fallback_index}"
+
+
 def _windows_nvme_metrics(observed_at: str, command_runner: CommandRunner | None) -> list[dict[str, Any]]:
     payloads = [
         _powershell_json(
@@ -1251,19 +1397,12 @@ def _windows_nvme_metrics(observed_at: str, command_runner: CommandRunner | None
     recorded_devices: set[str] = set()
     for payload in payloads:
         for index, disk in enumerate(_json_items(payload)):
-            descriptor = " ".join(
-                str(disk.get(key) or "")
-                for key in ("Model", "FriendlyName", "InterfaceType", "BusType", "MediaType")
-            ).lower()
-            bus_type = disk.get("BusType")
-            is_nvme = "nvme" in descriptor or bus_type == 17
-            if not is_nvme:
+            if not _windows_disk_is_nvme(disk):
                 continue
-            size = disk.get("Size")
-            if not isinstance(size, (int, float)) or size <= 0:
+            size = _coerce_metric_number(disk.get("Size"))
+            if size is None or size <= 0:
                 continue
-            label_source = str(disk.get("Model") or disk.get("FriendlyName") or disk.get("DeviceId") or disk.get("Index") or f"nvme{index}")
-            device_name = _safe_metric_part(label_source)
+            device_name = _windows_disk_device_name(disk, index)
             if device_name in recorded_devices:
                 continue
             recorded_devices.add(device_name)
@@ -1272,6 +1411,44 @@ def _windows_nvme_metrics(observed_at: str, command_runner: CommandRunner | None
             metrics.append(_metric(f"nvme.{device_name}.capacity_bytes", capacity_bytes, "bytes", observed_at))
     if total_capacity > 0:
         metrics.insert(0, _metric("nvme.capacity_bytes", total_capacity, "bytes", observed_at))
+    metrics.extend(_windows_nvme_reliability_metrics(observed_at, command_runner))
+    return metrics
+
+
+def _windows_nvme_reliability_metrics(
+    observed_at: str,
+    command_runner: CommandRunner | None,
+) -> list[dict[str, Any]]:
+    payload = _powershell_json(
+        "$hasReliability=Get-Command Get-StorageReliabilityCounter -ErrorAction SilentlyContinue;"
+        "Get-PhysicalDisk | ForEach-Object {"
+        "$disk=$_;"
+        "$counter=$null;"
+        "$temperature=$null;"
+        "if ($hasReliability) { $counter=$disk | Get-StorageReliabilityCounter -ErrorAction SilentlyContinue };"
+        "if ($counter) { $temperature=$counter.Temperature };"
+        "[pscustomobject]@{DeviceId=$disk.DeviceId;FriendlyName=$disk.FriendlyName;"
+        "BusType=$disk.BusType;MediaType=$disk.MediaType;Size=$disk.Size;Temperature=$temperature}"
+        "} | ConvertTo-Json -Compress",
+        command_runner,
+    )
+    metrics: list[dict[str, Any]] = []
+    generic_recorded = False
+    recorded_devices: set[str] = set()
+    for index, disk in enumerate(_json_items(payload)):
+        if not _windows_disk_is_nvme(disk):
+            continue
+        celsius = _coerce_metric_number(disk.get("Temperature"))
+        if celsius is None or not 0 < celsius < 150:
+            continue
+        device_name = _windows_disk_device_name(disk, index)
+        if device_name in recorded_devices:
+            continue
+        recorded_devices.add(device_name)
+        if not generic_recorded:
+            metrics.append(_metric("nvme.temp_c", celsius, "celsius", observed_at))
+            generic_recorded = True
+        metrics.append(_metric(f"nvme.{device_name}.temp_c", celsius, "celsius", observed_at))
     return metrics
 
 
@@ -1317,7 +1494,7 @@ def _windows_hardware_monitor_temperature_metrics(
             label = " ".join(str(sensor.get(key) or "") for key in ("Parent", "Name")).strip()
             normalized_label = label.lower()
             name = str(sensor.get("Name") or f"temperature_{index}")
-            if "cpu" in normalized_label and "package" in normalized_label:
+            if "cpu" in normalized_label and any(token in normalized_label for token in ("package", "tctl", "tdie")):
                 metric_name = "cpu.package_temp_c"
             else:
                 core_match = re.search(r"\bcore\s*#?\s*(\d+)\b", normalized_label)
@@ -1337,6 +1514,38 @@ def _windows_hardware_monitor_temperature_metrics(
     return list(metrics_by_name.values())
 
 
+def _windows_hardware_monitor_fan_metrics(
+    observed_at: str,
+    command_runner: CommandRunner | None,
+) -> list[dict[str, Any]]:
+    namespaces = ("root/LibreHardwareMonitor", "root/OpenHardwareMonitor")
+    metrics_by_name: dict[str, dict[str, Any]] = {}
+    generic_recorded = False
+    for namespace in namespaces:
+        payload = _powershell_json(
+            f"Get-CimInstance -Namespace {namespace} -ClassName Sensor -ErrorAction SilentlyContinue | "
+            "Where-Object {$_.SensorType -eq 'Fan'} | "
+            "Select-Object Name,Parent,Value | ConvertTo-Json -Compress",
+            command_runner,
+        )
+        for index, sensor in enumerate(_json_items(payload)):
+            rpm = _coerce_metric_number(sensor.get("Value"))
+            if rpm is None or not 0 <= rpm < 50000:
+                continue
+            label = " ".join(str(sensor.get(key) or "") for key in ("Parent", "Name")).strip()
+            device_name = _safe_metric_part(label or str(sensor.get("Name") or f"fan{index}"))
+            if device_name == "unknown":
+                device_name = f"fan{index}"
+            metric_name = f"fan.{device_name}.rpm"
+            if not generic_recorded:
+                metrics_by_name.setdefault("fan.rpm", _metric("fan.rpm", rpm, "rpm", observed_at))
+                generic_recorded = True
+            metrics_by_name.setdefault(metric_name, _metric(metric_name, rpm, "rpm", observed_at))
+        if metrics_by_name:
+            break
+    return list(metrics_by_name.values())
+
+
 def _windows_metrics(observed_at: str, command_runner: CommandRunner | None) -> list[dict[str, Any]]:
     metrics: list[dict[str, Any]] = []
     metrics.extend(_windows_processor_metrics(observed_at, command_runner))
@@ -1347,6 +1556,7 @@ def _windows_metrics(observed_at: str, command_runner: CommandRunner | None) -> 
     metrics.extend(_windows_wifi_metrics(observed_at, command_runner))
     metrics.extend(_windows_nvme_metrics(observed_at, command_runner))
     metrics.extend(_windows_thermal_metrics(observed_at, command_runner))
+    metrics.extend(_windows_hardware_monitor_fan_metrics(observed_at, command_runner))
     return metrics
 
 
@@ -1389,6 +1599,9 @@ def collect_observation(
     if windows_runtime:
         metrics.extend(_windows_metrics(observed_iso, command_runner))
     events = _event_logs(root_path, observed_iso, command_runner)
+    if windows_runtime:
+        events.extend(_windows_event_logs(observed_iso, command_runner))
+        events = sorted({event["fingerprint"]: event for event in events}.values(), key=lambda event: event["observed_at"])[-20:]
     metrics = list({metric["name"]: metric for metric in metrics}.values())
 
     if not metrics and not events:

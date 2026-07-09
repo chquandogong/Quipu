@@ -536,14 +536,30 @@ def _cpu_topology_for_model(cpu_model: str | None) -> dict[str, float]:
     if not cpu_model:
         return {}
     normalized = cpu_model.lower()
-    if re.search(r"\bultra\s+5\s+125h\b", normalized):
-        return {
-            "cpu.physical_cores": 14.0,
-            "cpu.logical_threads": 18.0,
-            "cpu.performance_cores": 4.0,
-            "cpu.efficient_cores": 8.0,
-            "cpu.low_power_efficient_cores": 2.0,
-        }
+    known_topologies = (
+        (
+            r"\bultra\s+5\s+125h\b",
+            {
+                "cpu.physical_cores": 14.0,
+                "cpu.logical_threads": 18.0,
+                "cpu.performance_cores": 4.0,
+                "cpu.efficient_cores": 8.0,
+                "cpu.low_power_efficient_cores": 2.0,
+            },
+        ),
+        (
+            r"\bi5-1340p\b",
+            {
+                "cpu.physical_cores": 12.0,
+                "cpu.logical_threads": 16.0,
+                "cpu.performance_cores": 4.0,
+                "cpu.efficient_cores": 8.0,
+            },
+        ),
+    )
+    for pattern, values in known_topologies:
+        if re.search(pattern, normalized):
+            return dict(values)
     return {}
 
 
@@ -1041,12 +1057,32 @@ def _network_speed_mbps(value: str) -> float | None:
     return _wifi_bitrate_value_mbps(match.group(1), f"{match.group(2)}bit/s")
 
 
-def _windows_netsh_wifi_metrics(observed_at: str, command_runner: CommandRunner | None) -> list[dict[str, Any]]:
-    output = _run_observation_command(
+def _windows_netsh_outputs(command_runner: CommandRunner | None) -> list[str]:
+    commands = [
         ["netsh", "wlan", "show", "interfaces"],
-        command_runner,
-        timeout=8.0,
-    )
+        [r"C:\Windows\System32\netsh.exe", "wlan", "show", "interfaces"],
+        [
+            "powershell.exe",
+            "-NoProfile",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-Command",
+            "$netsh=Join-Path $env:SystemRoot 'System32\\netsh.exe'; & $netsh wlan show interfaces | Out-String",
+        ],
+    ]
+    outputs: list[str] = []
+    seen: set[str] = set()
+    for command in commands:
+        output = _run_observation_command(command, command_runner, timeout=15.0)
+        if output and output not in seen:
+            outputs.append(output)
+            seen.add(output)
+        if outputs and command_runner is not None:
+            break
+    return outputs
+
+
+def _windows_metrics_from_netsh_output(output: str, observed_at: str) -> list[dict[str, Any]]:
     if not output:
         return []
 
@@ -1113,6 +1149,41 @@ def _windows_netsh_wifi_metrics(observed_at: str, command_runner: CommandRunner 
     return metrics
 
 
+def _windows_netsh_wifi_metrics(observed_at: str, command_runner: CommandRunner | None) -> list[dict[str, Any]]:
+    metrics_by_name: dict[str, dict[str, Any]] = {}
+    for output in _windows_netsh_outputs(command_runner):
+        for metric in _windows_metrics_from_netsh_output(output, observed_at):
+            metrics_by_name.setdefault(metric["name"], metric)
+    return list(metrics_by_name.values())
+
+
+def _windows_wmi_wifi_signal_metrics(observed_at: str, command_runner: CommandRunner | None) -> list[dict[str, Any]]:
+    payload = _powershell_json(
+        "Get-CimInstance -Namespace root/wmi -ClassName MSNdis_80211_ReceivedSignalStrength -ErrorAction SilentlyContinue | "
+        "Select-Object InstanceName,Ndis80211ReceivedSignalStrength | ConvertTo-Json -Compress",
+        command_runner,
+    )
+    metrics: list[dict[str, Any]] = []
+    generic_recorded = False
+    for index, item in enumerate(_json_items(payload)):
+        raw_signal = item.get("Ndis80211ReceivedSignalStrength")
+        if not isinstance(raw_signal, (int, float)):
+            continue
+        signal = float(raw_signal)
+        if 0 <= signal <= 100:
+            signal = (signal / 2.0) - 100.0
+        if not -120 <= signal <= 0:
+            continue
+        interface = _safe_metric_part(str(item.get("InstanceName") or f"wifi{index}"))
+        if interface == "unknown":
+            interface = f"wifi{index}"
+        if not generic_recorded:
+            metrics.append(_metric("wifi.signal_dbm", signal, "dbm", observed_at))
+            generic_recorded = True
+        metrics.append(_metric(f"wifi.{interface}.signal_dbm", signal, "dbm", observed_at))
+    return metrics
+
+
 def _windows_adapter_wifi_metrics(observed_at: str, command_runner: CommandRunner | None) -> list[dict[str, Any]]:
     payload = _powershell_json(
         "Get-NetAdapter -Physical | "
@@ -1154,8 +1225,10 @@ def _windows_adapter_wifi_metrics(observed_at: str, command_runner: CommandRunne
 
 def _windows_wifi_metrics(observed_at: str, command_runner: CommandRunner | None) -> list[dict[str, Any]]:
     netsh_metrics = _windows_netsh_wifi_metrics(observed_at, command_runner)
+    wmi_signal_metrics = _windows_wmi_wifi_signal_metrics(observed_at, command_runner)
     adapter_metrics = _windows_adapter_wifi_metrics(observed_at, command_runner)
     by_name = {metric["name"]: metric for metric in adapter_metrics}
+    by_name.update({metric["name"]: metric for metric in wmi_signal_metrics})
     by_name.update({metric["name"]: metric for metric in netsh_metrics})
     return list(by_name.values())
 
@@ -1216,7 +1289,52 @@ def _windows_thermal_metrics(observed_at: str, command_runner: CommandRunner | N
         celsius = (float(raw_temperature) / 10.0) - 273.15
         if 0 < celsius < 150:
             metrics.append(_metric(f"thermal.windows_zone_{index}.temp_c", celsius, "celsius", observed_at))
+    metrics.extend(_windows_hardware_monitor_temperature_metrics(observed_at, command_runner))
     return metrics
+
+
+def _windows_hardware_monitor_temperature_metrics(
+    observed_at: str,
+    command_runner: CommandRunner | None,
+) -> list[dict[str, Any]]:
+    namespaces = ("root/LibreHardwareMonitor", "root/OpenHardwareMonitor")
+    metrics_by_name: dict[str, dict[str, Any]] = {}
+    nvme_generic_recorded = False
+    for namespace in namespaces:
+        payload = _powershell_json(
+            f"Get-CimInstance -Namespace {namespace} -ClassName Sensor -ErrorAction SilentlyContinue | "
+            "Where-Object {$_.SensorType -eq 'Temperature'} | "
+            "Select-Object Name,Parent,Value | ConvertTo-Json -Compress",
+            command_runner,
+        )
+        for index, sensor in enumerate(_json_items(payload)):
+            raw_value = sensor.get("Value")
+            if not isinstance(raw_value, (int, float)):
+                continue
+            celsius = float(raw_value)
+            if not 0 < celsius < 150:
+                continue
+            label = " ".join(str(sensor.get(key) or "") for key in ("Parent", "Name")).strip()
+            normalized_label = label.lower()
+            name = str(sensor.get("Name") or f"temperature_{index}")
+            if "cpu" in normalized_label and "package" in normalized_label:
+                metric_name = "cpu.package_temp_c"
+            else:
+                core_match = re.search(r"\bcore\s*#?\s*(\d+)\b", normalized_label)
+                if "cpu" in normalized_label and core_match:
+                    metric_name = f"cpu.core_{core_match.group(1)}.temp_c"
+                elif any(token in normalized_label for token in ("nvme", "ssd", "disk")):
+                    device_name = _safe_metric_part(label or name)
+                    metric_name = f"nvme.{device_name}.temp_c"
+                    if not nvme_generic_recorded:
+                        metrics_by_name.setdefault("nvme.temp_c", _metric("nvme.temp_c", celsius, "celsius", observed_at))
+                        nvme_generic_recorded = True
+                else:
+                    metric_name = f"thermal.windows_{_safe_metric_part(label or name)}.temp_c"
+            metrics_by_name.setdefault(metric_name, _metric(metric_name, celsius, "celsius", observed_at))
+        if metrics_by_name:
+            break
+    return list(metrics_by_name.values())
 
 
 def _windows_metrics(observed_at: str, command_runner: CommandRunner | None) -> list[dict[str, Any]]:

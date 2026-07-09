@@ -51,7 +51,7 @@ import type {
 import './styles.css';
 
 const flowStages = ['Detect', 'Triage', 'Investigate', 'Hypothesize', 'Act', 'Verify', 'Report'];
-const appVersion = 'v0.13.1';
+const appVersion = 'v0.13.2';
 
 const riskLabels: Record<RiskLevel, string> = {
   healthy: 'Healthy',
@@ -326,6 +326,8 @@ function cpuProfileSummary(detail: InvestigationDetail | null): string {
   const logicalThreads = latestMetric(detail, 'cpu.logical_threads')?.value;
   const topology = pCores !== undefined && eCores !== undefined && lpECores !== undefined
     ? `Topology: P ${pCores.toFixed(0)}, E ${eCores.toFixed(0)}, LP-E ${lpECores.toFixed(0)}.`
+    : pCores !== undefined && eCores !== undefined
+      ? `Topology: P ${pCores.toFixed(0)}, E ${eCores.toFixed(0)}.`
     : physicalCores !== undefined || logicalThreads !== undefined
       ? `Topology: ${physicalCores?.toFixed(0) ?? '?'} cores, ${logicalThreads?.toFixed(0) ?? '?'} threads.`
       : 'Topology metrics are unavailable.';

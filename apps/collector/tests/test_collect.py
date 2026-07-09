@@ -300,6 +300,9 @@ def test_collect_observation_reads_windows_signals(monkeypatch, tmp_path) -> Non
     metrics = {metric["name"]: metric for metric in batch["metrics"]}
     assert metrics["cpu.physical_cores"]["value"] == 14.0
     assert metrics["cpu.logical_threads"]["value"] == 18.0
+    assert metrics["cpu.performance_cores"]["value"] == 4.0
+    assert metrics["cpu.efficient_cores"]["value"] == 8.0
+    assert metrics["cpu.low_power_efficient_cores"]["value"] == 2.0
     assert metrics["memory.used_percent"]["value"] == 75.0
     assert metrics["battery.capacity_percent"]["value"] == 73.0
     assert metrics["battery.ac_online"]["value"] == 1.0
@@ -330,9 +333,9 @@ def test_collect_observation_reads_localized_windows_wifi_and_physical_disk(monk
             return None
         script = args[-1]
         if "Win32_ComputerSystem" in script:
-            return '{"Model":"Windows Laptop","OsName":"Microsoft Windows 11 Pro","CpuModel":"Intel(R) Core(TM) Ultra 7"}'
+            return '{"Model":"Windows Laptop","OsName":"Microsoft Windows 11 Pro","CpuModel":"13th Gen Intel(R) Core(TM) i5-1340P"}'
         if "Win32_Processor" in script:
-            return '{"Name":"Intel(R) Core(TM) Ultra 7","NumberOfCores":12,"NumberOfLogicalProcessors":16}'
+            return '{"Name":"13th Gen Intel(R) Core(TM) i5-1340P","NumberOfCores":12,"NumberOfLogicalProcessors":16}'
         if "Win32_OperatingSystem" in script:
             return '{"TotalVisibleMemorySize":32000000,"FreePhysicalMemory":8000000}'
         if "Win32_Battery" in script:
@@ -354,6 +357,10 @@ def test_collect_observation_reads_localized_windows_wifi_and_physical_disk(monk
     )
 
     metrics = {metric["name"]: metric for metric in batch["metrics"]}
+    assert metrics["cpu.performance_cores"]["value"] == 4.0
+    assert metrics["cpu.efficient_cores"]["value"] == 8.0
+    assert metrics["cpu.physical_cores"]["value"] == 12.0
+    assert metrics["cpu.logical_threads"]["value"] == 16.0
     assert metrics["wifi.signal_dbm"]["value"] == -61.0
     assert metrics["wifi.wifi0.signal_dbm"]["value"] == -61.0
     assert metrics["wifi.rx_bitrate_mbps"]["value"] == 650.0
@@ -363,3 +370,58 @@ def test_collect_observation_reads_localized_windows_wifi_and_physical_disk(monk
     assert metrics["wifi.wifi0.link_bitrate_mbps"]["value"] == 866.7
     assert metrics["nvme.capacity_bytes"]["value"] == 1024000000000.0
     assert metrics["nvme.samsung_mzvl.capacity_bytes"]["value"] == 1024000000000.0
+
+
+def test_collect_observation_reads_windows_wmi_wifi_signal_and_monitor_temperatures(monkeypatch, tmp_path) -> None:
+    monkeypatch.setattr("quipu_collector.collect.platform.system", lambda: "Windows")
+
+    def fake_command_runner(args: list[str]) -> str | None:
+        if args[:3] == ["netsh", "wlan", "show"] or args[:3] == [r"C:\Windows\System32\netsh.exe", "wlan", "show"]:
+            return None
+        if args[:4] != ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass"]:
+            return None
+        script = args[-1]
+        if "netsh.exe" in script:
+            return None
+        if "Win32_ComputerSystem" in script:
+            return '{"Model":"Windows Laptop","OsName":"Microsoft Windows 11 Pro","CpuModel":"13th Gen Intel(R) Core(TM) i5-1340P"}'
+        if "Win32_Processor" in script:
+            return '{"Name":"13th Gen Intel(R) Core(TM) i5-1340P","NumberOfCores":12,"NumberOfLogicalProcessors":16}'
+        if "Win32_OperatingSystem" in script:
+            return '{"TotalVisibleMemorySize":32000000,"FreePhysicalMemory":16000000}'
+        if "MSNdis_80211_ReceivedSignalStrength" in script:
+            return '{"InstanceName":"Intel(R) Wi-Fi 6E","Ndis80211ReceivedSignalStrength":-52}'
+        if "Get-NetAdapter" in script:
+            return '{"Name":"Wi-Fi","InterfaceDescription":"Intel(R) Wi-Fi 6E","Status":"Up","LinkSpeed":"961 Mbps","NdisPhysicalMedium":9}'
+        if "Win32_DiskDrive" in script or "Get-PhysicalDisk" in script:
+            return None
+        if "MSAcpi_ThermalZoneTemperature" in script:
+            return None
+        if "root/LibreHardwareMonitor" in script:
+            return (
+                "["
+                '{"Name":"CPU Package","Parent":"Intel Core i5-1340P","Value":58.5},'
+                '{"Name":"CPU Core #1","Parent":"Intel Core i5-1340P","Value":55.0},'
+                '{"Name":"Temperature","Parent":"Samsung SSD 980 PRO 1TB","Value":42.0}'
+                "]"
+            )
+        return None
+
+    batch = collect_observation(
+        root=tmp_path,
+        observed_at=datetime(2026, 7, 9, 4, 40, tzinfo=timezone.utc),
+        device_id="windows",
+        device_alias="윈도우",
+        command_runner=fake_command_runner,
+    )
+
+    metrics = {metric["name"]: metric for metric in batch["metrics"]}
+    assert metrics["cpu.performance_cores"]["value"] == 4.0
+    assert metrics["cpu.efficient_cores"]["value"] == 8.0
+    assert metrics["wifi.signal_dbm"]["value"] == -52.0
+    assert metrics["wifi.intel_r_wi_fi_6e.signal_dbm"]["value"] == -52.0
+    assert metrics["wifi.link_bitrate_mbps"]["value"] == 961.0
+    assert metrics["cpu.package_temp_c"]["value"] == 58.5
+    assert metrics["cpu.core_1.temp_c"]["value"] == 55.0
+    assert metrics["nvme.temp_c"]["value"] == 42.0
+    assert metrics["nvme.samsung_ssd_980_pro_1tb_temperature.temp_c"]["value"] == 42.0

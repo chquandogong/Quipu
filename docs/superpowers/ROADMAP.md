@@ -121,11 +121,14 @@ Implemented:
 - Windows compatibility patch for longer PowerShell/CIM collection timeout,
   localized `netsh` Wi-Fi output, `Get-PhysicalDisk` NVMe fallback, and model
   preservation when later batches omit it.
+- Windows telemetry fallback patch for Intel Core i5-1340P P/E topology,
+  WMI Wi-Fi RSSI, direct/full-path/PowerShell `netsh`, and
+  LibreHardwareMonitor/OpenHardwareMonitor WMI temperature sensors.
 - Private LAN UI/API access from Vite origins on ports 5173 and 5174.
 
 Remaining:
 
-- Install v0.13.1 on the currently connected Windows laptop and restart the
+- Install v0.13.2 on the currently connected Windows laptop and restart the
   scheduled task so partial Windows telemetry is replaced by the patched metric
   set.
 - CPU/core/package thermals with richer sensor naming.

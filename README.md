@@ -2,7 +2,7 @@
 
 <p align="center">
   <img alt="CI" src="https://github.com/chquandogong/Quipu/actions/workflows/ci.yml/badge.svg">
-  <img alt="Version" src="https://img.shields.io/badge/version-v0.13.1-2f6f7e">
+  <img alt="Version" src="https://img.shields.io/badge/version-v0.13.2-2f6f7e">
   <img alt="Status" src="https://img.shields.io/badge/status-local--first%20workstation%20health-5b6b73">
   <img alt="License" src="https://img.shields.io/badge/license-not%20selected-lightgrey">
 </p>
@@ -35,8 +35,14 @@ procfs를 읽고, Windows에서는 PowerShell/CIM/netsh/Get-NetAdapter가 노출
 Detect -> Triage -> Investigate -> Hypothesize -> Act -> Verify -> Report
 ```
 
-## v0.13.1 핵심
+## v0.13.2 핵심
 
+- Windows의 Intel Core i5-1340P를 `P 4 / E 8 / 16 threads` topology로 표시합니다.
+- Windows Wi-Fi는 `netsh` 직접 실행, system path, PowerShell 경유, WMI RSSI
+  fallback을 순서대로 시도해 signal/link 정보를 더 많이 수집합니다.
+- Windows 온도는 ACPI thermal zone 외에 LibreHardwareMonitor/OpenHardwareMonitor
+  WMI sensor가 있으면 CPU package/core, NVMe/SSD 온도를 같은 metric 이름으로
+  보냅니다.
 - Windows collector가 PowerShell/CIM 호출을 더 오래 기다리고, 한국어 `netsh`
   출력과 `Get-PhysicalDisk` NVMe 판별을 처리해 Wi-Fi/NVMe/장비 model 누락을
   줄였습니다.

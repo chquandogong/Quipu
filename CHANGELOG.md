@@ -2,6 +2,36 @@
 
 All notable changes to Quipu are documented in this file.
 
+## v0.13.2 - 2026-07-09
+
+Windows telemetry coverage patch.
+
+### Added
+
+- Intel Core i5-1340P topology mapping so Windows devices can report
+  `cpu.performance_cores = 4` and `cpu.efficient_cores = 8` beside the 12-core
+  / 16-thread totals.
+- Windows Wi-Fi collection now tries `netsh` by name, full system path, and
+  PowerShell invocation, then falls back to the WMI
+  `MSNdis_80211_ReceivedSignalStrength` class for signal dBm when available.
+- Windows temperature collection now reads LibreHardwareMonitor or
+  OpenHardwareMonitor WMI sensor classes when present, mapping CPU package,
+  CPU core, NVMe, SSD, and generic temperature sensors into existing Quipu
+  metric names.
+
+### Changed
+
+- CPU Profile summary now displays `P / E` topology when low-power E-core data
+  is not present, instead of falling back to only total core/thread counts.
+- Web test fixtures now reflect the current `윈도우 · DOGU_CHQUAN` telemetry
+  shape with CPU topology, Wi-Fi link, NVMe capacity, memory, battery, and disk
+  metrics.
+
+### Verified
+
+- Collector test suite: 23 tests passed.
+- Web test suite: 3 tests passed.
+
 ## v0.13.1 - 2026-07-09
 
 Windows collector compatibility patch.

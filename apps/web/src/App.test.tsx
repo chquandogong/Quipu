@@ -92,15 +92,27 @@ const fleetResponse = {
         device_id: 'windows',
         display_name: '윈도우',
         hostname: 'DOGU_CHQUAN',
-        model: null,
-        cpu_model: 'Intel64 Family 6 Model 186 Stepping 2, GenuineIntel',
-        os_name: null,
+        model: '15Z90R-GP56ML',
+        cpu_model: '13th Gen Intel(R) Core(TM) i5-1340P',
+        os_name: 'Microsoft Windows 11 Pro',
         kernel_version: '11',
         first_seen_at: '2026-07-07T02:56:00+00:00',
         last_seen_at: '2026-07-07T03:03:00+00:00',
       },
       latest_metrics: {
-        'disk.root_used_percent': { value: 45.2, unit: 'percent', observed_at: '2026-07-07T03:00:00+00:00' },
+        'cpu.physical_cores': { value: 12, unit: 'count', observed_at: '2026-07-07T03:00:00+00:00' },
+        'cpu.logical_threads': { value: 16, unit: 'count', observed_at: '2026-07-07T03:00:00+00:00' },
+        'cpu.performance_cores': { value: 4, unit: 'count', observed_at: '2026-07-07T03:00:00+00:00' },
+        'cpu.efficient_cores': { value: 8, unit: 'count', observed_at: '2026-07-07T03:00:00+00:00' },
+        'memory.used_percent': { value: 83.32, unit: 'percent', observed_at: '2026-07-07T03:00:00+00:00' },
+        'disk.root_used_percent': { value: 0.99, unit: 'percent', observed_at: '2026-07-07T03:00:00+00:00' },
+        'battery.capacity_percent': { value: 100, unit: 'percent', observed_at: '2026-07-07T03:00:00+00:00' },
+        'battery.ac_online': { value: 1, unit: 'boolean', observed_at: '2026-07-07T03:00:00+00:00' },
+        'wifi.link_bitrate_mbps': { value: 961, unit: 'mbps', observed_at: '2026-07-07T03:00:00+00:00' },
+        'wifi.wi_fi.link_bitrate_mbps': { value: 961, unit: 'mbps', observed_at: '2026-07-07T03:00:00+00:00' },
+        'nvme.capacity_bytes': { value: 1256265400320, unit: 'bytes', observed_at: '2026-07-07T03:00:00+00:00' },
+        'nvme.hfs256gej9x101n.capacity_bytes': { value: 256060514304, unit: 'bytes', observed_at: '2026-07-07T03:00:00+00:00' },
+        'nvme.samsung_ssd_980_pro_1tb.capacity_bytes': { value: 1000204886016, unit: 'bytes', observed_at: '2026-07-07T03:00:00+00:00' },
       },
       recent_events: [],
       risk_level: 'healthy',
@@ -377,7 +389,7 @@ describe('App', () => {
     const fleetDevices = screen.getByRole('region', { name: 'Devices' });
     expect(within(fleetDevices).getByText('Build laptop · build-xps')).toBeInTheDocument();
     expect(within(fleetDevices).getByText('윈도우 · DOGU_CHQUAN')).toBeInTheDocument();
-    expect(within(fleetDevices).getByText(/1 metric \/ 0 events/)).toBeInTheDocument();
+    expect(within(fleetDevices).getByText(/13 metrics \/ 0 events/)).toBeInTheDocument();
     expect(within(fleetDevices).getByText('Healthy')).toBeInTheDocument();
     expect(container.querySelector('.health-strip')).not.toBeInTheDocument();
     expect(container.querySelector('.metric-strip')).not.toBeInTheDocument();
@@ -387,7 +399,7 @@ describe('App', () => {
     expect(screen.getByText('Project info')).toBeInTheDocument();
     expect(screen.getByText('Made by Dr. 권성호')).toBeInTheDocument();
     expect(screen.getByText('About: workstation health investigation')).toBeInTheDocument();
-    expect(screen.getByText('Version v0.13.1')).toBeInTheDocument();
+    expect(screen.getByText('Version v0.13.2')).toBeInTheDocument();
     expect(screen.queryByText('Detect - triage - verify with evidence')).not.toBeInTheDocument();
     expect(screen.getAllByText('Build laptop · build-xps').length).toBeGreaterThan(0);
     const selectedCaseStatus = screen.getByLabelText('Selected case status');
@@ -517,7 +529,11 @@ describe('App', () => {
     expect(screen.getByText('No active investigations for this device.')).toBeInTheDocument();
     expect(screen.getByText('Healthy · device')).toBeInTheDocument();
     expect(screen.getAllByText('윈도우 · DOGU_CHQUAN is visible in Devices and currently has no active issue.').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('45.2%').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('12 cores / 16 threads').length).toBeGreaterThan(0);
+    expect(screen.getByText('13th Gen Intel Core i5-1340P. Topology: P 4, E 8.')).toBeInTheDocument();
+    expect(screen.getAllByText(/961 Mbps/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText('1.14 TB').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('1.0%').length).toBeGreaterThan(0);
   });
 
   it('groups Intel Core Ultra 5 125H core sensors by core type', async () => {

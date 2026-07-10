@@ -2,6 +2,28 @@
 
 All notable changes to Quipu are documented in this file.
 
+## v0.14.1 - 2026-07-10
+
+Windows thermal-zone fallback patch.
+
+### Added
+
+- Windows `Thermal Zone Information` performance-counter collection through
+  `Win32_PerfFormattedData_Counters_ThermalZoneInformation`, converting the
+  reported Kelvin value to `thermal.windows_zone_<name>.temp_c` without
+  requiring an elevated collector task.
+
+### Changed
+
+- Updated package, app, API, schema, and UI versions to `0.14.1`.
+
+### Verified
+
+- Collector test suite: 26 tests passed, 2 platform skips.
+- Live Windows thermal-zone collection reported `32.05C` from `TZ00`.
+- Server test suite: 38 tests passed, 1 Starlette deprecation warning.
+- Web test suite: 3 tests passed; TypeScript and production build succeeded.
+
 ## v0.14.0 - 2026-07-10
 
 Temperature, fan, and full NVMe SMART telemetry release.

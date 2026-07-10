@@ -1743,9 +1743,38 @@ def _windows_thermal_metrics(observed_at: str, command_runner: CommandRunner | N
         celsius = (float(raw_temperature) / 10.0) - 273.15
         if 0 < celsius < 150:
             metrics.append(_metric(f"thermal.windows_zone_{index}.temp_c", celsius, "celsius", observed_at))
+    metrics.extend(_windows_performance_thermal_metrics(observed_at, command_runner))
     metrics.extend(_windows_temperature_probe_metrics(observed_at, command_runner))
     metrics.extend(_windows_hardware_monitor_temperature_metrics(observed_at, command_runner))
     return metrics
+
+
+def _windows_performance_thermal_metrics(
+    observed_at: str,
+    command_runner: CommandRunner | None,
+) -> list[dict[str, Any]]:
+    payload = _powershell_json(
+        "Get-CimInstance Win32_PerfFormattedData_Counters_ThermalZoneInformation "
+        "-ErrorAction SilentlyContinue | "
+        "Select-Object Name,Temperature,HighPrecisionTemperature | ConvertTo-Json -Compress",
+        command_runner,
+    )
+    metrics_by_name: dict[str, dict[str, Any]] = {}
+    for index, sensor in enumerate(_json_items(payload)):
+        high_precision = _coerce_metric_number(sensor.get("HighPrecisionTemperature"))
+        kelvin = high_precision / 10.0 if high_precision is not None and high_precision > 1000 else None
+        if kelvin is None:
+            temperature = _coerce_metric_number(sensor.get("Temperature"))
+            kelvin = temperature if temperature is not None and temperature > 200 else None
+        if kelvin is None:
+            continue
+        celsius = kelvin - 273.15
+        if not 0 < celsius < 150:
+            continue
+        sensor_name = _safe_metric_part(str(sensor.get("Name") or f"zone_{index}"))
+        metric_name = f"thermal.windows_zone_{sensor_name}.temp_c"
+        metrics_by_name.setdefault(metric_name, _metric(metric_name, celsius, "celsius", observed_at))
+    return list(metrics_by_name.values())
 
 
 def _windows_temperature_probe_metrics(

@@ -2,7 +2,7 @@
 
 <p align="center">
   <img alt="CI" src="https://github.com/chquandogong/Quipu/actions/workflows/ci.yml/badge.svg">
-  <img alt="Version" src="https://img.shields.io/badge/version-v0.14.0-2f6f7e">
+  <img alt="Version" src="https://img.shields.io/badge/version-v0.14.1-2f6f7e">
   <img alt="Status" src="https://img.shields.io/badge/status-local--first%20workstation%20health-5b6b73">
   <img alt="License" src="https://img.shields.io/badge/license-not%20selected-lightgrey">
 </p>
@@ -35,11 +35,13 @@ procfs를 읽고, Windows에서는 PowerShell/CIM/netsh/Get-NetAdapter가 노출
 Detect -> Triage -> Investigate -> Hypothesize -> Act -> Verify -> Report
 ```
 
-## v0.14.0 핵심
+## v0.14.1 핵심
 
 - Windows와 Linux에서 `smartctl --json`을 자동 탐지해 NVMe별 온도, SMART
   통과 여부, critical warning, available spare, 수명 사용률, media error,
   power-on hours, unsafe shutdown, error-log count를 수집합니다.
+- Windows Thermal Zone performance counter를 읽어 관리자 권한 없이도 firmware가
+  공개한 시스템 thermal zone 온도를 수집합니다.
 - Windows에서는 공식 LibreHardwareMonitor 라이브러리를 직접 읽어 CPU
   package/core, SSD/NVMe 온도와 노출 가능한 팬 RPM을 수집합니다.
 - Linux hwmon 팬은 첫 번째 팬뿐 아니라 읽을 수 있는 모든 팬을

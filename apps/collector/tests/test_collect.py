@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 from quipu_collector.collect import (
     _smartctl_metrics,
     _windows_hardware_monitor_library_metrics,
+    _windows_performance_thermal_metrics,
     collect_observation,
 )
 
@@ -631,3 +632,25 @@ def test_windows_hardware_monitor_library_maps_temperature_and_fan_sensors() -> 
     assert metrics["nvme.samsung_ssd_temperature.temp_c"]["value"] == 44.0
     assert metrics["fan.rpm"]["value"] == 2350.0
     assert metrics["fan.embedded_controller_cpu_fan.rpm"]["value"] == 2350.0
+
+
+def test_windows_performance_counter_maps_thermal_zone_kelvin() -> None:
+    def fake_command_runner(args: list[str]) -> str | None:
+        if args[:4] != ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass"]:
+            return None
+        if "Win32_PerfFormattedData_Counters_ThermalZoneInformation" not in args[-1]:
+            return None
+        return '{"Name":"\\\\_TZ.TZ00","Temperature":305,"HighPrecisionTemperature":3052}'
+
+    metrics = _windows_performance_thermal_metrics(
+        "2026-07-10T04:00:00+00:00", fake_command_runner
+    )
+
+    assert metrics == [
+        {
+            "name": "thermal.windows_zone_tz_tz00.temp_c",
+            "value": 32.05,
+            "unit": "celsius",
+            "observed_at": "2026-07-10T04:00:00+00:00",
+        }
+    ]

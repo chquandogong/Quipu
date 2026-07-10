@@ -2,7 +2,7 @@
 
 <p align="center">
   <img alt="CI" src="https://github.com/chquandogong/Quipu/actions/workflows/ci.yml/badge.svg">
-  <img alt="Version" src="https://img.shields.io/badge/version-v0.14.0-2f6f7e">
+  <img alt="Version" src="https://img.shields.io/badge/version-v0.14.1-2f6f7e">
   <img alt="Status" src="https://img.shields.io/badge/status-local--first%20workstation%20health-5b6b73">
   <img alt="License" src="https://img.shields.io/badge/license-not%20selected-lightgrey">
 </p>
@@ -33,11 +33,13 @@ Detect -> Triage -> Investigate -> Hypothesize -> Act -> Verify -> Report
 
 Quipu 不是远程修复工具。collector 是只读的，server 使用确定性的规则分析。
 
-## v0.14.0 重点
+## v0.14.1 重点
 
 - Windows 和 Linux 会自动发现 `smartctl --json`，上报汇总和每设备 NVMe
   温度、SMART 通过状态、critical warning、spare、寿命使用率、media error、
   power-on hours、unsafe shutdown 和 error-log 数量。
+- Windows Thermal Zone performance counter 可在非管理员 collector 中读取
+  firmware 暴露的系统温度。
 - Windows 可直接读取官方 LibreHardwareMonitor library，收集 CPU package/core、
   SSD/NVMe 温度和硬件实际暴露的风扇 RPM。
 - Linux hwmon 现在会上报所有可读风扇，不再只取第一个。

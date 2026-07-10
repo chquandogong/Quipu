@@ -2,6 +2,29 @@
 
 All notable changes to Quipu are documented in this file.
 
+## v0.14.3 - 2026-07-10
+
+Windows LibreHardwareMonitor running-process probe patch.
+
+### Fixed
+
+- The Windows collector no longer skips direct LibreHardwareMonitor library
+  probing when the LibreHardwareMonitor GUI process is already running.
+- Direct hardware-monitor probing now discovers `LibreHardwareMonitorLib.dll`
+  from the running process path, Program Files, LocalAppData, and nested WinGet
+  package directories.
+
+### Changed
+
+- Updated package, app, API, schema, and UI versions to `0.14.3`.
+
+### Verified
+
+- Server test suite: 38 tests passed, 1 Starlette deprecation warning.
+- Collector test suite: 28 tests passed.
+- Web test suite: 3 tests passed; production build succeeded.
+- Whitespace check passed.
+
 ## v0.14.2 - 2026-07-10
 
 Windows LibreHardwareMonitor CPU core telemetry display patch.

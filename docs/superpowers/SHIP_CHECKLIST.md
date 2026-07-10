@@ -1,9 +1,9 @@
 # Quipu Ship Checklist
 
-> Status: v0.14.2 patch release checklist for Windows hardware-monitor CPU telemetry
+> Status: v0.14.3 patch release checklist for Windows LibreHardwareMonitor running-process probe
 > Date: 2026-07-10
 > Owner: chquan
-> Release: v0.14.2
+> Release: v0.14.3
 
 ## Scope
 
@@ -101,6 +101,8 @@ Included:
   temperature mapping.
 - Windows LibreHardwareMonitor/OpenHardwareMonitor total and per-core CPU load
   percentage collection.
+- Windows direct LibreHardwareMonitor DLL probing from the running GUI process
+  path, Program Files, LocalAppData, and nested WinGet package directories.
 - Windows-specific CPU Cores and CPU Core Load UI rows that avoid Linux-only
   placeholders when Windows does not report load average or CPU package.
 - UI fallback for garbled localized Windows Event Log summaries.
@@ -126,13 +128,13 @@ Excluded:
 - Web tests: `npm test -- --run` -> 3 passed.
 - Web build: `npm run build` -> succeeded.
 - Whitespace check: `git diff --check` -> passed.
-- Browser DOM smoke check: `Version v0.14.2`, `Devices`, `Device Issues`,
+- Browser DOM smoke check: `Version v0.14.3`, `Devices`, `Device Issues`,
   `우분투 · chquan-17ZD90SP-GX56K`, `윈도우 · DOGU_CHQUAN`, and `Telemetry Matrix`
   rendered from the LAN UI without `Failed to fetch`.
 
 Evidence source:
 
-- Latest verified local commit before release prep: v0.14.2 patch release candidate.
+- Latest verified local commit before release prep: v0.14.3 patch release candidate.
 
 ## Risks
 
@@ -152,7 +154,7 @@ Known risks:
 - Enrollment tokens are stored as hashes, but role-aware admin auth is still a
   future hardening item.
 - Current analysis is deterministic and intentionally conservative.
-- Windows telemetry coverage depends on the Windows task running the v0.14.2
+- Windows telemetry coverage depends on the Windows task running the v0.14.3
   collector package. The current observed Windows device is visible, but an
   older task may keep sending only smoke-level telemetry until the release is
   installed and the task is restarted on that machine.
@@ -183,7 +185,7 @@ Unapproved risks:
 Rollback method:
 
 - Delete or supersede the private GitHub release if the release note is wrong.
-- Move forward with a patch tag such as `v0.14.3` for code or documentation fixes.
+- Move forward with a patch tag such as `v0.14.4` for code or documentation fixes.
 - Avoid force-push and history rewrite.
 
 Rollback owner:
@@ -212,15 +214,15 @@ Check after release:
   hardware-monitor CPU load display, LAN UI access, and rollout guidance.
 - User manual: includes Windows collector verification, hardware-monitor CPU
   metric names, and updated screen guide.
-- Dashboard: current v0.14.2 patch release state recorded.
+- Dashboard: current v0.14.3 patch release state recorded.
 - Roadmap: device-first, Windows telemetry, and connected-laptop rollout tracks
   recorded.
-- Changelog: `v0.14.2` prepared.
+- Changelog: `v0.14.3` prepared.
 - Security policy: present.
 
 ## Final Judgment
 
-GitHub release is ready for `v0.14.2` after the local test/build/browser checks
+GitHub release is ready for `v0.14.3` after the local test/build/browser checks
 pass. Windows full telemetry display on the currently connected laptop requires
 deploying this release to that laptop and restarting its scheduled task.
 

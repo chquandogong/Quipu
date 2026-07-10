@@ -617,8 +617,13 @@ def test_windows_hardware_monitor_library_maps_temperature_and_fan_sensors() -> 
     def fake_command_runner(args: list[str]) -> str | None:
         if args[:4] != ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass"]:
             return None
-        if "LibreHardwareMonitor.Hardware.Computer" not in args[-1]:
+        script = args[-1]
+        if "LibreHardwareMonitor.Hardware.Computer" not in script:
             return None
+        assert "Get-Process LibreHardwareMonitor" in script
+        assert "Get-Process LibreHardwareMonitor -ErrorAction SilentlyContinue) { Write-Output '[]'; exit 0 }" not in script
+        assert "$process.Path" in script
+        assert "-Recurse -Filter 'LibreHardwareMonitorLib.dll'" in script
         return (
             "["
             '{"Hardware":"Intel Core i5","HardwareType":"Cpu","Name":"CPU Package",'

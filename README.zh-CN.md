@@ -2,7 +2,7 @@
 
 <p align="center">
   <img alt="CI" src="https://github.com/chquandogong/Quipu/actions/workflows/ci.yml/badge.svg">
-  <img alt="Version" src="https://img.shields.io/badge/version-v0.14.2-2f6f7e">
+  <img alt="Version" src="https://img.shields.io/badge/version-v0.14.3-2f6f7e">
   <img alt="Status" src="https://img.shields.io/badge/status-local--first%20workstation%20health-5b6b73">
   <img alt="License" src="https://img.shields.io/badge/license-not%20selected-lightgrey">
 </p>
@@ -33,8 +33,11 @@ Detect -> Triage -> Investigate -> Hypothesize -> Act -> Verify -> Report
 
 Quipu 不是远程修复工具。collector 是只读的，server 使用确定性的规则分析。
 
-## v0.14.2 重点
+## v0.14.3 重点
 
+- Windows collector 不再因为 LibreHardwareMonitor GUI 已经运行而跳过 direct DLL
+  probe；现在会从运行中的进程、Program Files 和 WinGet package 路径寻找
+  `LibreHardwareMonitorLib.dll`。
 - Windows LibreHardwareMonitor/OpenHardwareMonitor 暴露的 CPU P-core/E-core/LP-E
   core 温度和每 core load percent 现在会被收集，并在 UI 中按 Windows 语义显示为
   `CPU Cores` 和 `CPU Core Load`。

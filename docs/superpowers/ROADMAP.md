@@ -130,6 +130,8 @@ Implemented:
   counters, Win32 temperature probes, and Win32 fan/tachometer readings.
 - Windows LibreHardwareMonitor/OpenHardwareMonitor CPU P-core/E-core/LP-E
   temperature and per-core load percentage collection.
+- Windows LibreHardwareMonitor direct library probing from a running GUI
+  process path and nested package paths.
 - Windows-specific CPU Cores and CPU Core Load display that uses the metrics
   actually reported by Windows instead of Linux-only placeholders.
 - UI fallback that hides garbled localized Windows Event Log summaries.
@@ -137,7 +139,7 @@ Implemented:
 
 Remaining:
 
-- Install v0.14.2 on the currently connected Windows laptop and restart the
+- Install v0.14.3 on the currently connected Windows laptop and restart the
   scheduled task so partial Windows telemetry is replaced by the patched metric
   set.
 - Additional CPU/core/package thermal label variants if real hardware exposes

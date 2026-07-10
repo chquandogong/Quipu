@@ -2,7 +2,7 @@
 
 <p align="center">
   <img alt="CI" src="https://github.com/chquandogong/Quipu/actions/workflows/ci.yml/badge.svg">
-  <img alt="Version" src="https://img.shields.io/badge/version-v0.14.2-2f6f7e">
+  <img alt="Version" src="https://img.shields.io/badge/version-v0.14.3-2f6f7e">
   <img alt="Status" src="https://img.shields.io/badge/status-local--first%20workstation%20health-5b6b73">
   <img alt="License" src="https://img.shields.io/badge/license-not%20selected-lightgrey">
 </p>
@@ -35,8 +35,12 @@ Detect -> Triage -> Investigate -> Hypothesize -> Act -> Verify -> Report
 The product is not a remote repair tool. The collector is read-only and the
 server uses deterministic rule-based analysis.
 
-## v0.14.2 Highlights
+## v0.14.3 Highlights
 
+- The Windows collector no longer skips direct LibreHardwareMonitor DLL probing
+  when the LibreHardwareMonitor GUI is already running; it now discovers
+  `LibreHardwareMonitorLib.dll` from the running process, Program Files, and
+  WinGet package paths.
 - Windows LibreHardwareMonitor/OpenHardwareMonitor CPU P-core/E-core/LP-E core
   temperatures and per-core load percentages are collected and displayed as
   Windows-specific `CPU Cores` and `CPU Core Load` rows.
@@ -97,7 +101,7 @@ server uses deterministic rule-based analysis.
 - Browser UI sessions opened from private LAN Vite origins on ports 5173 or
   5174 can read the API without the previous local-only CORS failure.
 - Version metadata across the collector, server, schema, and web app is now
-  `0.14.2`.
+  `0.14.3`.
 
 ## v0.11.0 Highlights
 

@@ -2,7 +2,7 @@
 
 <p align="center">
   <img alt="CI" src="https://github.com/chquandogong/Quipu/actions/workflows/ci.yml/badge.svg">
-  <img alt="Version" src="https://img.shields.io/badge/version-v0.14.2-2f6f7e">
+  <img alt="Version" src="https://img.shields.io/badge/version-v0.14.3-2f6f7e">
   <img alt="Status" src="https://img.shields.io/badge/status-local--first%20workstation%20health-5b6b73">
   <img alt="License" src="https://img.shields.io/badge/license-not%20selected-lightgrey">
 </p>
@@ -35,8 +35,11 @@ procfs를 읽고, Windows에서는 PowerShell/CIM/netsh/Get-NetAdapter가 노출
 Detect -> Triage -> Investigate -> Hypothesize -> Act -> Verify -> Report
 ```
 
-## v0.14.2 핵심
+## v0.14.3 핵심
 
+- Windows에서 LibreHardwareMonitor GUI가 이미 실행 중이어도 collector가 direct
+  DLL probe를 건너뛰지 않고, 실행 중인 프로세스/Program Files/WinGet 경로에서
+  `LibreHardwareMonitorLib.dll`을 찾아 CPU core 온도와 load를 읽습니다.
 - Windows LibreHardwareMonitor/OpenHardwareMonitor가 노출하는 CPU
   P-core/E-core/LP-E core 온도와 core별 load percent를 수집하고, 화면에서는
   `CPU Cores`와 `CPU Core Load`로 Windows 방식에 맞게 표시합니다.

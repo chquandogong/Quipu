@@ -405,11 +405,20 @@ def test_collect_observation_reads_windows_wmi_wifi_signal_and_monitor_temperatu
             return None
         if "root/LibreHardwareMonitor" in script and "SensorType -eq 'Fan'" in script:
             return None
+        if "root/LibreHardwareMonitor" in script and "SensorType -eq 'Load'" in script:
+            return (
+                "["
+                '{"Name":"CPU Total","Parent":"Intel Core i5-1340P","Value":32.0},'
+                '{"Name":"P-Core #1","Parent":"Intel Core i5-1340P","Value":41.5},'
+                '{"Name":"E-Core #2","Parent":"Intel Core i5-1340P","Value":18.0}'
+                "]"
+            )
         if "root/LibreHardwareMonitor" in script and "SensorType -eq 'Temperature'" in script:
             return (
                 "["
                 '{"Name":"CPU Package","Parent":"Intel Core i5-1340P","Value":58.5},'
-                '{"Name":"CPU Core #1","Parent":"Intel Core i5-1340P","Value":55.0},'
+                '{"Name":"P-Core #1","Parent":"Intel Core i5-1340P","Value":55.0},'
+                '{"Name":"E-Core #2","Parent":"Intel Core i5-1340P","Value":49.0},'
                 '{"Name":"Temperature","Parent":"Samsung SSD 980 PRO 1TB","Value":42.0}'
                 "]"
             )
@@ -430,7 +439,11 @@ def test_collect_observation_reads_windows_wmi_wifi_signal_and_monitor_temperatu
     assert metrics["wifi.intel_r_wi_fi_6e.signal_dbm"]["value"] == -52.0
     assert metrics["wifi.link_bitrate_mbps"]["value"] == 961.0
     assert metrics["cpu.package_temp_c"]["value"] == 58.5
-    assert metrics["cpu.core_1.temp_c"]["value"] == 55.0
+    assert metrics["cpu.p_core_1.temp_c"]["value"] == 55.0
+    assert metrics["cpu.e_core_2.temp_c"]["value"] == 49.0
+    assert metrics["cpu.load_percent"]["value"] == 32.0
+    assert metrics["cpu.p_core_1.load_percent"]["value"] == 41.5
+    assert metrics["cpu.e_core_2.load_percent"]["value"] == 18.0
     assert metrics["nvme.temp_c"]["value"] == 42.0
     assert metrics["nvme.samsung_ssd_980_pro_1tb_temperature.temp_c"]["value"] == 42.0
 
@@ -612,6 +625,14 @@ def test_windows_hardware_monitor_library_maps_temperature_and_fan_sensors() -> 
             '"SensorType":"Temperature","Value":62.5,"Identifier":"/intelcpu/0/temperature/14"},'
             '{"Hardware":"Intel Core i5","HardwareType":"Cpu","Name":"P-Core #1",'
             '"SensorType":"Temperature","Value":58.0,"Identifier":"/intelcpu/0/temperature/2"},'
+            '{"Hardware":"Intel Core i5","HardwareType":"Cpu","Name":"E-Core #2",'
+            '"SensorType":"Temperature","Value":52.0,"Identifier":"/intelcpu/0/temperature/8"},'
+            '{"Hardware":"Intel Core i5","HardwareType":"Cpu","Name":"CPU Total",'
+            '"SensorType":"Load","Value":27.0,"Identifier":"/intelcpu/0/load/0"},'
+            '{"Hardware":"Intel Core i5","HardwareType":"Cpu","Name":"P-Core #1",'
+            '"SensorType":"Load","Value":35.0,"Identifier":"/intelcpu/0/load/2"},'
+            '{"Hardware":"Intel Core i5","HardwareType":"Cpu","Name":"E-Core #2",'
+            '"SensorType":"Load","Value":12.0,"Identifier":"/intelcpu/0/load/8"},'
             '{"Hardware":"Samsung SSD","HardwareType":"Storage","Name":"Temperature",'
             '"SensorType":"Temperature","Value":44.0,"Identifier":"/nvme/0/temperature/0"},'
             '{"Hardware":"Embedded Controller","HardwareType":"Motherboard","Name":"CPU Fan",'
@@ -628,6 +649,10 @@ def test_windows_hardware_monitor_library_maps_temperature_and_fan_sensors() -> 
 
     assert metrics["cpu.package_temp_c"]["value"] == 62.5
     assert metrics["cpu.p_core_1.temp_c"]["value"] == 58.0
+    assert metrics["cpu.e_core_2.temp_c"]["value"] == 52.0
+    assert metrics["cpu.load_percent"]["value"] == 27.0
+    assert metrics["cpu.p_core_1.load_percent"]["value"] == 35.0
+    assert metrics["cpu.e_core_2.load_percent"]["value"] == 12.0
     assert metrics["nvme.temp_c"]["value"] == 44.0
     assert metrics["nvme.samsung_ssd_temperature.temp_c"]["value"] == 44.0
     assert metrics["fan.rpm"]["value"] == 2350.0

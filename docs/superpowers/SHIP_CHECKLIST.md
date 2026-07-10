@@ -1,9 +1,9 @@
 # Quipu Ship Checklist
 
-> Status: v0.13.4 patch release checklist for Windows native telemetry fallback collection
-> Date: 2026-07-09
+> Status: v0.14.2 patch release checklist for Windows hardware-monitor CPU telemetry
+> Date: 2026-07-10
 > Owner: chquan
-> Release: v0.13.4
+> Release: v0.14.2
 
 ## Scope
 
@@ -97,6 +97,13 @@ Included:
 - Windows native temperature probe fallback through `Win32_TemperatureProbe`.
 - Windows native fan/tachometer fallback through `Win32_Fan` and
   `Win32_Tachometer`.
+- Windows LibreHardwareMonitor/OpenHardwareMonitor CPU P-core/E-core/LP-E core
+  temperature mapping.
+- Windows LibreHardwareMonitor/OpenHardwareMonitor total and per-core CPU load
+  percentage collection.
+- Windows-specific CPU Cores and CPU Core Load UI rows that avoid Linux-only
+  placeholders when Windows does not report load average or CPU package.
+- UI fallback for garbled localized Windows Event Log summaries.
 - Private LAN CORS allowance for Vite UI origins on ports `5173` and `5174`.
 - Preservation of existing `display_name` and `cpu_model` when later batches
   omit optional metadata.
@@ -114,18 +121,18 @@ Excluded:
 
 ## Tests
 
-- Server tests: `.venv/bin/python -m pytest` -> 37 passed, 1 Starlette deprecation warning.
-- Collector tests: `.venv/bin/python -m pytest` -> 25 passed.
+- Server tests: `.venv/bin/python -m pytest` -> 38 passed, 1 Starlette deprecation warning.
+- Collector tests: `.venv/bin/python -m pytest` -> 28 passed.
 - Web tests: `npm test -- --run` -> 3 passed.
 - Web build: `npm run build` -> succeeded.
 - Whitespace check: `git diff --check` -> passed.
-- Browser DOM smoke check: `Version v0.13.4`, `Devices`, `Device Issues`,
+- Browser DOM smoke check: `Version v0.14.2`, `Devices`, `Device Issues`,
   `우분투 · chquan-17ZD90SP-GX56K`, `윈도우 · DOGU_CHQUAN`, and `Telemetry Matrix`
   rendered from the LAN UI without `Failed to fetch`.
 
 Evidence source:
 
-- Latest verified local commit before release prep: v0.13.4 patch release candidate.
+- Latest verified local commit before release prep: v0.14.2 patch release candidate.
 
 ## Risks
 
@@ -145,7 +152,7 @@ Known risks:
 - Enrollment tokens are stored as hashes, but role-aware admin auth is still a
   future hardening item.
 - Current analysis is deterministic and intentionally conservative.
-- Windows telemetry coverage depends on the Windows task running the v0.13.4
+- Windows telemetry coverage depends on the Windows task running the v0.14.2
   collector package. The current observed Windows device is visible, but an
   older task may keep sending only smoke-level telemetry until the release is
   installed and the task is restarted on that machine.
@@ -176,7 +183,7 @@ Unapproved risks:
 Rollback method:
 
 - Delete or supersede the private GitHub release if the release note is wrong.
-- Move forward with a patch tag such as `v0.13.5` for code or documentation fixes.
+- Move forward with a patch tag such as `v0.14.3` for code or documentation fixes.
 - Avoid force-push and history rewrite.
 
 Rollback owner:
@@ -201,18 +208,19 @@ Check after release:
 
 ## Documents
 
-- README: updated for device-first UI, Windows best-effort telemetry, LAN UI
-  access, and rollout guidance.
-- User manual: includes Windows collector verification and updated screen guide.
-- Dashboard: current v0.13.4 patch release state recorded.
+- README: updated for device-first UI, Windows best-effort telemetry, Windows
+  hardware-monitor CPU load display, LAN UI access, and rollout guidance.
+- User manual: includes Windows collector verification, hardware-monitor CPU
+  metric names, and updated screen guide.
+- Dashboard: current v0.14.2 patch release state recorded.
 - Roadmap: device-first, Windows telemetry, and connected-laptop rollout tracks
   recorded.
-- Changelog: `v0.13.4` prepared.
+- Changelog: `v0.14.2` prepared.
 - Security policy: present.
 
 ## Final Judgment
 
-GitHub release is ready for `v0.13.4` after the local test/build/browser checks
+GitHub release is ready for `v0.14.2` after the local test/build/browser checks
 pass. Windows full telemetry display on the currently connected laptop requires
 deploying this release to that laptop and restarting its scheduled task.
 

@@ -2,7 +2,7 @@
 
 <p align="center">
   <img alt="CI" src="https://github.com/chquandogong/Quipu/actions/workflows/ci.yml/badge.svg">
-  <img alt="Version" src="https://img.shields.io/badge/version-v0.14.1-2f6f7e">
+  <img alt="Version" src="https://img.shields.io/badge/version-v0.14.2-2f6f7e">
   <img alt="Status" src="https://img.shields.io/badge/status-local--first%20workstation%20health-5b6b73">
   <img alt="License" src="https://img.shields.io/badge/license-not%20selected-lightgrey">
 </p>
@@ -35,8 +35,16 @@ Detect -> Triage -> Investigate -> Hypothesize -> Act -> Verify -> Report
 The product is not a remote repair tool. The collector is read-only and the
 server uses deterministic rule-based analysis.
 
-## v0.14.1 Highlights
+## v0.14.2 Highlights
 
+- Windows LibreHardwareMonitor/OpenHardwareMonitor CPU P-core/E-core/LP-E core
+  temperatures and per-core load percentages are collected and displayed as
+  Windows-specific `CPU Cores` and `CPU Core Load` rows.
+- Windows detail views now show the metrics the Windows collector actually
+  reports instead of forcing Linux-only load-average or CPU-package rows when
+  those signals are absent.
+- Garbled localized Windows Event Log text is hidden in the UI and replaced
+  with readable category/source-oriented fallback copy.
 - Cross-platform `smartctl --json` discovery reports aggregate and per-device
   NVMe temperature, SMART pass/fail, critical warning, spare, lifetime usage,
   media errors, power-on hours, unsafe shutdowns, and error-log entries.
@@ -89,7 +97,7 @@ server uses deterministic rule-based analysis.
 - Browser UI sessions opened from private LAN Vite origins on ports 5173 or
   5174 can read the API without the previous local-only CORS failure.
 - Version metadata across the collector, server, schema, and web app is now
-  `0.14.1`.
+  `0.14.2`.
 
 ## v0.11.0 Highlights
 

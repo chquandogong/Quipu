@@ -2,7 +2,7 @@
 
 <p align="center">
   <img alt="CI" src="https://github.com/chquandogong/Quipu/actions/workflows/ci.yml/badge.svg">
-  <img alt="Version" src="https://img.shields.io/badge/version-v0.14.1-2f6f7e">
+  <img alt="Version" src="https://img.shields.io/badge/version-v0.14.2-2f6f7e">
   <img alt="Status" src="https://img.shields.io/badge/status-local--first%20workstation%20health-5b6b73">
   <img alt="License" src="https://img.shields.io/badge/license-not%20selected-lightgrey">
 </p>
@@ -35,8 +35,15 @@ procfs를 읽고, Windows에서는 PowerShell/CIM/netsh/Get-NetAdapter가 노출
 Detect -> Triage -> Investigate -> Hypothesize -> Act -> Verify -> Report
 ```
 
-## v0.14.1 핵심
+## v0.14.2 핵심
 
+- Windows LibreHardwareMonitor/OpenHardwareMonitor가 노출하는 CPU
+  P-core/E-core/LP-E core 온도와 core별 load percent를 수집하고, 화면에서는
+  `CPU Cores`와 `CPU Core Load`로 Windows 방식에 맞게 표시합니다.
+- Windows 화면은 실제로 들어온 Windows metric을 우선 표시합니다. Linux 전용
+  load average나 CPU package 값이 없을 때 억지로 표시하지 않습니다.
+- 깨진 문자로 들어오는 Windows Event Log 설명은 UI에서 숨기고, category/source
+  중심의 읽을 수 있는 문구로 대체합니다.
 - Windows와 Linux에서 `smartctl --json`을 자동 탐지해 NVMe별 온도, SMART
   통과 여부, critical warning, available spare, 수명 사용률, media error,
   power-on hours, unsafe shutdown, error-log count를 수집합니다.

@@ -384,8 +384,13 @@ def _is_windows_runtime(root: Path) -> bool:
 
 
 def _powershell_json(script: str, command_runner: CommandRunner | None) -> Any:
+    utf8_script = (
+        "$OutputEncoding = New-Object System.Text.UTF8Encoding $false;"
+        "[Console]::OutputEncoding = $OutputEncoding;"
+        f"{script}"
+    )
     output = _run_observation_command(
-        ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", script],
+        ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", utf8_script],
         command_runner,
         timeout=15.0,
     )
@@ -1809,6 +1814,26 @@ def _windows_temperature_probe_metrics(
     return list(metrics_by_name.values())
 
 
+def _windows_cpu_core_sensor_metric_name(sensor_name: str, suffix: str) -> str | None:
+    lower_name = sensor_name.lower()
+    hybrid_match = re.search(r"\b(lp[-\s]?e|p|e)[-\s]?core\s*#?\s*(\d+)\b", lower_name)
+    if hybrid_match:
+        raw_group = hybrid_match.group(1).replace("-", "").replace(" ", "")
+        group = "lp_e" if raw_group == "lpe" else raw_group
+        return f"cpu.{group}_core_{hybrid_match.group(2)}.{suffix}"
+    core_match = re.search(r"\b(?:cpu\s+)?core\s*#?\s*(\d+)\b", lower_name)
+    if core_match:
+        return f"cpu.core_{core_match.group(1)}.{suffix}"
+    return None
+
+
+def _windows_cpu_load_metric_name(sensor_name: str) -> str | None:
+    lower_name = sensor_name.lower()
+    if any(token in lower_name for token in ("total", "package", "cpu total")):
+        return "cpu.load_percent"
+    return _windows_cpu_core_sensor_metric_name(sensor_name, "load_percent")
+
+
 def _windows_hardware_monitor_temperature_metrics(
     observed_at: str,
     command_runner: CommandRunner | None,
@@ -1836,9 +1861,9 @@ def _windows_hardware_monitor_temperature_metrics(
             if "cpu" in normalized_label and any(token in normalized_label for token in ("package", "tctl", "tdie")):
                 metric_name = "cpu.package_temp_c"
             else:
-                core_match = re.search(r"\bcore\s*#?\s*(\d+)\b", normalized_label)
-                if "cpu" in normalized_label and core_match:
-                    metric_name = f"cpu.core_{core_match.group(1)}.temp_c"
+                cpu_core_metric = _windows_cpu_core_sensor_metric_name(name, "temp_c")
+                if ("cpu" in normalized_label or "core" in normalized_label) and cpu_core_metric:
+                    metric_name = cpu_core_metric
                 elif any(token in normalized_label for token in ("nvme", "ssd", "disk")):
                     device_name = _safe_metric_part(label or name)
                     metric_name = f"nvme.{device_name}.temp_c"
@@ -1850,6 +1875,42 @@ def _windows_hardware_monitor_temperature_metrics(
             metrics_by_name.setdefault(metric_name, _metric(metric_name, celsius, "celsius", observed_at))
         if metrics_by_name:
             break
+    return list(metrics_by_name.values())
+
+
+def _windows_hardware_monitor_load_metrics(
+    observed_at: str,
+    command_runner: CommandRunner | None,
+) -> list[dict[str, Any]]:
+    namespaces = ("root/LibreHardwareMonitor", "root/OpenHardwareMonitor")
+    metrics_by_name: dict[str, dict[str, Any]] = {}
+    core_loads: list[float] = []
+    for namespace in namespaces:
+        payload = _powershell_json(
+            f"Get-CimInstance -Namespace {namespace} -ClassName Sensor -ErrorAction SilentlyContinue | "
+            "Where-Object {$_.SensorType -eq 'Load'} | "
+            "Select-Object Name,Parent,Value | ConvertTo-Json -Compress",
+            command_runner,
+        )
+        for sensor in _json_items(payload):
+            value = _coerce_metric_number(sensor.get("Value"))
+            if value is None or not 0 <= value <= 100:
+                continue
+            label = " ".join(str(sensor.get(key) or "") for key in ("Parent", "Name")).strip()
+            normalized_label = label.lower()
+            name = str(sensor.get("Name") or "")
+            if not any(token in normalized_label for token in ("cpu", "intel", "amd", "core")):
+                continue
+            metric_name = _windows_cpu_load_metric_name(name)
+            if metric_name is None:
+                continue
+            if metric_name != "cpu.load_percent":
+                core_loads.append(value)
+            metrics_by_name.setdefault(metric_name, _metric(metric_name, value, "percent", observed_at))
+        if metrics_by_name:
+            break
+    if "cpu.load_percent" not in metrics_by_name and core_loads:
+        metrics_by_name["cpu.load_percent"] = _metric("cpu.load_percent", max(core_loads), "percent", observed_at)
     return list(metrics_by_name.values())
 
 
@@ -1949,7 +2010,7 @@ def _windows_hardware_monitor_library_metrics(
         "};"
         "function Read-Hardware($hardware) {"
         "foreach ($sensor in $hardware.Sensors) {"
-        "if ($sensor.SensorType -in @('Temperature','Fan') -and $null -ne $sensor.Value) {"
+        "if ($sensor.SensorType -in @('Temperature','Fan','Load') -and $null -ne $sensor.Value) {"
         "[pscustomobject]@{Hardware=$hardware.Name;HardwareType=[string]$hardware.HardwareType;"
         "Name=$sensor.Name;SensorType=[string]$sensor.SensorType;Value=[double]$sensor.Value;"
         "Identifier=[string]$sensor.Identifier}"
@@ -1968,6 +2029,7 @@ def _windows_hardware_monitor_library_metrics(
     metrics_by_name: dict[str, dict[str, Any]] = {}
     nvme_temperatures: list[float] = []
     fan_values: list[float] = []
+    core_loads: list[float] = []
     for index, sensor in enumerate(_json_items(payload)):
         value = _coerce_metric_number(sensor.get("Value"))
         if value is None:
@@ -1986,6 +2048,17 @@ def _windows_hardware_monitor_library_metrics(
             metric_name = f"fan.{_safe_metric_part(label)}.rpm"
             metrics_by_name.setdefault(metric_name, _metric(metric_name, value, "rpm", observed_at))
             continue
+        if sensor_type == "load":
+            if not 0 <= value <= 100:
+                continue
+            if hardware_type == "cpu" or any(token in normalized_label for token in ("cpu", "intel", "amd", "core")):
+                metric_name = _windows_cpu_load_metric_name(name)
+                if metric_name is None:
+                    continue
+                if metric_name != "cpu.load_percent":
+                    core_loads.append(value)
+                metrics_by_name.setdefault(metric_name, _metric(metric_name, value, "percent", observed_at))
+            continue
         if sensor_type != "temperature" or not 0 < value < 150:
             continue
 
@@ -1994,12 +2067,9 @@ def _windows_hardware_monitor_library_metrics(
             if "package" in lower_name:
                 metric_name = "cpu.package_temp_c"
             else:
-                hybrid_match = re.search(r"\b([pe])-core\s*#?\s*(\d+)\b", lower_name)
-                core_match = re.search(r"\bcpu\s+core\s*#?\s*(\d+)\b", lower_name)
-                if hybrid_match:
-                    metric_name = f"cpu.{hybrid_match.group(1)}_core_{hybrid_match.group(2)}.temp_c"
-                elif core_match:
-                    metric_name = f"cpu.core_{core_match.group(1)}.temp_c"
+                cpu_core_metric = _windows_cpu_core_sensor_metric_name(name, "temp_c")
+                if cpu_core_metric:
+                    metric_name = cpu_core_metric
                 else:
                     metric_name = f"thermal.windows_{_safe_metric_part(label)}.temp_c"
         elif hardware_type == "storage" or any(
@@ -2017,6 +2087,8 @@ def _windows_hardware_monitor_library_metrics(
         )
     if fan_values:
         metrics_by_name["fan.rpm"] = _metric("fan.rpm", max(fan_values), "rpm", observed_at)
+    if "cpu.load_percent" not in metrics_by_name and core_loads:
+        metrics_by_name["cpu.load_percent"] = _metric("cpu.load_percent", max(core_loads), "percent", observed_at)
     return list(metrics_by_name.values())
 
 
@@ -2030,6 +2102,7 @@ def _windows_metrics(observed_at: str, command_runner: CommandRunner | None) -> 
     metrics.extend(_windows_wifi_metrics(observed_at, command_runner))
     metrics.extend(_windows_nvme_metrics(observed_at, command_runner))
     metrics.extend(_windows_thermal_metrics(observed_at, command_runner))
+    metrics.extend(_windows_hardware_monitor_load_metrics(observed_at, command_runner))
     metrics.extend(_windows_native_fan_metrics(observed_at, command_runner))
     metrics.extend(_windows_hardware_monitor_fan_metrics(observed_at, command_runner))
     metrics.extend(_windows_hardware_monitor_library_metrics(observed_at, command_runner))

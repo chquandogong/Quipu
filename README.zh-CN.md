@@ -2,7 +2,7 @@
 
 <p align="center">
   <img alt="CI" src="https://github.com/chquandogong/Quipu/actions/workflows/ci.yml/badge.svg">
-  <img alt="Version" src="https://img.shields.io/badge/version-v0.14.1-2f6f7e">
+  <img alt="Version" src="https://img.shields.io/badge/version-v0.14.2-2f6f7e">
   <img alt="Status" src="https://img.shields.io/badge/status-local--first%20workstation%20health-5b6b73">
   <img alt="License" src="https://img.shields.io/badge/license-not%20selected-lightgrey">
 </p>
@@ -33,8 +33,15 @@ Detect -> Triage -> Investigate -> Hypothesize -> Act -> Verify -> Report
 
 Quipu 不是远程修复工具。collector 是只读的，server 使用确定性的规则分析。
 
-## v0.14.1 重点
+## v0.14.2 重点
 
+- Windows LibreHardwareMonitor/OpenHardwareMonitor 暴露的 CPU P-core/E-core/LP-E
+  core 温度和每 core load percent 现在会被收集，并在 UI 中按 Windows 语义显示为
+  `CPU Cores` 和 `CPU Core Load`。
+- Windows 详情页优先显示 Windows collector 实际上报的 metric；缺少 Linux 专用
+  load average 或 CPU package 时，不再强制显示空行。
+- 对于乱码的本地化 Windows Event Log 文本，UI 会隐藏原始乱码，并用可读的
+  category/source fallback 文案替代。
 - Windows 和 Linux 会自动发现 `smartctl --json`，上报汇总和每设备 NVMe
   温度、SMART 通过状态、critical warning、spare、寿命使用率、media error、
   power-on hours、unsafe shutdown 和 error-log 数量。

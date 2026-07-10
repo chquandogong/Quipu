@@ -2,6 +2,38 @@
 
 All notable changes to Quipu are documented in this file.
 
+## v0.14.2 - 2026-07-10
+
+Windows LibreHardwareMonitor CPU core telemetry display patch.
+
+### Added
+
+- Windows LibreHardwareMonitor/OpenHardwareMonitor `Load` sensor collection for
+  total CPU load and per-core CPU load, mapped to `cpu.load_percent`,
+  `cpu.p_core_<n>.load_percent`, `cpu.e_core_<n>.load_percent`, and
+  `cpu.lp_e_core_<n>.load_percent`.
+- Windows CPU P-core, E-core, and LP-E core temperature mapping from hardware
+  monitor labels such as `P-Core #1`, `E-Core #2`, and `LP E-Core #1`.
+- Windows UI breakdown rows for CPU core temperatures and CPU core load using
+  P/E/LP-E grouping when the collector reports those sensors.
+
+### Changed
+
+- Windows detail views now prefer the metrics actually reported by Windows
+  collectors instead of forcing Linux-style CPU package and load-average rows
+  when those signals are absent.
+- Localized Windows Event Log text that arrives garbled is hidden from the UI
+  and replaced with a short readable fallback while preserving the event
+  category and source.
+- Updated package, app, API, schema, and UI versions to `0.14.2`.
+
+### Verified
+
+- Server test suite: 38 tests passed, 1 Starlette deprecation warning.
+- Collector test suite: 28 tests passed.
+- Web test suite: 3 tests passed; production build succeeded.
+- Whitespace check passed.
+
 ## v0.14.1 - 2026-07-10
 
 Windows thermal-zone fallback patch.

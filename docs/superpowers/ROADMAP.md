@@ -128,11 +128,16 @@ Implemented:
   temperature, hardware-monitor fan RPM, and Windows Event Log classification.
 - Windows native fallback patch for NVMe R/W bytes/sec from performance
   counters, Win32 temperature probes, and Win32 fan/tachometer readings.
+- Windows LibreHardwareMonitor/OpenHardwareMonitor CPU P-core/E-core/LP-E
+  temperature and per-core load percentage collection.
+- Windows-specific CPU Cores and CPU Core Load display that uses the metrics
+  actually reported by Windows instead of Linux-only placeholders.
+- UI fallback that hides garbled localized Windows Event Log summaries.
 - Private LAN UI/API access from Vite origins on ports 5173 and 5174.
 
 Remaining:
 
-- Install v0.13.4 on the currently connected Windows laptop and restart the
+- Install v0.14.2 on the currently connected Windows laptop and restart the
   scheduled task so partial Windows telemetry is replaced by the patched metric
   set.
 - Additional CPU/core/package thermal label variants if real hardware exposes

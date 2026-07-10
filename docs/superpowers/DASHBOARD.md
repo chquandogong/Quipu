@@ -1,7 +1,7 @@
 # Quipu Project Dashboard
 
-> Status: v0.13.4 patch release track for Windows native telemetry fallback collection
-> Date: 2026-07-09
+> Status: v0.14.2 patch release track for Windows hardware-monitor CPU telemetry
+> Date: 2026-07-10
 > Owner: chquan
 
 ## Current Decision
@@ -81,7 +81,9 @@ The second valuable question is:
 | Done | Windows missing telemetry patch | Storage Reliability Counter NVMe temperature, hardware-monitor fan RPM, and Windows Event Log classification |
 | Done | Windows native fallback patch | NVMe R/W bytes/sec from performance counters plus Win32 temperature probe and fan/tachometer fallbacks |
 | Done | Private LAN UI/API access | Vite UI origins on private LAN ports 5173/5174 can read the API without CORS failure |
-| In progress | Windows collector rollout on connected laptop | `윈도우 · DOGU_CHQUAN` is visible and healthy; install v0.13.4 and restart its scheduled task to pick up the Windows native fallback patch |
+| Done | Windows hardware-monitor CPU load display | LibreHardwareMonitor/OpenHardwareMonitor P/E/LP-E core temperatures and core load percentages are collected and shown in Windows-specific rows |
+| Done | Windows Event Log text cleanup | Garbled localized Event Log summaries are hidden behind readable category/source fallback text |
+| In progress | Windows collector rollout on connected laptop | `윈도우 · DOGU_CHQUAN` is visible and healthy; install v0.14.2 and restart its scheduled task to pick up the Windows hardware-monitor CPU telemetry patch |
 | Approved | Private remote push and release | User requested commit, tag, push, and release on 2026-07-07 |
 | Approved | Public repository visibility after audit | User approved public visibility on 2026-07-07 |
 
@@ -102,6 +104,6 @@ destructive git operations, and any remote repair capability remain gated.
 Public repository visibility is allowed only after a final sensitive-content
 audit passes.
 
-The v0.13.4 patch release is allowed after local test/build/browser verification.
+The v0.14.2 patch release is allowed after local test/build/browser verification.
 Full Windows telemetry for the currently connected laptop is a rollout task:
 install this release on that machine and restart the scheduled task.

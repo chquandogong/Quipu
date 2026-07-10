@@ -104,17 +104,62 @@ const fleetResponse = {
         'cpu.logical_threads': { value: 16, unit: 'count', observed_at: '2026-07-07T03:00:00+00:00' },
         'cpu.performance_cores': { value: 4, unit: 'count', observed_at: '2026-07-07T03:00:00+00:00' },
         'cpu.efficient_cores': { value: 8, unit: 'count', observed_at: '2026-07-07T03:00:00+00:00' },
+        'cpu.p_core_1.temp_c': { value: 58, unit: 'celsius', observed_at: '2026-07-07T03:00:00+00:00' },
+        'cpu.e_core_2.temp_c': { value: 49, unit: 'celsius', observed_at: '2026-07-07T03:00:00+00:00' },
+        'cpu.load_percent': { value: 32, unit: 'percent', observed_at: '2026-07-07T03:00:00+00:00' },
+        'cpu.p_core_1.load_percent': { value: 41.5, unit: 'percent', observed_at: '2026-07-07T03:00:00+00:00' },
+        'cpu.e_core_2.load_percent': { value: 18, unit: 'percent', observed_at: '2026-07-07T03:00:00+00:00' },
         'memory.used_percent': { value: 83.32, unit: 'percent', observed_at: '2026-07-07T03:00:00+00:00' },
         'disk.root_used_percent': { value: 0.99, unit: 'percent', observed_at: '2026-07-07T03:00:00+00:00' },
         'battery.capacity_percent': { value: 100, unit: 'percent', observed_at: '2026-07-07T03:00:00+00:00' },
         'battery.ac_online': { value: 1, unit: 'boolean', observed_at: '2026-07-07T03:00:00+00:00' },
+        'wifi.signal_dbm': { value: -52.5, unit: 'dbm', observed_at: '2026-07-07T03:00:00+00:00' },
+        'wifi.rx_bitrate_mbps': { value: 1201, unit: 'mbps', observed_at: '2026-07-07T03:00:00+00:00' },
+        'wifi.tx_bitrate_mbps': { value: 1201, unit: 'mbps', observed_at: '2026-07-07T03:00:00+00:00' },
         'wifi.link_bitrate_mbps': { value: 961, unit: 'mbps', observed_at: '2026-07-07T03:00:00+00:00' },
+        'wifi.wifi0.signal_dbm': { value: -52.5, unit: 'dbm', observed_at: '2026-07-07T03:00:00+00:00' },
+        'wifi.wifi0.rx_bitrate_mbps': { value: 1201, unit: 'mbps', observed_at: '2026-07-07T03:00:00+00:00' },
+        'wifi.wifi0.tx_bitrate_mbps': { value: 1201, unit: 'mbps', observed_at: '2026-07-07T03:00:00+00:00' },
         'wifi.wi_fi.link_bitrate_mbps': { value: 961, unit: 'mbps', observed_at: '2026-07-07T03:00:00+00:00' },
+        'thermal.windows_zone_tz_tz00.temp_c': { value: 32.05, unit: 'celsius', observed_at: '2026-07-07T03:00:00+00:00' },
         'nvme.capacity_bytes': { value: 1256265400320, unit: 'bytes', observed_at: '2026-07-07T03:00:00+00:00' },
         'nvme.hfs256gej9x101n.capacity_bytes': { value: 256060514304, unit: 'bytes', observed_at: '2026-07-07T03:00:00+00:00' },
         'nvme.samsung_ssd_980_pro_1tb.capacity_bytes': { value: 1000204886016, unit: 'bytes', observed_at: '2026-07-07T03:00:00+00:00' },
+        'nvme.temp_c': { value: 55, unit: 'celsius', observed_at: '2026-07-07T03:00:00+00:00' },
+        'nvme.hfs256gej9x101n.temp_c': { value: 55, unit: 'celsius', observed_at: '2026-07-07T03:00:00+00:00' },
+        'nvme.samsung_ssd_980_pro_1tb.temp_c': { value: 45, unit: 'celsius', observed_at: '2026-07-07T03:00:00+00:00' },
+        'nvme.read_bytes_per_sec': { value: 0, unit: 'bytes_per_sec', observed_at: '2026-07-07T03:00:00+00:00' },
+        'nvme.write_bytes_per_sec': { value: 0, unit: 'bytes_per_sec', observed_at: '2026-07-07T03:00:00+00:00' },
+        'nvme.hfs256gej9x101n.read_bytes_per_sec': { value: 0, unit: 'bytes_per_sec', observed_at: '2026-07-07T03:00:00+00:00' },
+        'nvme.hfs256gej9x101n.write_bytes_per_sec': { value: 0, unit: 'bytes_per_sec', observed_at: '2026-07-07T03:00:00+00:00' },
+        'nvme.samsung_ssd_980_pro_1tb.read_bytes_per_sec': { value: 0, unit: 'bytes_per_sec', observed_at: '2026-07-07T03:00:00+00:00' },
+        'nvme.samsung_ssd_980_pro_1tb.write_bytes_per_sec': { value: 0, unit: 'bytes_per_sec', observed_at: '2026-07-07T03:00:00+00:00' },
+        'nvme.smart_passed': { value: 1, unit: 'boolean', observed_at: '2026-07-07T03:00:00+00:00' },
+        'nvme.available_spare_percent': { value: 100, unit: 'percent', observed_at: '2026-07-07T03:00:00+00:00' },
+        'nvme.critical_warning': { value: 0, unit: 'boolean', observed_at: '2026-07-07T03:00:00+00:00' },
+        'nvme.percentage_used_percent': { value: 1, unit: 'percent', observed_at: '2026-07-07T03:00:00+00:00' },
+        'nvme.media_errors': { value: 0, unit: 'count', observed_at: '2026-07-07T03:00:00+00:00' },
       },
-      recent_events: [],
+      recent_events: [
+        {
+          category: 'power',
+          severity: 'warning',
+          source: 'Microsoft-Windows-UserModePowerService',
+          message_summary: 'C:\\Windows\\System32\\WUDFHost.exe ���μ��� ID:4164',
+          raw_ref: 'windows-eventlog:System:12',
+          observed_at: '2026-07-07T02:57:20+00:00',
+          fingerprint: 'windows-corrupt-power',
+        },
+        {
+          category: 'power',
+          severity: 'warning',
+          source: 'Microsoft-Windows-UserModePowerService',
+          message_summary: 'Power policy scheme was reset by WUDFHost.exe.',
+          raw_ref: 'windows-eventlog:System:12',
+          observed_at: '2026-07-07T02:58:20+00:00',
+          fingerprint: 'windows-power',
+        },
+      ],
       risk_level: 'healthy',
       findings: [],
     },
@@ -389,7 +434,7 @@ describe('App', () => {
     const fleetDevices = screen.getByRole('region', { name: 'Devices' });
     expect(within(fleetDevices).getByText('Build laptop · build-xps')).toBeInTheDocument();
     expect(within(fleetDevices).getByText('윈도우 · DOGU_CHQUAN')).toBeInTheDocument();
-    expect(within(fleetDevices).getByText(/13 metrics \/ 0 events/)).toBeInTheDocument();
+    expect(within(fleetDevices).getByText(/\d+ metrics \/ 2 events/)).toBeInTheDocument();
     expect(within(fleetDevices).getByText('Healthy')).toBeInTheDocument();
     expect(container.querySelector('.health-strip')).not.toBeInTheDocument();
     expect(container.querySelector('.metric-strip')).not.toBeInTheDocument();
@@ -399,7 +444,7 @@ describe('App', () => {
     expect(screen.getByText('Project info')).toBeInTheDocument();
     expect(screen.getByText('Made by Dr. 권성호')).toBeInTheDocument();
     expect(screen.getByText('About: workstation health investigation')).toBeInTheDocument();
-    expect(screen.getByText('Version v0.14.1')).toBeInTheDocument();
+    expect(screen.getByText('Version v0.14.2')).toBeInTheDocument();
     expect(screen.queryByText('Detect - triage - verify with evidence')).not.toBeInTheDocument();
     expect(screen.getAllByText('Build laptop · build-xps').length).toBeGreaterThan(0);
     const selectedCaseStatus = screen.getByLabelText('Selected case status');
@@ -450,7 +495,7 @@ describe('App', () => {
     expect(screen.getByText('정의: 무선 연결의 수신 신호 강도입니다. (Wi-Fi signal strength, dBm)')).toBeInTheDocument();
     expect(screen.getByRole('region', { name: 'Telemetry coverage matrix' })).toBeInTheDocument();
     const telemetryMatrix = screen.getByRole('region', { name: 'Telemetry coverage matrix' });
-    expect(within(telemetryMatrix).getByText('14/14 observed')).toBeInTheDocument();
+    expect(within(telemetryMatrix).getByText('15/15 observed')).toBeInTheDocument();
     expect(within(telemetryMatrix).getByText('관측된 범주 수입니다. 위험 점수가 아니라, 조사에 필요한 자료가 얼마나 들어왔는지 보여줍니다.')).toBeInTheDocument();
     expect(within(telemetryMatrix).getByText('Missing: none')).toBeInTheDocument();
     expect(screen.getAllByText('Wi-Fi Signal').length).toBeGreaterThan(0);
@@ -534,6 +579,20 @@ describe('App', () => {
     expect(screen.getAllByText(/961 Mbps/).length).toBeGreaterThan(0);
     expect(screen.getAllByText('1.14 TB').length).toBeGreaterThan(0);
     expect(screen.getAllByText('1.0%').length).toBeGreaterThan(0);
+    expect(screen.getByRole('button', { name: 'Explain Windows thermal zone temperature metric' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Explain Windows CPU core temperatures metric' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Explain Windows CPU core load metric' })).toBeInTheDocument();
+    expect(screen.getByLabelText('CPU P core 1 temperature: 58.0C')).toHaveClass('breakdown-nominal');
+    expect(screen.getByLabelText('CPU E core 2 temperature: 49.0C')).toHaveClass('breakdown-nominal');
+    expect(screen.getByLabelText('CPU P core 1 load: 41.5%')).toHaveClass('breakdown-nominal');
+    expect(screen.getByLabelText('CPU E core 2 load: 18.0%')).toHaveClass('breakdown-nominal');
+    expect(screen.getAllByText('32.0C').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('55.0C').length).toBeGreaterThan(0);
+    expect(screen.getByText('Power policy scheme was reset by WUDFHost.exe.')).toBeInTheDocument();
+    expect(screen.getAllByText('Windows event message was hidden because its source text encoding was corrupt.').length).toBeGreaterThan(0);
+    expect(screen.queryByText(/���/)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Explain CPU package temperature metric' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Explain Linux load average windows metric' })).not.toBeInTheDocument();
   }, 10_000);
 
   it('groups Intel Core Ultra 5 125H core sensors by core type', async () => {

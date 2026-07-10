@@ -51,7 +51,7 @@ import type {
 import './styles.css';
 
 const flowStages = ['Detect', 'Triage', 'Investigate', 'Hypothesize', 'Act', 'Verify', 'Report'];
-const appVersion = 'v0.14.1';
+const appVersion = 'v0.14.2';
 
 const riskLabels: Record<RiskLevel, string> = {
   healthy: 'Healthy',
@@ -75,7 +75,7 @@ type MetricDefinition = {
   tone: 'thermal' | 'compute' | 'storage' | 'network';
 };
 
-const keyMetrics: MetricDefinition[] = [
+const baseKeyMetrics: MetricDefinition[] = [
   {
     name: 'cpu.package_temp_c',
     label: 'CPU Package',
@@ -126,6 +126,49 @@ const keyMetrics: MetricDefinition[] = [
   },
 ];
 
+function windowsThermalMetric(metricName: string): MetricDefinition {
+  return {
+    name: metricName,
+    label: 'Windows Thermal',
+    shortLabel: 'Thermal',
+    ariaLabel: 'Windows thermal zone temperature',
+    Icon: Thermometer,
+    definition: 'Windows가 노출한 ACPI thermal zone 온도입니다. CPU package/core 센서와 같은 항목으로 강제 변환하지 않습니다.',
+    window: '가장 최근 Windows collector 샘플입니다.',
+    reading: '장비/펌웨어가 제공하는 zone 값입니다. CPU core 온도와 직접 1:1로 비교하지 않습니다.',
+    nextCheck: '같은 장비의 NVMe 온도, 전원 이벤트, 팬 노출 여부를 함께 봅니다.',
+    tone: 'thermal',
+  };
+}
+
+function windowsCpuTemperatureMetric(): MetricDefinition {
+  return {
+    name: 'cpu.package_temp_c',
+    label: 'CPU Cores',
+    shortLabel: 'CPU',
+    ariaLabel: 'Windows CPU core temperatures',
+    Icon: Thermometer,
+    definition: 'LibreHardwareMonitor/OpenHardwareMonitor가 노출한 Windows CPU P-core/E-core/core 온도입니다.',
+    window: '가장 최근 Windows collector 샘플입니다.',
+    reading: 'P-core/E-core별 값을 그대로 보여줍니다. CPU package 센서가 없으면 core 중 최고 온도를 대표값으로 봅니다.',
+    nextCheck: 'core별 load, thermal zone, NVMe 온도, 팬 RPM 노출 여부를 함께 확인합니다.',
+    tone: 'thermal',
+  };
+}
+
+const windowsCpuLoadMetric: MetricDefinition = {
+  name: 'cpu.load_percent',
+  label: 'CPU Core Load',
+  shortLabel: 'Load',
+  ariaLabel: 'Windows CPU core load',
+  Icon: Cpu,
+  definition: 'LibreHardwareMonitor/OpenHardwareMonitor가 노출한 CPU total/core별 사용률입니다. Linux load average와 다른 percent 값입니다.',
+  window: '가장 최근 Windows collector 샘플입니다.',
+  reading: '값은 percent입니다. 특정 P-core/E-core만 높으면 단일 thread workload 가능성이 큽니다.',
+  nextCheck: '높은 core load와 같은 시각의 core 온도를 같이 봅니다.',
+  tone: 'compute',
+};
+
 type TelemetryTile = {
   id: string;
   category: string;
@@ -138,8 +181,18 @@ type TelemetryTile = {
 
 type CoreTemperature = {
   index: string;
+  key: string;
   sample: MetricSample;
   status: SignalStatus;
+  group?: string;
+};
+
+type CoreLoad = {
+  index: string;
+  key: string;
+  sample: MetricSample;
+  status: SignalStatus;
+  group?: string;
 };
 
 type MetricBreakdownItem = {
@@ -181,12 +234,29 @@ function breakdownSampleValue(metric: MetricSample | undefined): string {
   return metric ? metricSampleValue(metric) : '-';
 }
 
+function cpuTemperatureSamples(detail: InvestigationDetail | null): MetricSample[] {
+  if (!detail) return [];
+  const packageSample = latestMetric(detail, 'cpu.package_temp_c');
+  const coreSamples = cpuCoreBreakdown(detail).map((core) => core.sample);
+  return packageSample ? [packageSample, ...coreSamples] : coreSamples;
+}
+
+function cpuTemperatureValue(detail: InvestigationDetail | null): string {
+  const packageSample = latestMetric(detail, 'cpu.package_temp_c');
+  if (packageSample) return metricSampleValue(packageSample);
+  const samples = cpuTemperatureSamples(detail);
+  if (samples.length === 0) return 'Unavailable';
+  return `Max ${metricSampleValue(samples.reduce((max, sample) => (sample.value > max.value ? sample : max), samples[0]))}`;
+}
+
 function metricValue(detail: InvestigationDetail | null, name: string): string {
+  if (name === 'cpu.package_temp_c') return cpuTemperatureValue(detail);
   return metricSampleValue(latestMetric(detail, name));
 }
 
 function observedTime(detail: InvestigationDetail | null, name: string): string {
-  const observedAt = latestMetric(detail, name)?.observed_at;
+  const observedAt = latestMetric(detail, name)?.observed_at
+    ?? (name === 'cpu.package_temp_c' ? cpuTemperatureSamples(detail)[0]?.observed_at : undefined);
   if (!observedAt) return 'No sample time';
   return new Date(observedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
@@ -224,14 +294,37 @@ function coreTemperatureStatus(sample: MetricSample): SignalStatus {
   return 'nominal';
 }
 
+function coreLoadStatus(sample: MetricSample): SignalStatus {
+  if (sample.value >= 95) return 'critical';
+  if (sample.value >= 85) return 'watch';
+  return 'nominal';
+}
+
+function parseCpuCoreMetric(metricName: string, suffix: 'temp_c' | 'load_percent'): { index: string; group?: string } | null {
+  const match = metricName.match(new RegExp(`^cpu\\.(?:(p|e|lp_e)_)?core_(\\d+)\\.${suffix}$`));
+  if (!match) return null;
+  const group = match[1] === 'p' ? 'P' : match[1] === 'e' ? 'E' : match[1] === 'lp_e' ? 'LP-E' : undefined;
+  return { index: match[2], group };
+}
+
 function cpuCoreBreakdown(detail: InvestigationDetail): CoreTemperature[] {
   return Object.entries(detail.fleet_context.latest_metrics)
     .map(([metricName, sample]) => {
-      const match = metricName.match(/^cpu\.core_(\d+)\.temp_c$/);
-      return match ? { index: match[1], sample, status: coreTemperatureStatus(sample) } : null;
+      const parsed = parseCpuCoreMetric(metricName, 'temp_c');
+      return parsed ? { ...parsed, key: metricName, sample, status: coreTemperatureStatus(sample) } : null;
     })
     .filter((core): core is CoreTemperature => core !== null)
-    .sort((left, right) => compareLabel(left.index, right.index));
+    .sort((left, right) => compareLabel(`${left.group ?? 'Z'}-${left.index}`, `${right.group ?? 'Z'}-${right.index}`));
+}
+
+function cpuLoadBreakdown(detail: InvestigationDetail): CoreLoad[] {
+  return Object.entries(detail.fleet_context.latest_metrics)
+    .map(([metricName, sample]) => {
+      const parsed = parseCpuCoreMetric(metricName, 'load_percent');
+      return parsed ? { ...parsed, key: metricName, sample, status: coreLoadStatus(sample) } : null;
+    })
+    .filter((core): core is CoreLoad => core !== null)
+    .sort((left, right) => compareLabel(`${left.group ?? 'Z'}-${left.index}`, `${right.group ?? 'Z'}-${right.index}`));
 }
 
 function coreTypeGroupsForUltra5_125H(cores: CoreTemperature[]): Map<string, string> {
@@ -258,9 +351,17 @@ function statusForMetricSample(name: string, sample: MetricSample | undefined): 
     if (value >= 78) return 'watch';
   }
   if (/^cpu\.load_(1m|5m|15m)$/.test(name) && value >= 4) return 'watch';
+  if (name === 'cpu.load_percent' || /^cpu\.(?:(?:p|e|lp_e)_)?core_\d+\.load_percent$/.test(name)) {
+    if (value >= 95) return 'critical';
+    if (value >= 85) return 'watch';
+  }
   if (name === 'nvme.temp_c' || /^nvme\.[^.]+\.temp_c$/.test(name)) {
     if (value >= 75) return 'critical';
     if (value >= 60) return 'watch';
+  }
+  if (/^thermal\..*\.temp_c$/.test(name)) {
+    if (value >= 90) return 'critical';
+    if (value >= 78) return 'watch';
   }
   if (name === 'memory.used_percent') {
     if (value >= 95) return 'critical';
@@ -302,6 +403,54 @@ function metricNamesByPattern(latestMetrics: Record<string, MetricSample>, patte
   return Object.keys(latestMetrics)
     .filter((metricName) => pattern.test(metricName))
     .sort(compareLabel);
+}
+
+function isWindowsDetail(detail: InvestigationDetail | null): boolean {
+  const osName = detail?.fleet_context.device.os_name?.toLowerCase() ?? '';
+  return osName.includes('windows');
+}
+
+function firstMetricNameByPattern(detail: InvestigationDetail | null, pattern: RegExp): string | null {
+  const latestMetrics = detail?.fleet_context.latest_metrics ?? {};
+  return metricNamesByPattern(latestMetrics, pattern)[0] ?? null;
+}
+
+function keyMetricsForDetail(detail: InvestigationDetail): MetricDefinition[] {
+  const metrics: MetricDefinition[] = [];
+  const windowsDevice = isWindowsDetail(detail);
+  const windowsThermalName = firstMetricNameByPattern(detail, /^thermal\.windows_.*\.temp_c$/);
+  const hasCpuTemperature = Boolean(
+    latestMetric(detail, 'cpu.package_temp_c')
+      || firstMetricNameByPattern(detail, /^cpu\.(?:(?:p|e|lp_e)_)?core_\d+\.temp_c$/),
+  );
+  const hasWindowsCpuLoad = Boolean(
+    latestMetric(detail, 'cpu.load_percent')
+      || firstMetricNameByPattern(detail, /^cpu\.(?:(?:p|e|lp_e)_)?core_\d+\.load_percent$/),
+  );
+
+  if (hasCpuTemperature || !windowsDevice) {
+    metrics.push(windowsDevice && !latestMetric(detail, 'cpu.package_temp_c') ? windowsCpuTemperatureMetric() : baseKeyMetrics[0]);
+  }
+  if (windowsDevice && windowsThermalName) {
+    metrics.push(windowsThermalMetric(windowsThermalName));
+  }
+
+  if (hasWindowsCpuLoad) {
+    metrics.push(windowsCpuLoadMetric);
+  } else if (latestMetric(detail, 'cpu.load_1m') || !windowsDevice) {
+    metrics.push(baseKeyMetrics[1]);
+  }
+  if (
+    latestMetric(detail, 'nvme.temp_c')
+    || latestMetric(detail, 'nvme.capacity_bytes')
+    || firstMetricNameByPattern(detail, /^nvme\.[^.]+\.(temp_c|capacity_bytes|smart_passed|available_spare_percent)$/)
+  ) {
+    metrics.push(baseKeyMetrics[2]);
+  }
+  if (latestMetric(detail, 'wifi.signal_dbm') || firstMetricNameByPattern(detail, /^wifi\.[^.]+\.(signal_dbm|rx_bitrate_mbps|tx_bitrate_mbps|link_bitrate_mbps)$/)) {
+    metrics.push(baseKeyMetrics[3]);
+  }
+  return metrics;
 }
 
 function cpuProfileValue(detail: InvestigationDetail | null): string {
@@ -373,6 +522,22 @@ function nvmeIoStatus(detail: InvestigationDetail | null): SignalStatus {
   return latestMetric(detail, 'nvme.read_bytes_per_sec') || latestMetric(detail, 'nvme.write_bytes_per_sec') ? 'nominal' : 'missing';
 }
 
+function thermalSensorName(detail: InvestigationDetail | null): string | null {
+  if (latestMetric(detail, 'cpu.package_temp_c')) return 'cpu.package_temp_c';
+  return firstMetricNameByPattern(detail, /^thermal\.windows_.*\.temp_c$/)
+    ?? firstMetricNameByPattern(detail, /^thermal\..*\.temp_c$/);
+}
+
+function thermalSensorValue(detail: InvestigationDetail | null): string {
+  const metricName = thermalSensorName(detail);
+  return metricName ? metricValue(detail, metricName) : 'Unavailable';
+}
+
+function thermalSensorStatus(detail: InvestigationDetail | null): SignalStatus {
+  const metricName = thermalSensorName(detail);
+  return metricName ? metricStatus(detail, metricName) : 'missing';
+}
+
 function metricBreakdown(detail: InvestigationDetail, name: string): MetricBreakdown | null {
   const latestMetrics = detail.fleet_context.latest_metrics;
   if (name === 'cpu.package_temp_c') {
@@ -380,9 +545,9 @@ function metricBreakdown(detail: InvestigationDetail, name: string): MetricBreak
     const coreTypeGroups = coreTypeGroupsForUltra5_125H(coreBreakdown);
     const cores = coreBreakdown.map((core) => {
       const value = breakdownSampleValue(core.sample);
-      const group = coreTypeGroups.get(core.index);
+      const group = core.group ?? coreTypeGroups.get(core.index);
       return {
-        key: core.index,
+        key: core.key,
         label: core.index,
         value,
         status: core.status,
@@ -414,6 +579,25 @@ function metricBreakdown(detail: InvestigationDetail, name: string): MetricBreak
       };
     });
     return { title: 'Load', items: windows };
+  }
+  if (name === 'cpu.load_percent') {
+    const loads = cpuLoadBreakdown(detail).map((core) => {
+      const value = breakdownSampleValue(core.sample);
+      return {
+        key: core.key,
+        label: core.index,
+        value,
+        status: core.status,
+        ariaLabel: core.group ? `CPU ${core.group} core ${core.index} load: ${value}` : `CPU core ${core.index} load: ${value}`,
+        group: core.group,
+      };
+    });
+    return {
+      title: 'Core load',
+      items: loads,
+      emptyLabel: 'No core load sensors',
+      emptyAriaLabel: 'CPU core loads: no per-core load sensors reported',
+    };
   }
   if (name === 'nvme.temp_c') {
     const namespaceNames = new Set<string>();
@@ -519,10 +703,38 @@ function metricBreakdown(detail: InvestigationDetail, name: string): MetricBreak
       emptyAriaLabel: 'Wi-Fi interfaces: no per-interface signal reported',
     };
   }
+  if (/^thermal\.windows_.*\.temp_c$/.test(name)) {
+    const zones = metricNamesByPattern(latestMetrics, /^thermal\.windows_.*\.temp_c$/)
+      .map((metricName) => {
+        const sample = latestMetrics[metricName];
+        const label = metricName
+          .replace(/^thermal\.windows_/, '')
+          .replace(/\.temp_c$/, '');
+        const value = breakdownSampleValue(sample);
+        return {
+          key: metricName,
+          label,
+          value,
+          status: statusForMetricSample(metricName, sample),
+          ariaLabel: `Windows thermal zone ${label}: ${value}`,
+        };
+      });
+    return {
+      title: 'Zones',
+      items: zones,
+      emptyLabel: 'No thermal zones',
+      emptyAriaLabel: 'Windows thermal zones: no zones reported',
+    };
+  }
   return null;
 }
 
 function metricStatus(detail: InvestigationDetail | null, name: string): SignalStatus {
+  if (name === 'cpu.package_temp_c' && !latestMetric(detail, name)) {
+    const samples = cpuTemperatureSamples(detail);
+    if (samples.length === 0) return 'missing';
+    return strongestStatus(...samples.map(coreTemperatureStatus));
+  }
   return statusForMetricSample(name, latestMetric(detail, name));
 }
 
@@ -533,6 +745,46 @@ function statusLabel(status: SignalStatus): string {
     critical: 'Critical',
     missing: 'No data',
   }[status];
+}
+
+function looksCorruptText(value: string): boolean {
+  const replacementCount = [...value].filter((char) => char === '\uFFFD' || char === '�').length;
+  if (replacementCount >= 2) return true;
+  return /(?:���|����|占쏙옙|Ã.|Â.|ì.|ë.|í.)/.test(value);
+}
+
+function cleanDisplayText(value: string | null | undefined, fallback: string): string {
+  if (!value) return fallback;
+  return looksCorruptText(value) ? fallback : value;
+}
+
+function cleanTimelineSummary(value: string | null | undefined): string {
+  return cleanDisplayText(value, 'Windows event message was hidden because its source text encoding was corrupt.');
+}
+
+function cleanInvestigationDetail(detail: InvestigationDetail): InvestigationDetail {
+  return {
+    ...detail,
+    item: {
+      ...detail.item,
+      evidence: cleanDisplayText(detail.item.evidence, 'Evidence text was hidden because its source encoding was corrupt.'),
+      why_now: cleanDisplayText(detail.item.why_now, 'Reason text was hidden because its source encoding was corrupt.'),
+      next_step: cleanDisplayText(detail.item.next_step, 'Review the current telemetry and recent events for this device.'),
+    },
+    timeline: detail.timeline.map((event) => ({
+      ...event,
+      summary: cleanTimelineSummary(event.summary),
+    })),
+    report: {
+      ...detail.report,
+      summary: cleanDisplayText(detail.report.summary, 'Report text was hidden because its source encoding was corrupt.'),
+      recommended_next_step: cleanDisplayText(detail.report.recommended_next_step, 'Review current telemetry and recent events.'),
+    },
+    verification: {
+      ...detail.verification,
+      summary: cleanDisplayText(detail.verification.summary, 'Verification text was hidden because its source encoding was corrupt.'),
+    },
+  };
 }
 
 function eventCountValue(events: InvestigationDetail['timeline'], scope: string): string {
@@ -601,6 +853,7 @@ function minutesSince(laterIso: string | undefined, earlierIso: string | undefin
 }
 
 function buildTelemetryTiles(detail: InvestigationDetail | null, overview: FleetOverview | null): TelemetryTile[] {
+  const windowsDevice = isWindowsDetail(detail);
   const networkEvents = detail?.timeline.filter((event) => event.category === 'network') ?? [];
   const reconnectEvents = networkEvents.filter((event) => eventMatches(event, ['disconnect', 'reconnect', 'carrier', 'supplicant', 'dhcp', 'state change']));
   const throttlingEvents = detail?.timeline.filter((event) => event.category === 'thermal' && eventMatches(event, ['throttl', 'above threshold', 'critical temperature'])) ?? [];
@@ -622,7 +875,7 @@ function buildTelemetryTiles(detail: InvestigationDetail | null, overview: Fleet
   const nvmeDeviceNames = metricNamesByPattern(detail?.fleet_context.latest_metrics ?? {}, /^nvme\.[^.]+\.capacity_bytes$/)
     .map((metricName) => metricName.split('.')[1]);
 
-  return [
+  const tiles: TelemetryTile[] = [
     {
       id: 'cpu.profile',
       category: 'Hardware',
@@ -678,6 +931,17 @@ function buildTelemetryTiles(detail: InvestigationDetail | null, overview: Fleet
       status: fanStatus(detail),
       summary: 'hwmon에 노출된 fan 회전수를 냉각 맥락으로 봅니다. 장비별로 결측일 수 있습니다.',
       Icon: Fan,
+    },
+    {
+      id: 'thermal.sensor',
+      category: 'Thermal',
+      label: windowsDevice ? 'Windows Thermal' : 'Thermal Sensor',
+      value: thermalSensorValue(detail),
+      status: thermalSensorStatus(detail),
+      summary: windowsDevice
+        ? 'Windows가 실제로 노출한 thermal zone 또는 sensor 값입니다. CPU package/core 온도로 강제 변환하지 않습니다.'
+        : 'collector가 받은 CPU package 또는 thermal zone 값을 보여줍니다.',
+      Icon: Thermometer,
     },
     {
       id: 'nvme.health',
@@ -754,6 +1018,22 @@ function buildTelemetryTiles(detail: InvestigationDetail | null, overview: Fleet
       Icon: Clock3,
     },
   ];
+  if (latestMetric(detail, 'cpu.load_percent')) {
+    tiles.splice(1, 0, {
+      id: 'cpu.load_percent',
+      category: 'Compute',
+      label: 'CPU Core Load',
+      value: metricValue(detail, 'cpu.load_percent'),
+      status: metricStatus(detail, 'cpu.load_percent'),
+      summary: 'LibreHardwareMonitor/OpenHardwareMonitor가 보낸 Windows CPU total/core별 사용률입니다. Linux load average와 다른 percent metric입니다.',
+      Icon: Cpu,
+    });
+  }
+  if (!windowsDevice) return tiles;
+  return tiles.filter((tile) => {
+    if (tile.status !== 'missing') return true;
+    return !['fan.rpm', 'thermal.sensor'].includes(tile.id);
+  });
 }
 
 function priorityClass(priority: InvestigationItem['priority']): string {
@@ -1031,9 +1311,10 @@ function MetricRow({ detail, metric }: { detail: InvestigationDetail; metric: Me
 }
 
 function MetricLedger({ detail }: { detail: InvestigationDetail }) {
+  const metrics = keyMetricsForDetail(detail);
   return (
     <dl className="metric-ledger" aria-label="Core telemetry details">
-      {keyMetrics.map((metric) => (
+      {metrics.map((metric) => (
         <MetricRow detail={detail} key={metric.name} metric={metric} />
       ))}
     </dl>
@@ -1042,11 +1323,12 @@ function MetricLedger({ detail }: { detail: InvestigationDetail }) {
 
 function TelemetryBrief({ detail }: { detail: InvestigationDetail | null }) {
   if (!detail) return null;
+  const metrics = keyMetricsForDetail(detail);
   return (
     <section className="telemetry-brief" aria-label="Telemetry Brief">
       <span className="brief-title">Telemetry Brief</span>
       <div className="brief-readings">
-      {keyMetrics.map((metric) => {
+      {metrics.map((metric) => {
         const status = metricStatus(detail, metric.name);
         return (
           <span className={`brief-reading brief-${status}`} key={metric.name}>
@@ -1067,6 +1349,7 @@ function TelemetryMatrix({ detail, overview }: { detail: InvestigationDetail | n
   const tiles = buildTelemetryTiles(detail, overview);
   const observedCount = tiles.filter((tile) => tile.status !== 'missing').length;
   const missingLabels = tiles.filter((tile) => tile.status === 'missing').map((tile) => tile.label);
+  const windowsDevice = isWindowsDetail(detail);
   return (
     <section className="telemetry-matrix" aria-label="Telemetry coverage matrix">
       <div className="matrix-head">
@@ -1082,7 +1365,9 @@ function TelemetryMatrix({ detail, overview }: { detail: InvestigationDetail | n
           {observedCount}/{tiles.length} observed
           <span className="coverage-tooltip explain-popover" id="telemetry-coverage-help" role="tooltip">
             <strong>Telemetry coverage</strong>
-            <span>관측된 범주 수입니다. 위험 점수가 아니라, 조사에 필요한 자료가 얼마나 들어왔는지 보여줍니다.</span>
+            <span>{windowsDevice
+              ? 'Windows view는 현재 장비가 실제로 보낸 신호 중심으로 구성합니다. 노출되지 않은 Linux식 센서는 억지로 결측 표시하지 않습니다.'
+              : '관측된 범주 수입니다. 위험 점수가 아니라, 조사에 필요한 자료가 얼마나 들어왔는지 보여줍니다.'}</span>
             <span>{missingLabels.length > 0 ? `Missing: ${missingLabels.join(', ')}` : 'Missing: none'}</span>
           </span>
         </span>
@@ -1737,7 +2022,7 @@ export default function App() {
     Promise.all([fetchInvestigationDetail(selectedId), fetchInvestigationNotes(selectedId)])
       .then(([detailData, notesData]) => {
         if (!active) return;
-        setDetail(detailData);
+        setDetail(cleanInvestigationDetail(detailData));
         setNotes(notesData.notes);
       })
       .catch((err: unknown) => {
@@ -1770,7 +2055,7 @@ export default function App() {
       if (detail && detail.fleet_context.device.device_id === selectedSnapshot.device.device_id) {
         return detail;
       }
-      return snapshotToInvestigationDetail(selectedSnapshot, selectedDeviceIssues);
+      return cleanInvestigationDetail(snapshotToInvestigationDetail(selectedSnapshot, selectedDeviceIssues));
     },
     [detail, selectedDeviceIssues, selectedSnapshot],
   );

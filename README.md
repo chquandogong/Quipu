@@ -2,7 +2,7 @@
 
 <p align="center">
   <img alt="CI" src="https://github.com/chquandogong/Quipu/actions/workflows/ci.yml/badge.svg">
-  <img alt="Version" src="https://img.shields.io/badge/version-v0.14.3-2f6f7e">
+  <img alt="Version" src="https://img.shields.io/badge/version-v0.14.4-2f6f7e">
   <img alt="Status" src="https://img.shields.io/badge/status-local--first%20workstation%20health-5b6b73">
   <img alt="License" src="https://img.shields.io/badge/license-not%20selected-lightgrey">
 </p>
@@ -35,8 +35,25 @@ procfs를 읽고, Windows에서는 PowerShell/CIM/netsh/Get-NetAdapter가 노출
 Detect -> Triage -> Investigate -> Hypothesize -> Act -> Verify -> Report
 ```
 
-## v0.14.3 핵심
+## v0.14.4 핵심
 
+- 문서를 현재 구현 기준으로 다시 정리했습니다. README, 사용자 매뉴얼, ship
+  checklist, dashboard, roadmap은 Windows collector가 실제로 보내는 값과
+  표시되지 않는 값의 이유를 같은 용어로 설명합니다.
+- Windows `윈도우 · DOGU_CHQUAN` 검증에서 CPU load는
+  `cpu.load_percent`, `cpu.core_<n>.load_percent`로 들어오는 것을 확인했습니다.
+  화면에서는 `CPU Core Load`로 표시됩니다.
+- 같은 장비에서 LibreHardwareMonitor `Temperature` sensor가 노출된 뒤
+  `cpu.package_temp_c`, `cpu.p_core_1..4.temp_c`, `cpu.e_core_1..8.temp_c`도
+  수신되는 것을 확인했습니다.
+- Windows CPU core 온도는 collector가 `cpu.*.temp_c` metric을 받은 경우에만
+  보입니다. `thermal.windows_zone_*.temp_c`는 ACPI thermal zone이며 CPU core
+  온도로 변환하지 않습니다.
+- Windows에서 core load는 보이지만 core 온도가 안 보이면 UI 문제가 아니라
+  LibreHardwareMonitor/OpenHardwareMonitor `Temperature` sensor가 scheduled task
+  권한에서 노출되지 않은 상태일 수 있습니다. 관리자 PowerShell에서
+  `Get-CimInstance -Namespace root/LibreHardwareMonitor -ClassName Sensor`와
+  collector `--dry-run`으로 먼저 확인합니다.
 - Windows에서 LibreHardwareMonitor GUI가 이미 실행 중이어도 collector가 direct
   DLL probe를 건너뛰지 않고, 실행 중인 프로세스/Program Files/WinGet 경로에서
   `LibreHardwareMonitorLib.dll`을 찾아 CPU core 온도와 load를 읽습니다.
@@ -244,6 +261,8 @@ powershell.exe -ExecutionPolicy Bypass -File scripts\install-collector-scheduled
 `events`를 보내는 외부 collector도 UI의 `Devices` 목록에 함께 표시됩니다.
 Windows 장비에서 Linux load average가 없거나 NVMe/Wi-Fi 세부값이 일부만 보이는
 것은 collector가 아직 해당 metric을 보내지 않았다는 뜻일 수 있습니다.
+마찬가지로 `CPU Core Load`가 보이더라도 `CPU Cores` 온도가 안 보이면 Windows
+collector가 load sensor는 읽었지만 temperature sensor는 받지 못한 상태입니다.
 
 ## Collector가 읽는 신호
 
@@ -258,6 +277,9 @@ directory에 이전 sector counter를 저장할 수 있습니다. Windows collec
   `/proc/cpuinfo`에서 확인한 코어/스레드 정보. Intel Core Ultra 5 125H는
   4P/8E/2LP-E/18 threads로 표시합니다.
 - `cpu.package_temp_c`, `cpu.core_<n>.temp_c`: hwmon/coretemp 기반 CPU 온도.
+- `cpu.load_percent`, `cpu.core_<n>.load_percent`,
+  `cpu.p_core_<n>.load_percent`, `cpu.e_core_<n>.load_percent`: Windows
+  hardware monitor가 노출한 CPU 사용률 percent. Linux load average와 다른 값입니다.
 - `thermal.*.temp_c`: sysfs thermal zone 온도.
 - `nvme.temp_c`, `nvme.<device>.temp_c`: NVMe 대표/장치별 온도.
 - `nvme.smart_passed`, `nvme.critical_warning`,
@@ -284,6 +306,9 @@ directory에 이전 sector counter를 저장할 수 있습니다. Windows collec
 CPU core 번호는 Linux가 노출한 sensor/core id를 그대로 따릅니다. 예를 들어
 Intel Core Ultra 5 125H에서는 `0-7`, `8`, `12`, `16`, `20`, `32`, `33`처럼
 띄엄띄엄 보일 수 있습니다. Quipu는 없는 번호를 만들어 표시하지 않습니다.
+Windows에서도 hardware monitor가 core를 `Core #1`처럼 일반 이름으로만 보내면
+`cpu.core_1.*`로 표시하고, `P-Core #1`/`E-Core #2`처럼 구분해 보내는 경우에만
+`P`/`E` 그룹으로 묶습니다.
 
 ## 운영 설치
 

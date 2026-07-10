@@ -2,7 +2,7 @@ from pathlib import Path
 import sqlite3
 
 
-SCHEMA_VERSION = "0.14.3"
+SCHEMA_VERSION = "0.14.4"
 
 SCHEMA = """
 PRAGMA journal_mode=WAL;
@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS schema_meta (
 );
 
 INSERT INTO schema_meta (key, value)
-VALUES ('schema_version', '0.14.3')
+VALUES ('schema_version', '0.14.4')
 ON CONFLICT(key) DO UPDATE SET value = excluded.value;
 
 CREATE TABLE IF NOT EXISTS devices (

@@ -104,6 +104,7 @@ const fleetResponse = {
         'cpu.logical_threads': { value: 16, unit: 'count', observed_at: '2026-07-07T03:00:00+00:00' },
         'cpu.performance_cores': { value: 4, unit: 'count', observed_at: '2026-07-07T03:00:00+00:00' },
         'cpu.efficient_cores': { value: 8, unit: 'count', observed_at: '2026-07-07T03:00:00+00:00' },
+        'cpu.package_temp_c': { value: 61, unit: 'celsius', observed_at: '2026-07-07T03:00:00+00:00' },
         'cpu.p_core_1.temp_c': { value: 58, unit: 'celsius', observed_at: '2026-07-07T03:00:00+00:00' },
         'cpu.e_core_2.temp_c': { value: 49, unit: 'celsius', observed_at: '2026-07-07T03:00:00+00:00' },
         'cpu.load_percent': { value: 32, unit: 'percent', observed_at: '2026-07-07T03:00:00+00:00' },
@@ -444,7 +445,7 @@ describe('App', () => {
     expect(screen.getByText('Project info')).toBeInTheDocument();
     expect(screen.getByText('Made by Dr. 권성호')).toBeInTheDocument();
     expect(screen.getByText('About: workstation health investigation')).toBeInTheDocument();
-    expect(screen.getByText('Version v0.14.3')).toBeInTheDocument();
+    expect(screen.getByText('Version v0.14.4')).toBeInTheDocument();
     expect(screen.queryByText('Detect - triage - verify with evidence')).not.toBeInTheDocument();
     expect(screen.getAllByText('Build laptop · build-xps').length).toBeGreaterThan(0);
     const selectedCaseStatus = screen.getByLabelText('Selected case status');

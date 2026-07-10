@@ -135,13 +135,16 @@ Implemented:
 - Windows-specific CPU Cores and CPU Core Load display that uses the metrics
   actually reported by Windows instead of Linux-only placeholders.
 - UI fallback that hides garbled localized Windows Event Log summaries.
+- Documentation reset that separates Windows CPU core load, CPU core
+  temperature, and ACPI thermal-zone values, including PowerShell diagnostics
+  for hardware-monitor sensor visibility.
 - Private LAN UI/API access from Vite origins on ports 5173 and 5174.
 
 Remaining:
 
-- Install v0.14.3 on the currently connected Windows laptop and restart the
-  scheduled task so partial Windows telemetry is replaced by the patched metric
-  set.
+- Keep Windows sensor-visibility troubleshooting documented for machines that
+  expose CPU load but not CPU package/core temperature from the scheduled-task
+  context.
 - Additional CPU/core/package thermal label variants if real hardware exposes
   new naming patterns.
 - Richer multi-fan naming if hardware monitor providers expose stable fan

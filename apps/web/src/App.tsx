@@ -51,7 +51,7 @@ import type {
 import './styles.css';
 
 const flowStages = ['Detect', 'Triage', 'Investigate', 'Hypothesize', 'Act', 'Verify', 'Report'];
-const appVersion = 'v0.14.3';
+const appVersion = 'v0.14.4';
 
 const riskLabels: Record<RiskLevel, string> = {
   healthy: 'Healthy',
@@ -419,9 +419,12 @@ function keyMetricsForDetail(detail: InvestigationDetail): MetricDefinition[] {
   const metrics: MetricDefinition[] = [];
   const windowsDevice = isWindowsDetail(detail);
   const windowsThermalName = firstMetricNameByPattern(detail, /^thermal\.windows_.*\.temp_c$/);
+  const hasWindowsCoreTemperature = Boolean(
+    firstMetricNameByPattern(detail, /^cpu\.(?:(?:p|e|lp_e)_)?core_\d+\.temp_c$/),
+  );
   const hasCpuTemperature = Boolean(
     latestMetric(detail, 'cpu.package_temp_c')
-      || firstMetricNameByPattern(detail, /^cpu\.(?:(?:p|e|lp_e)_)?core_\d+\.temp_c$/),
+      || hasWindowsCoreTemperature,
   );
   const hasWindowsCpuLoad = Boolean(
     latestMetric(detail, 'cpu.load_percent')
@@ -429,7 +432,11 @@ function keyMetricsForDetail(detail: InvestigationDetail): MetricDefinition[] {
   );
 
   if (hasCpuTemperature || !windowsDevice) {
-    metrics.push(windowsDevice && !latestMetric(detail, 'cpu.package_temp_c') ? windowsCpuTemperatureMetric() : baseKeyMetrics[0]);
+    metrics.push(
+      windowsDevice && (hasWindowsCoreTemperature || !latestMetric(detail, 'cpu.package_temp_c'))
+        ? windowsCpuTemperatureMetric()
+        : baseKeyMetrics[0],
+    );
   }
   if (windowsDevice && windowsThermalName) {
     metrics.push(windowsThermalMetric(windowsThermalName));

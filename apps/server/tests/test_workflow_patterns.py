@@ -69,7 +69,7 @@ def test_schema_version_endpoint_is_admin_gated(tmp_path: Path) -> None:
 
     assert rejected.status_code == 401
     assert accepted.status_code == 200
-    assert accepted.json()["schema_version"] == "0.14.3"
+    assert accepted.json()["schema_version"] == "0.14.4"
     assert "agent_tokens" in accepted.json()["tables"]
 
 

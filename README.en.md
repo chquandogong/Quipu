@@ -2,7 +2,7 @@
 
 <p align="center">
   <img alt="CI" src="https://github.com/chquandogong/Quipu/actions/workflows/ci.yml/badge.svg">
-  <img alt="Version" src="https://img.shields.io/badge/version-v0.14.3-2f6f7e">
+  <img alt="Version" src="https://img.shields.io/badge/version-v0.14.4-2f6f7e">
   <img alt="Status" src="https://img.shields.io/badge/status-local--first%20workstation%20health-5b6b73">
   <img alt="License" src="https://img.shields.io/badge/license-not%20selected-lightgrey">
 </p>
@@ -35,8 +35,22 @@ Detect -> Triage -> Investigate -> Hypothesize -> Act -> Verify -> Report
 The product is not a remote repair tool. The collector is read-only and the
 server uses deterministic rule-based analysis.
 
-## v0.14.3 Highlights
+## v0.14.4 Highlights
 
+- Documentation has been reset around the current implementation: README,
+  user manual, ship checklist, dashboard, and roadmap now explain which Windows
+  metrics are actually received and why some rows can be absent.
+- The connected Windows device now reports CPU load as `cpu.load_percent` and
+  `cpu.core_<n>.load_percent`; the UI shows those values as `CPU Core Load`.
+- After LibreHardwareMonitor `Temperature` sensors became visible, the same
+  device also reports `cpu.package_temp_c`, `cpu.p_core_1..4.temp_c`, and
+  `cpu.e_core_1..8.temp_c`.
+- Windows CPU core temperature only appears when the collector receives
+  `cpu.*.temp_c` metrics. `thermal.windows_zone_*.temp_c` is an ACPI thermal
+  zone and is not converted into CPU core temperature.
+- If Windows core load is visible but core temperature is missing, verify
+  LibreHardwareMonitor/OpenHardwareMonitor `Temperature` sensors from an
+  elevated PowerShell session and collector `--dry-run`.
 - The Windows collector no longer skips direct LibreHardwareMonitor DLL probing
   when the LibreHardwareMonitor GUI is already running; it now discovers
   `LibreHardwareMonitorLib.dll` from the running process, Program Files, and
@@ -101,7 +115,7 @@ server uses deterministic rule-based analysis.
 - Browser UI sessions opened from private LAN Vite origins on ports 5173 or
   5174 can read the API without the previous local-only CORS failure.
 - Version metadata across the collector, server, schema, and web app is now
-  `0.14.3`.
+  `0.14.4`.
 
 ## v0.11.0 Highlights
 

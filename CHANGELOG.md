@@ -2,6 +2,37 @@
 
 All notable changes to Quipu are documented in this file.
 
+## v0.14.4 - 2026-07-10
+
+Documentation reset for current Windows collector behavior.
+
+### Changed
+
+- Reworked the README editions and user manual around the current `v0.14.x`
+  behavior instead of only listing accumulated patch features.
+- Clarified that Windows CPU core load and CPU core temperature are separate
+  hardware-monitor sensor types. `cpu.core_<n>.load_percent` can be present
+  while `cpu.*.temp_c` is absent.
+- Documented that `thermal.windows_zone_*.temp_c` is an ACPI thermal-zone value
+  and is not converted into CPU package/core temperature.
+- Windows detail views now keep the `CPU Cores` metric row when package
+  temperature and P/E core temperatures are both present, so core temperature
+  chips remain clearly discoverable.
+- Added Windows troubleshooting commands for LibreHardwareMonitor WMI
+  `Load`/`Temperature` sensors, collector `--dry-run`, scheduled-task
+  `RunLevel`, and explicit `QUIPU_LIBRE_HARDWARE_MONITOR_DLL` configuration.
+- Updated package, app, API, schema, and UI versions to `0.14.4`.
+
+### Verified
+
+- Live Windows batch check: `윈도우 · DOGU_CHQUAN` reported
+  `cpu.load_percent`, `cpu.core_<n>.load_percent`, `cpu.package_temp_c`,
+  `cpu.p_core_1..4.temp_c`, and `cpu.e_core_1..8.temp_c`.
+- Server test suite: 38 tests passed, 1 Starlette deprecation warning.
+- Collector test suite: 28 tests passed.
+- Web test suite: 3 tests passed; production build succeeded.
+- Whitespace check passed.
+
 ## v0.14.3 - 2026-07-10
 
 Windows LibreHardwareMonitor running-process probe patch.

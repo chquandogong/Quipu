@@ -2,7 +2,7 @@
 
 <p align="center">
   <img alt="CI" src="https://github.com/chquandogong/Quipu/actions/workflows/ci.yml/badge.svg">
-  <img alt="Version" src="https://img.shields.io/badge/version-v0.14.3-2f6f7e">
+  <img alt="Version" src="https://img.shields.io/badge/version-v0.14.4-2f6f7e">
   <img alt="Status" src="https://img.shields.io/badge/status-local--first%20workstation%20health-5b6b73">
   <img alt="License" src="https://img.shields.io/badge/license-not%20selected-lightgrey">
 </p>
@@ -33,8 +33,19 @@ Detect -> Triage -> Investigate -> Hypothesize -> Act -> Verify -> Report
 
 Quipu 不是远程修复工具。collector 是只读的，server 使用确定性的规则分析。
 
-## v0.14.3 重点
+## v0.14.4 重点
 
+- 文档已按当前实现重新整理：README、用户手册、ship checklist、dashboard 和
+  roadmap 现在会明确说明 Windows 实际收到哪些 metric，以及为什么有些行可能为空。
+- 已连接的 Windows 设备现在会上报 `cpu.load_percent` 和
+  `cpu.core_<n>.load_percent`，UI 会显示为 `CPU Core Load`。
+- LibreHardwareMonitor `Temperature` sensor 可见后，同一设备也会上报
+  `cpu.package_temp_c`、`cpu.p_core_1..4.temp_c` 和 `cpu.e_core_1..8.temp_c`。
+- Windows CPU core 温度只有在 collector 收到 `cpu.*.temp_c` metric 时才会显示。
+  `thermal.windows_zone_*.temp_c` 是 ACPI thermal zone，不会被转换成 CPU core 温度。
+- 如果 Windows core load 已显示但 core 温度缺失，请用管理员 PowerShell 和
+  collector `--dry-run` 确认 LibreHardwareMonitor/OpenHardwareMonitor 的
+  `Temperature` sensor 是否对 scheduled task 可见。
 - Windows collector 不再因为 LibreHardwareMonitor GUI 已经运行而跳过 direct DLL
   probe；现在会从运行中的进程、Program Files 和 WinGet package 路径寻找
   `LibreHardwareMonitorLib.dll`。

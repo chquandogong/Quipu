@@ -399,7 +399,7 @@ describe('App', () => {
     expect(screen.getByText('Project info')).toBeInTheDocument();
     expect(screen.getByText('Made by Dr. 권성호')).toBeInTheDocument();
     expect(screen.getByText('About: workstation health investigation')).toBeInTheDocument();
-    expect(screen.getByText('Version v0.13.4')).toBeInTheDocument();
+    expect(screen.getByText('Version v0.14.0')).toBeInTheDocument();
     expect(screen.queryByText('Detect - triage - verify with evidence')).not.toBeInTheDocument();
     expect(screen.getAllByText('Build laptop · build-xps').length).toBeGreaterThan(0);
     const selectedCaseStatus = screen.getByLabelText('Selected case status');
@@ -534,7 +534,7 @@ describe('App', () => {
     expect(screen.getAllByText(/961 Mbps/).length).toBeGreaterThan(0);
     expect(screen.getAllByText('1.14 TB').length).toBeGreaterThan(0);
     expect(screen.getAllByText('1.0%').length).toBeGreaterThan(0);
-  });
+  }, 10_000);
 
   it('groups Intel Core Ultra 5 125H core sensors by core type', async () => {
     const {

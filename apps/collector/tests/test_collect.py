@@ -1,6 +1,10 @@
 from datetime import datetime, timezone
 
-from quipu_collector.collect import collect_observation
+from quipu_collector.collect import (
+    _smartctl_metrics,
+    _windows_hardware_monitor_library_metrics,
+    collect_observation,
+)
 
 
 def _write(path, content: str) -> None:
@@ -187,6 +191,7 @@ def test_collect_observation_reads_linux_signals_without_raw_machine_id(tmp_path
     assert metrics["battery.ac_online"]["unit"] == "boolean"
     assert metrics["fan.rpm"]["value"] == 2840.0
     assert metrics["fan.rpm"]["unit"] == "rpm"
+    assert metrics["fan.thinkpad_fan1.rpm"]["value"] == 2840.0
     assert metrics["nvme.critical_warning"]["value"] == 1.0
     assert metrics["nvme.critical_warning"]["unit"] == "boolean"
     assert metrics["nvme.available_spare_percent"]["value"] == 9.0
@@ -447,7 +452,12 @@ def test_collect_observation_reads_windows_reliability_fans_and_events(monkeypat
         if "Win32_OperatingSystem" in script:
             return '{"TotalVisibleMemorySize":32000000,"FreePhysicalMemory":16000000}'
         if "Get-StorageReliabilityCounter" in script:
-            return '{"DeviceId":0,"FriendlyName":"Samsung PM9A1","BusType":"NVMe","MediaType":"SSD","Size":1024000000000,"Temperature":47}'
+            return (
+                '{"DeviceId":0,"FriendlyName":"Samsung PM9A1","BusType":"NVMe","MediaType":"SSD",'
+                '"Size":1024000000000,"HealthStatus":"Healthy","OperationalStatus":"OK",'
+                '"Temperature":47,"Wear":7,"PowerOnHours":321,"ReadErrorsUncorrected":1,'
+                '"WriteErrorsUncorrected":2}'
+            )
         if "Win32_PerfFormattedData_PerfDisk_PhysicalDisk" in script:
             return (
                 "["
@@ -496,6 +506,10 @@ def test_collect_observation_reads_windows_reliability_fans_and_events(monkeypat
     assert metrics["nvme.write_bytes_per_sec"]["value"] == 8192.0
     assert metrics["nvme.samsung_pm9a1.read_bytes_per_sec"]["value"] == 4096.0
     assert metrics["nvme.samsung_pm9a1.write_bytes_per_sec"]["value"] == 8192.0
+    assert metrics["nvme.smart_passed"]["value"] == 1.0
+    assert metrics["nvme.percentage_used_percent"]["value"] == 7.0
+    assert metrics["nvme.media_errors"]["value"] == 3.0
+    assert metrics["nvme.power_on_hours"]["value"] == 321.0
     assert metrics["cpu.package_temp_c"]["value"] == 58.35
     assert metrics["fan.rpm"]["value"] == 2410.0
     assert metrics["fan.embedded_controller_cpu_fan.rpm"]["value"] == 2410.0
@@ -538,3 +552,82 @@ def test_collect_observation_reads_windows_native_fan(monkeypatch, tmp_path) -> 
     metrics = {metric["name"]: metric for metric in batch["metrics"]}
     assert metrics["fan.rpm"]["value"] == 1820.0
     assert metrics["fan.system_fan_fan0.rpm"]["value"] == 1820.0
+
+
+def test_smartctl_metrics_collects_per_device_and_worst_case_nvme_health() -> None:
+    def fake_command_runner(args: list[str]) -> str | None:
+        if args == ["smartctl", "--scan-open", "--json"]:
+            return (
+                '{"devices":['
+                '{"name":"/dev/nvme0","type":"nvme","protocol":"NVMe"},'
+                '{"name":"/dev/nvme1","type":"nvme","protocol":"NVMe"}'
+                ']}'
+            )
+        if args[-1:] == ["/dev/nvme0"]:
+            return (
+                '{"model_name":"Fast Disk","smart_status":{"passed":true},'
+                '"temperature":{"current":42},"nvme_smart_health_information_log":{'
+                '"critical_warning":0,"available_spare":100,"percentage_used":4,'
+                '"media_errors":0,"power_on_hours":100,"unsafe_shutdowns":2,'
+                '"num_err_log_entries":1}}'
+            )
+        if args[-1:] == ["/dev/nvme1"]:
+            return (
+                '{"model_name":"Warm Disk","smart_status":{"passed":false},'
+                '"temperature":{"current":61},"nvme_smart_health_information_log":{'
+                '"critical_warning":1,"available_spare":8,"percentage_used":91,'
+                '"media_errors":3,"power_on_hours":200,"unsafe_shutdowns":4,'
+                '"num_err_log_entries":5}}'
+            )
+        return None
+
+    metrics = {
+        metric["name"]: metric
+        for metric in _smartctl_metrics("2026-07-10T03:00:00+00:00", fake_command_runner)
+    }
+
+    assert metrics["nvme.temp_c"]["value"] == 61.0
+    assert metrics["nvme.smart_passed"]["value"] == 0.0
+    assert metrics["nvme.critical_warning"]["value"] == 1.0
+    assert metrics["nvme.available_spare_percent"]["value"] == 8.0
+    assert metrics["nvme.percentage_used_percent"]["value"] == 91.0
+    assert metrics["nvme.media_errors"]["value"] == 3.0
+    assert metrics["nvme.power_on_hours"]["value"] == 200.0
+    assert metrics["nvme.unsafe_shutdowns"]["value"] == 6.0
+    assert metrics["nvme.error_log_entries"]["value"] == 6.0
+    assert metrics["nvme.fast_disk.smart_passed"]["value"] == 1.0
+    assert metrics["nvme.warm_disk.smart_passed"]["value"] == 0.0
+
+
+def test_windows_hardware_monitor_library_maps_temperature_and_fan_sensors() -> None:
+    def fake_command_runner(args: list[str]) -> str | None:
+        if args[:4] != ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass"]:
+            return None
+        if "LibreHardwareMonitor.Hardware.Computer" not in args[-1]:
+            return None
+        return (
+            "["
+            '{"Hardware":"Intel Core i5","HardwareType":"Cpu","Name":"CPU Package",'
+            '"SensorType":"Temperature","Value":62.5,"Identifier":"/intelcpu/0/temperature/14"},'
+            '{"Hardware":"Intel Core i5","HardwareType":"Cpu","Name":"P-Core #1",'
+            '"SensorType":"Temperature","Value":58.0,"Identifier":"/intelcpu/0/temperature/2"},'
+            '{"Hardware":"Samsung SSD","HardwareType":"Storage","Name":"Temperature",'
+            '"SensorType":"Temperature","Value":44.0,"Identifier":"/nvme/0/temperature/0"},'
+            '{"Hardware":"Embedded Controller","HardwareType":"Motherboard","Name":"CPU Fan",'
+            '"SensorType":"Fan","Value":2350,"Identifier":"/lpc/ec/fan/0"}'
+            "]"
+        )
+
+    metrics = {
+        metric["name"]: metric
+        for metric in _windows_hardware_monitor_library_metrics(
+            "2026-07-10T03:00:00+00:00", fake_command_runner
+        )
+    }
+
+    assert metrics["cpu.package_temp_c"]["value"] == 62.5
+    assert metrics["cpu.p_core_1.temp_c"]["value"] == 58.0
+    assert metrics["nvme.temp_c"]["value"] == 44.0
+    assert metrics["nvme.samsung_ssd_temperature.temp_c"]["value"] == 44.0
+    assert metrics["fan.rpm"]["value"] == 2350.0
+    assert metrics["fan.embedded_controller_cpu_fan.rpm"]["value"] == 2350.0

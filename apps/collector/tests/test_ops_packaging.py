@@ -71,6 +71,8 @@ def test_windows_scheduled_task_packaging_matches_systemd_flow() -> None:
     assert "$env:QUIPU_COLLECTOR_DEVICE_ID = \"\"" in env_example
     assert "$env:QUIPU_COLLECTOR_DEVICE_ALIAS = \"\"" in env_example
     assert "$env:QUIPU_COLLECTOR_INTERVAL = \"300\"" in env_example
+    assert "$env:QUIPU_SMARTCTL_BIN = \"\"" in env_example
+    assert "$env:QUIPU_LIBRE_HARDWARE_MONITOR_DLL = \"\"" in env_example
     assert "dev-token" not in env_example
 
     assert "QUIPU_SERVER_URL is required" in starter
@@ -85,6 +87,8 @@ def test_windows_scheduled_task_packaging_matches_systemd_flow() -> None:
     assert "Register-ScheduledTask" in installer
     assert "New-ScheduledTaskTrigger -AtLogOn" in installer
     assert "New-ScheduledTaskPrincipal" in installer
+    assert "InstallSensorTools" in installer
+    assert 'if ($Highest) { "Highest" } else { "Limited" }' in installer
     assert "MultipleInstances IgnoreNew" in installer
     assert "Start-ScheduledTask" in installer
 

@@ -26,3 +26,7 @@ $env:QUIPU_SPOOL_MAX_BATCHES = "288"
 
 # Optional: collector state used to calculate NVMe read/write bytes per second.
 $env:QUIPU_STATE_DIR = "$HOME\.local\state\quipu\collector-state"
+
+# Optional: explicit paths when smartmontools or LibreHardwareMonitor are not discoverable.
+$env:QUIPU_SMARTCTL_BIN = ""
+$env:QUIPU_LIBRE_HARDWARE_MONITOR_DLL = ""

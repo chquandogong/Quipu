@@ -51,7 +51,7 @@ import type {
 import './styles.css';
 
 const flowStages = ['Detect', 'Triage', 'Investigate', 'Hypothesize', 'Act', 'Verify', 'Report'];
-const appVersion = 'v0.13.4';
+const appVersion = 'v0.14.0';
 
 const riskLabels: Record<RiskLevel, string> = {
   healthy: 'Healthy',
@@ -274,16 +274,17 @@ function statusForMetricSample(name: string, sample: MetricSample | undefined): 
     if (value <= 10) return 'critical';
     if (value <= 20) return 'watch';
   }
-  if (name === 'nvme.critical_warning' && value >= 1) return 'critical';
-  if (name === 'nvme.available_spare_percent') {
+  if ((name === 'nvme.smart_passed' || /^nvme\.[^.]+\.smart_passed$/.test(name)) && value < 1) return 'critical';
+  if ((name === 'nvme.critical_warning' || /^nvme\.[^.]+\.critical_warning$/.test(name)) && value >= 1) return 'critical';
+  if (name === 'nvme.available_spare_percent' || /^nvme\.[^.]+\.available_spare_percent$/.test(name)) {
     if (value <= 10) return 'critical';
     if (value <= 20) return 'watch';
   }
-  if (name === 'nvme.percentage_used_percent') {
+  if (name === 'nvme.percentage_used_percent' || /^nvme\.[^.]+\.percentage_used_percent$/.test(name)) {
     if (value >= 90) return 'critical';
     if (value >= 75) return 'watch';
   }
-  if (name === 'nvme.media_errors') {
+  if (name === 'nvme.media_errors' || /^nvme\.[^.]+\.media_errors$/.test(name)) {
     if (value >= 10) return 'critical';
     if (value > 0) return 'watch';
   }
@@ -562,6 +563,7 @@ function fanStatus(detail: InvestigationDetail | null): SignalStatus {
 function nvmeHealthStatus(detail: InvestigationDetail | null): SignalStatus {
   const hasSignal = Boolean(
     latestMetric(detail, 'nvme.critical_warning')
+      || latestMetric(detail, 'nvme.smart_passed')
       || latestMetric(detail, 'nvme.available_spare_percent')
       || latestMetric(detail, 'nvme.percentage_used_percent')
       || latestMetric(detail, 'nvme.media_errors'),
@@ -569,6 +571,7 @@ function nvmeHealthStatus(detail: InvestigationDetail | null): SignalStatus {
   if (!hasSignal) return 'missing';
   return strongestStatus(
     metricStatus(detail, 'nvme.critical_warning'),
+    metricStatus(detail, 'nvme.smart_passed'),
     metricStatus(detail, 'nvme.available_spare_percent'),
     metricStatus(detail, 'nvme.percentage_used_percent'),
     metricStatus(detail, 'nvme.media_errors'),
@@ -578,6 +581,8 @@ function nvmeHealthStatus(detail: InvestigationDetail | null): SignalStatus {
 function nvmeHealthValue(detail: InvestigationDetail | null): string {
   const criticalWarning = latestMetric(detail, 'nvme.critical_warning');
   if (criticalWarning && criticalWarning.value >= 1) return 'Critical warning';
+  const smartPassed = latestMetric(detail, 'nvme.smart_passed');
+  if (smartPassed && smartPassed.value < 1) return 'SMART failed';
   const availableSpare = latestMetric(detail, 'nvme.available_spare_percent');
   if (availableSpare) return `${availableSpare.value.toFixed(1)}% spare`;
   const percentageUsed = latestMetric(detail, 'nvme.percentage_used_percent');

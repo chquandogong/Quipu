@@ -258,6 +258,18 @@ def classify_snapshot(snapshot: dict[str, Any], *, now: datetime) -> dict[str, A
         )
         risk_level = "warning"
 
+    nvme_smart_passed = _metric_value(snapshot, "nvme.smart_passed")
+    if nvme_smart_passed is not None and nvme_smart_passed < 1 and risk_level != "stale":
+        findings.append(
+            _finding(
+                "storage",
+                "NVMe SMART self-assessment failed",
+                "At least one NVMe device reported a failed SMART health assessment.",
+                "high",
+            )
+        )
+        risk_level = "critical"
+
     nvme_critical_warning = _metric_value(snapshot, "nvme.critical_warning")
     if nvme_critical_warning is not None and nvme_critical_warning >= 1 and risk_level != "stale":
         findings.append(

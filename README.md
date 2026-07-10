@@ -2,7 +2,7 @@
 
 <p align="center">
   <img alt="CI" src="https://github.com/chquandogong/Quipu/actions/workflows/ci.yml/badge.svg">
-  <img alt="Version" src="https://img.shields.io/badge/version-v0.13.4-2f6f7e">
+  <img alt="Version" src="https://img.shields.io/badge/version-v0.14.0-2f6f7e">
   <img alt="Status" src="https://img.shields.io/badge/status-local--first%20workstation%20health-5b6b73">
   <img alt="License" src="https://img.shields.io/badge/license-not%20selected-lightgrey">
 </p>
@@ -35,7 +35,17 @@ procfs를 읽고, Windows에서는 PowerShell/CIM/netsh/Get-NetAdapter가 노출
 Detect -> Triage -> Investigate -> Hypothesize -> Act -> Verify -> Report
 ```
 
-## v0.13.4 핵심
+## v0.14.0 핵심
+
+- Windows와 Linux에서 `smartctl --json`을 자동 탐지해 NVMe별 온도, SMART
+  통과 여부, critical warning, available spare, 수명 사용률, media error,
+  power-on hours, unsafe shutdown, error-log count를 수집합니다.
+- Windows에서는 공식 LibreHardwareMonitor 라이브러리를 직접 읽어 CPU
+  package/core, SSD/NVMe 온도와 노출 가능한 팬 RPM을 수집합니다.
+- Linux hwmon 팬은 첫 번째 팬뿐 아니라 읽을 수 있는 모든 팬을
+  `fan.<sensor>.rpm`으로 보냅니다.
+- Windows 설치 스크립트의 `-InstallSensorTools`와 `-Highest` 옵션으로 공식
+  sensor 도구 설치와 관리자 sensor 접근을 구성할 수 있습니다.
 
 - Windows NVMe R/W 속도는 `Win32_PerfFormattedData_PerfDisk_PhysicalDisk`와
   `Get-PhysicalDisk`를 매핑해 `nvme.read_bytes_per_sec`,
@@ -159,6 +169,7 @@ QUIPU_DATABASE_PATH=../../data/quipu.sqlite3 uvicorn quipu_server.app:app --host
 다른 터미널에서 collector를 한 번 실행합니다.
 
 ```bash
+sudo apt-get install smartmontools
 cd apps/collector
 python3 -m venv .venv
 . .venv/bin/activate
@@ -209,6 +220,8 @@ py -3 -m venv .venv
 .\.venv\Scripts\pip.exe install -e .
 cd C:\path\to\Quipu
 powershell.exe -ExecutionPolicy Bypass -File scripts\install-collector-scheduled-task.ps1 `
+  -InstallSensorTools `
+  -Highest `
   -ServerUrl http://<server-ip>:8000 `
   -Token dev-token `
   -DeviceId windows `
@@ -235,6 +248,10 @@ directory에 이전 sector counter를 저장할 수 있습니다. Windows collec
 - `cpu.package_temp_c`, `cpu.core_<n>.temp_c`: hwmon/coretemp 기반 CPU 온도.
 - `thermal.*.temp_c`: sysfs thermal zone 온도.
 - `nvme.temp_c`, `nvme.<device>.temp_c`: NVMe 대표/장치별 온도.
+- `nvme.smart_passed`, `nvme.critical_warning`,
+  `nvme.available_spare_percent`, `nvme.percentage_used_percent`,
+  `nvme.media_errors`: `smartctl --json` 또는 OS reliability counter 기반
+  NVMe SMART health. 같은 값은 `nvme.<device>.*` 장치별 metric으로도 보냅니다.
 - `nvme.capacity_bytes`, `nvme.<device>.capacity_bytes`: NVMe namespace 용량.
 - `nvme.read_bytes_per_sec`, `nvme.write_bytes_per_sec`,
   `nvme.<device>.read_bytes_per_sec`, `nvme.<device>.write_bytes_per_sec`:

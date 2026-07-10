@@ -2,6 +2,45 @@
 
 All notable changes to Quipu are documented in this file.
 
+## v0.14.0 - 2026-07-10
+
+Temperature, fan, and full NVMe SMART telemetry release.
+
+### Added
+
+- Cross-platform `smartctl --json` discovery for Windows and Linux, reporting
+  aggregate and per-device NVMe temperature, SMART pass/fail, critical warning,
+  available spare, percentage used, media errors, power-on hours, unsafe
+  shutdowns, and error-log entry metrics.
+- Direct LibreHardwareMonitor library probing on Windows for CPU package/core,
+  storage temperature, and fan RPM sensors when the official library is
+  installed and the collector has sufficient sensor access.
+- Windows `Get-StorageReliabilityCounter` health collection for wear,
+  uncorrected read/write errors, power-on hours, and physical-disk health.
+- Scheduled-task installer options `-InstallSensorTools` and `-Highest` for the
+  official smartmontools/LibreHardwareMonitor packages and privileged sensor
+  access.
+- Critical server finding and UI state for a failed NVMe SMART self-assessment.
+
+### Changed
+
+- Linux hwmon fan collection now reports every readable fan with a stable
+  per-sensor metric instead of stopping after the first fan.
+- SMART JSON is retained when `smartctl` returns its documented non-zero health
+  status bitmask, so failing drives still produce evidence.
+- Windows command output is decoded as UTF-8 with replacement fallback to avoid
+  localized subprocess reader failures.
+- Updated package, app, API, schema, and UI versions to `0.14.0`.
+
+### Verified
+
+- Collector test suite: 25 tests passed, 2 platform skips.
+- Server test suite: 38 tests passed, 1 Starlette deprecation warning.
+- Web test suite: 3 tests passed.
+- TypeScript project check and web production build succeeded.
+- Windows live collection reported 52 metrics, including full SMART data for
+  both installed NVMe devices.
+
 ## v0.13.4 - 2026-07-09
 
 Windows native fallback patch.

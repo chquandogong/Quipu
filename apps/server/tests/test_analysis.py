@@ -283,6 +283,40 @@ def test_nvme_critical_warning_gets_storage_finding() -> None:
     assert queue[0]["priority"] == "High"
 
 
+def test_failed_nvme_smart_assessment_gets_critical_storage_finding() -> None:
+    now = datetime(2026, 7, 10, 3, 5, tzinfo=timezone.utc)
+    snapshots = [
+        {
+            "device": {
+                "device_id": "smart-failed",
+                "hostname": "smart-failed-dev",
+                "model": "Laptop",
+                "os_name": "Windows 11",
+                "kernel_version": "10.0",
+                "first_seen_at": "2026-07-10T02:55:00+00:00",
+                "last_seen_at": "2026-07-10T03:04:00+00:00",
+            },
+            "latest_metrics": {
+                "nvme.smart_passed": {
+                    "value": 0.0,
+                    "unit": "boolean",
+                    "observed_at": "2026-07-10T03:04:00+00:00",
+                }
+            },
+            "recent_events": [],
+        }
+    ]
+
+    overview = build_fleet_overview(snapshots, now=now)
+    queue = build_investigation_queue(snapshots, now=now)
+
+    assert overview["summary"]["critical"] == 1
+    assert overview["devices"][0]["findings"][0]["title"] == "NVMe SMART self-assessment failed"
+    assert overview["devices"][0]["findings"][0]["category"] == "storage"
+    assert queue[0]["id"] == "smart-failed:storage"
+    assert queue[0]["priority"] == "High"
+
+
 def test_low_nvme_available_spare_gets_storage_warning() -> None:
     now = datetime(2026, 7, 7, 3, 5, tzinfo=timezone.utc)
     snapshots = [

@@ -2,7 +2,7 @@
 
 <p align="center">
   <img alt="CI" src="https://github.com/chquandogong/Quipu/actions/workflows/ci.yml/badge.svg">
-  <img alt="Version" src="https://img.shields.io/badge/version-v0.13.4-2f6f7e">
+  <img alt="Version" src="https://img.shields.io/badge/version-v0.14.0-2f6f7e">
   <img alt="Status" src="https://img.shields.io/badge/status-local--first%20workstation%20health-5b6b73">
   <img alt="License" src="https://img.shields.io/badge/license-not%20selected-lightgrey">
 </p>
@@ -33,7 +33,16 @@ Detect -> Triage -> Investigate -> Hypothesize -> Act -> Verify -> Report
 
 Quipu 不是远程修复工具。collector 是只读的，server 使用确定性的规则分析。
 
-## v0.13.4 重点
+## v0.14.0 重点
+
+- Windows 和 Linux 会自动发现 `smartctl --json`，上报汇总和每设备 NVMe
+  温度、SMART 通过状态、critical warning、spare、寿命使用率、media error、
+  power-on hours、unsafe shutdown 和 error-log 数量。
+- Windows 可直接读取官方 LibreHardwareMonitor library，收集 CPU package/core、
+  SSD/NVMe 温度和硬件实际暴露的风扇 RPM。
+- Linux hwmon 现在会上报所有可读风扇，不再只取第一个。
+- Windows task 安装脚本新增 `-InstallSensorTools` 和 `-Highest`，用于安装官方
+  sensor 工具并启用需要管理员访问的 sensor。
 
 - Windows NVMe R/W 速度 collection 现在会把
   `Win32_PerfFormattedData_PerfDisk_PhysicalDisk` 和 `Get-PhysicalDisk`
@@ -120,6 +129,7 @@ QUIPU_DATABASE_PATH=../../data/quipu.sqlite3 uvicorn quipu_server.app:app --host
 发送一次本机 collector batch：
 
 ```bash
+sudo apt-get install smartmontools
 cd apps/collector
 python3 -m venv .venv
 . .venv/bin/activate
@@ -158,6 +168,8 @@ py -3 -m venv .venv
 .\.venv\Scripts\pip.exe install -e .
 cd C:\path\to\Quipu
 powershell.exe -ExecutionPolicy Bypass -File scripts\install-collector-scheduled-task.ps1 `
+  -InstallSensorTools `
+  -Highest `
   -ServerUrl http://<server-ip>:8000 `
   -Token dev-token `
   -DeviceId windows `

@@ -1,6 +1,8 @@
 param(
   [switch]$DryRun,
   [switch]$NoStart,
+  [switch]$Highest,
+  [switch]$InstallSensorTools,
   [string]$TaskName = "Quipu Collector Windows",
   [string]$ServerUrl = "",
   [string]$Token = "",
@@ -39,6 +41,27 @@ if (-not (Test-Path -LiteralPath $startScript)) {
   throw "Collector startup script not found: $startScript"
 }
 
+if ($InstallSensorTools) {
+  $winget = Get-Command winget.exe -ErrorAction SilentlyContinue
+  if (-not $winget) {
+    throw "winget.exe is required to install Windows sensor tools"
+  }
+  $sensorPackages = @(
+    "smartmontools.smartmontools",
+    "LibreHardwareMonitor.LibreHardwareMonitor"
+  )
+  foreach ($packageId in $sensorPackages) {
+    Write-Step "Install sensor package $packageId"
+    if (-not $DryRun) {
+      & $winget.Source install --exact --id $packageId --silent --disable-interactivity `
+        --accept-source-agreements --accept-package-agreements
+      if ($LASTEXITCODE -ne 0) {
+        throw "Failed to install sensor package: $packageId"
+      }
+    }
+  }
+}
+
 if (-not (Test-Path -LiteralPath $config)) {
   $configLines = @(
     ('$env:QUIPU_SERVER_URL = ' + (Quote-PowerShellString $ServerUrl)),
@@ -68,7 +91,8 @@ Write-Step "Register scheduled task '$TaskName' for $user"
 if (-not $DryRun) {
   $action = New-ScheduledTaskAction -Execute $powershellExe -Argument $actionArgs -WorkingDirectory $collectorDir
   $trigger = New-ScheduledTaskTrigger -AtLogOn -User $user
-  $principal = New-ScheduledTaskPrincipal -UserId $user -LogonType Interactive -RunLevel Limited
+  $runLevel = if ($Highest) { "Highest" } else { "Limited" }
+  $principal = New-ScheduledTaskPrincipal -UserId $user -LogonType Interactive -RunLevel $runLevel
   $settings = New-ScheduledTaskSettingsSet `
     -MultipleInstances IgnoreNew `
     -AllowStartIfOnBatteries `
@@ -82,7 +106,7 @@ if (-not $DryRun) {
     -Trigger $trigger `
     -Principal $principal `
     -Settings $settings `
-    -Description "Start Quipu collector at user logon." `
+    -Description "Start Quipu collector at user logon (run level: $runLevel)." `
     -Force | Out-Null
 
   if (-not $NoStart) {

@@ -2,7 +2,7 @@
 
 <p align="center">
   <img alt="CI" src="https://github.com/chquandogong/Quipu/actions/workflows/ci.yml/badge.svg">
-  <img alt="Version" src="https://img.shields.io/badge/version-v0.13.4-2f6f7e">
+  <img alt="Version" src="https://img.shields.io/badge/version-v0.14.0-2f6f7e">
   <img alt="Status" src="https://img.shields.io/badge/status-local--first%20workstation%20health-5b6b73">
   <img alt="License" src="https://img.shields.io/badge/license-not%20selected-lightgrey">
 </p>
@@ -35,7 +35,16 @@ Detect -> Triage -> Investigate -> Hypothesize -> Act -> Verify -> Report
 The product is not a remote repair tool. The collector is read-only and the
 server uses deterministic rule-based analysis.
 
-## v0.13.4 Highlights
+## v0.14.0 Highlights
+
+- Cross-platform `smartctl --json` discovery reports aggregate and per-device
+  NVMe temperature, SMART pass/fail, critical warning, spare, lifetime usage,
+  media errors, power-on hours, unsafe shutdowns, and error-log entries.
+- Windows can query the official LibreHardwareMonitor library directly for CPU
+  package/core and storage temperatures plus exposed fan RPM sensors.
+- Linux hwmon collection reports every readable fan instead of only the first.
+- The Windows task installer supports `-InstallSensorTools` for the official
+  sensor packages and `-Highest` for sensors that require administrator access.
 
 - Windows NVMe R/W rate collection now maps
   `Win32_PerfFormattedData_PerfDisk_PhysicalDisk` to NVMe devices from
@@ -78,7 +87,7 @@ server uses deterministic rule-based analysis.
 - Browser UI sessions opened from private LAN Vite origins on ports 5173 or
   5174 can read the API without the previous local-only CORS failure.
 - Version metadata across the collector, server, schema, and web app is now
-  `0.13.4`.
+  `0.14.0`.
 
 ## v0.11.0 Highlights
 
@@ -133,6 +142,7 @@ QUIPU_DATABASE_PATH=../../data/quipu.sqlite3 uvicorn quipu_server.app:app --host
 Send one local collector batch:
 
 ```bash
+sudo apt-get install smartmontools
 cd apps/collector
 python3 -m venv .venv
 . .venv/bin/activate
@@ -169,6 +179,8 @@ register the collector at user logon:
 
 ```powershell
 powershell.exe -ExecutionPolicy Bypass -File scripts\install-collector-scheduled-task.ps1 `
+  -InstallSensorTools `
+  -Highest `
   -ServerUrl http://<server-ip>:8000 `
   -Token dev-token `
   -DeviceId windows `
@@ -189,6 +201,8 @@ py -3 -m venv .venv
 .\.venv\Scripts\pip.exe install -e .
 cd C:\path\to\Quipu
 powershell.exe -ExecutionPolicy Bypass -File scripts\install-collector-scheduled-task.ps1 `
+  -InstallSensorTools `
+  -Highest `
   -ServerUrl http://<server-ip>:8000 `
   -Token dev-token `
   -DeviceId windows `

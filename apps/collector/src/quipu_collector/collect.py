@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 import hashlib
 import json
+import os
 from pathlib import Path
 import platform
 import re
@@ -343,18 +344,25 @@ def _events_from_text(
     return events[-20:]
 
 
-def _run_command(args: list[str], *, timeout: float = 2.0) -> str | None:
+def _run_command(
+    args: list[str],
+    *,
+    timeout: float = 2.0,
+    accept_nonzero: bool = False,
+) -> str | None:
     try:
         completed = subprocess.run(
             args,
             capture_output=True,
             check=False,
             text=True,
+            encoding="utf-8",
+            errors="replace",
             timeout=timeout,
         )
     except (OSError, subprocess.TimeoutExpired):
         return None
-    if completed.returncode != 0:
+    if completed.returncode != 0 and not accept_nonzero:
         return None
     return completed.stdout
 
@@ -364,10 +372,11 @@ def _run_observation_command(
     command_runner: CommandRunner | None,
     *,
     timeout: float = 2.0,
+    accept_nonzero: bool = False,
 ) -> str | None:
     if command_runner is not None:
         return command_runner(args)
-    return _run_command(args, timeout=timeout)
+    return _run_command(args, timeout=timeout, accept_nonzero=accept_nonzero)
 
 
 def _is_windows_runtime(root: Path) -> bool:
@@ -795,15 +804,26 @@ def _thermal_metrics(root: Path, observed_at: str) -> list[dict[str, Any]]:
 
 def _fan_metrics(root: Path, observed_at: str) -> list[dict[str, Any]]:
     base = _root_path(root, "/sys/class/hwmon")
+    metrics_by_name: dict[str, dict[str, Any]] = {}
+    generic_recorded = False
     for hwmon in sorted(base.glob("hwmon*")):
+        hardware_name = _safe_metric_part(_read_text(hwmon / "name") or hwmon.name)
         for fan_input in sorted(hwmon.glob("fan*_input")):
             raw_rpm = _read_text(fan_input)
             if raw_rpm is None:
                 continue
             rpm = _parse_metric_number(raw_rpm)
             if rpm is not None and rpm >= 0:
-                return [_metric("fan.rpm", rpm, "rpm", observed_at)]
-    return []
+                label_path = hwmon / fan_input.name.replace("_input", "_label")
+                label = _safe_metric_part(
+                    _read_text(label_path) or fan_input.name.replace("_input", "")
+                )
+                if not generic_recorded:
+                    metrics_by_name["fan.rpm"] = _metric("fan.rpm", rpm, "rpm", observed_at)
+                    generic_recorded = True
+                metric_name = f"fan.{hardware_name}_{label}.rpm"
+                metrics_by_name.setdefault(metric_name, _metric(metric_name, rpm, "rpm", observed_at))
+    return list(metrics_by_name.values())
 
 
 def _nvme_metrics(root: Path, observed_at: str) -> list[dict[str, Any]]:
@@ -1001,6 +1021,172 @@ def _nvme_health_metrics(root: Path, observed_at: str) -> list[dict[str, Any]]:
             if metric_name not in metrics_by_name:
                 metrics_by_name[metric_name] = _metric(metric_name, value, unit, observed_at)
     return list(metrics_by_name.values())
+
+
+def _smartctl_binary(command_runner: CommandRunner | None) -> str | None:
+    if command_runner is not None:
+        return "smartctl"
+
+    candidates = [os.environ.get("QUIPU_SMARTCTL_BIN"), shutil.which("smartctl")]
+    if platform.system().lower() == "windows":
+        for env_name in ("ProgramFiles", "ProgramFiles(x86)"):
+            base = os.environ.get(env_name)
+            if base:
+                candidates.append(str(Path(base) / "smartmontools" / "bin" / "smartctl.exe"))
+
+    for candidate in candidates:
+        if candidate and Path(candidate).is_file():
+            return candidate
+    return None
+
+
+def _smartctl_json(
+    args: list[str],
+    command_runner: CommandRunner | None,
+) -> dict[str, Any]:
+    binary = _smartctl_binary(command_runner)
+    if not binary:
+        return {}
+    output = _run_observation_command(
+        [binary, *args],
+        command_runner,
+        timeout=20.0,
+        accept_nonzero=True,
+    )
+    if not output:
+        return {}
+    try:
+        payload = json.loads(output)
+    except json.JSONDecodeError:
+        return {}
+    return payload if isinstance(payload, dict) else {}
+
+
+def _nested_metric_number(payload: dict[str, Any], *path: str) -> float | None:
+    value: Any = payload
+    for key in path:
+        if not isinstance(value, dict):
+            return None
+        value = value.get(key)
+    return _coerce_metric_number(value)
+
+
+def _smartctl_metrics(
+    observed_at: str,
+    command_runner: CommandRunner | None,
+) -> list[dict[str, Any]]:
+    scan = _smartctl_json(["--scan-open", "--json"], command_runner)
+    devices = scan.get("devices")
+    if not isinstance(devices, list):
+        return []
+
+    metric_specs = {
+        "smart_passed": ("smart_passed", "boolean"),
+        "critical_warning": ("critical_warning", "boolean"),
+        "available_spare": ("available_spare_percent", "percent"),
+        "percentage_used": ("percentage_used_percent", "percent"),
+        "media_errors": ("media_errors", "count"),
+        "power_on_hours": ("power_on_hours", "hours"),
+        "unsafe_shutdowns": ("unsafe_shutdowns", "count"),
+        "error_log_entries": ("error_log_entries", "count"),
+    }
+    aggregate_modes = {
+        "smart_passed": "min",
+        "critical_warning": "max",
+        "available_spare": "min",
+        "percentage_used": "max",
+        "media_errors": "sum",
+        "power_on_hours": "max",
+        "unsafe_shutdowns": "sum",
+        "error_log_entries": "sum",
+    }
+    aggregate_values: dict[str, float] = {}
+    metrics: list[dict[str, Any]] = []
+    recorded_names: set[str] = set()
+    temperatures: list[float] = []
+
+    for index, device in enumerate(devices):
+        if not isinstance(device, dict):
+            continue
+        device_path = str(device.get("name") or "").strip()
+        if not device_path:
+            continue
+        command = ["-a", "--json"]
+        device_type = str(device.get("type") or "").strip()
+        if device_type:
+            command.extend(["-d", device_type])
+        command.append(device_path)
+        payload = _smartctl_json(command, command_runner)
+        if not payload:
+            continue
+
+        protocol = " ".join(
+            str(value or "")
+            for value in (
+                device.get("protocol"),
+                device.get("type"),
+                payload.get("device", {}).get("protocol") if isinstance(payload.get("device"), dict) else None,
+            )
+        ).lower()
+        health_log = payload.get("nvme_smart_health_information_log")
+        if "nvme" not in protocol and not isinstance(health_log, dict):
+            continue
+        health_log = health_log if isinstance(health_log, dict) else {}
+
+        label = str(payload.get("model_name") or device.get("info_name") or Path(device_path).name)
+        device_name = _safe_metric_part(label)
+        if device_name in recorded_names:
+            device_name = f"{device_name}_{index}"
+        recorded_names.add(device_name)
+
+        smart_status = payload.get("smart_status")
+        passed = smart_status.get("passed") if isinstance(smart_status, dict) else None
+        values: dict[str, float] = {}
+        if isinstance(passed, bool):
+            values["smart_passed"] = 1.0 if passed else 0.0
+
+        for value_name in (
+            "critical_warning",
+            "available_spare",
+            "percentage_used",
+            "media_errors",
+            "power_on_hours",
+            "unsafe_shutdowns",
+        ):
+            value = _coerce_metric_number(health_log.get(value_name))
+            if value is not None and value >= 0:
+                values[value_name] = value
+        error_entries = _coerce_metric_number(health_log.get("num_err_log_entries"))
+        if error_entries is not None and error_entries >= 0:
+            values["error_log_entries"] = error_entries
+
+        temperature = _nested_metric_number(payload, "temperature", "current")
+        if temperature is None:
+            temperature = _coerce_metric_number(health_log.get("temperature"))
+        if temperature is not None and 0 < temperature < 150:
+            temperatures.append(temperature)
+            metrics.append(_metric(f"nvme.{device_name}.temp_c", temperature, "celsius", observed_at))
+
+        for value_name, value in values.items():
+            suffix, unit = metric_specs[value_name]
+            metrics.append(_metric(f"nvme.{device_name}.{suffix}", value, unit, observed_at))
+            current = aggregate_values.get(value_name)
+            mode = aggregate_modes[value_name]
+            if current is None:
+                aggregate_values[value_name] = value
+            elif mode == "min":
+                aggregate_values[value_name] = min(current, value)
+            elif mode == "max":
+                aggregate_values[value_name] = max(current, value)
+            else:
+                aggregate_values[value_name] = current + value
+
+    if temperatures:
+        metrics.insert(0, _metric("nvme.temp_c", max(temperatures), "celsius", observed_at))
+    for value_name, value in aggregate_values.items():
+        suffix, unit = metric_specs[value_name]
+        metrics.insert(0, _metric(f"nvme.{suffix}", value, unit, observed_at))
+    return metrics
 
 
 def _wifi_link_bitrate_metrics(
@@ -1474,31 +1660,72 @@ def _windows_nvme_reliability_metrics(
         "Get-PhysicalDisk | ForEach-Object {"
         "$disk=$_;"
         "$counter=$null;"
-        "$temperature=$null;"
         "if ($hasReliability) { $counter=$disk | Get-StorageReliabilityCounter -ErrorAction SilentlyContinue };"
-        "if ($counter) { $temperature=$counter.Temperature };"
         "[pscustomobject]@{DeviceId=$disk.DeviceId;FriendlyName=$disk.FriendlyName;"
-        "BusType=$disk.BusType;MediaType=$disk.MediaType;Size=$disk.Size;Temperature=$temperature}"
+        "BusType=$disk.BusType;MediaType=$disk.MediaType;Size=$disk.Size;"
+        "HealthStatus=[string]$disk.HealthStatus;OperationalStatus=[string]$disk.OperationalStatus;"
+        "Temperature=$counter.Temperature;Wear=$counter.Wear;PowerOnHours=$counter.PowerOnHours;"
+        "ReadErrorsUncorrected=$counter.ReadErrorsUncorrected;"
+        "WriteErrorsUncorrected=$counter.WriteErrorsUncorrected}"
         "} | ConvertTo-Json -Compress",
         command_runner,
     )
     metrics: list[dict[str, Any]] = []
-    generic_recorded = False
     recorded_devices: set[str] = set()
+    temperatures: list[float] = []
+    smart_passed_values: list[float] = []
+    wear_values: list[float] = []
+    power_on_hours_values: list[float] = []
+    media_errors_total = 0.0
+    media_error_samples = 0
     for index, disk in enumerate(_json_items(payload)):
         if not _windows_disk_is_nvme(disk):
-            continue
-        celsius = _coerce_metric_number(disk.get("Temperature"))
-        if celsius is None or not 0 < celsius < 150:
             continue
         device_name = _windows_disk_device_name(disk, index)
         if device_name in recorded_devices:
             continue
         recorded_devices.add(device_name)
-        if not generic_recorded:
-            metrics.append(_metric("nvme.temp_c", celsius, "celsius", observed_at))
-            generic_recorded = True
-        metrics.append(_metric(f"nvme.{device_name}.temp_c", celsius, "celsius", observed_at))
+
+        celsius = _coerce_metric_number(disk.get("Temperature"))
+        if celsius is not None and 0 < celsius < 150:
+            temperatures.append(celsius)
+            metrics.append(_metric(f"nvme.{device_name}.temp_c", celsius, "celsius", observed_at))
+
+        health_status = str(disk.get("HealthStatus") or "").strip().lower()
+        operational_status = str(disk.get("OperationalStatus") or "").strip().lower()
+        if health_status:
+            passed = 1.0 if health_status == "healthy" and operational_status in {"", "ok"} else 0.0
+            smart_passed_values.append(passed)
+            metrics.append(_metric(f"nvme.{device_name}.smart_passed", passed, "boolean", observed_at))
+
+        wear = _coerce_metric_number(disk.get("Wear"))
+        if wear is not None and 0 <= wear <= 100:
+            wear_values.append(wear)
+            metrics.append(_metric(f"nvme.{device_name}.percentage_used_percent", wear, "percent", observed_at))
+
+        power_on_hours = _coerce_metric_number(disk.get("PowerOnHours"))
+        if power_on_hours is not None and power_on_hours >= 0:
+            power_on_hours_values.append(power_on_hours)
+            metrics.append(_metric(f"nvme.{device_name}.power_on_hours", power_on_hours, "hours", observed_at))
+
+        read_errors = _coerce_metric_number(disk.get("ReadErrorsUncorrected"))
+        write_errors = _coerce_metric_number(disk.get("WriteErrorsUncorrected"))
+        if read_errors is not None or write_errors is not None:
+            media_errors = max(0.0, read_errors or 0.0) + max(0.0, write_errors or 0.0)
+            media_errors_total += media_errors
+            media_error_samples += 1
+            metrics.append(_metric(f"nvme.{device_name}.media_errors", media_errors, "count", observed_at))
+
+    if temperatures:
+        metrics.insert(0, _metric("nvme.temp_c", max(temperatures), "celsius", observed_at))
+    if smart_passed_values:
+        metrics.insert(0, _metric("nvme.smart_passed", min(smart_passed_values), "boolean", observed_at))
+    if wear_values:
+        metrics.insert(0, _metric("nvme.percentage_used_percent", max(wear_values), "percent", observed_at))
+    if power_on_hours_values:
+        metrics.insert(0, _metric("nvme.power_on_hours", max(power_on_hours_values), "hours", observed_at))
+    if media_error_samples:
+        metrics.insert(0, _metric("nvme.media_errors", media_errors_total, "count", observed_at))
     return metrics
 
 
@@ -1662,6 +1889,108 @@ def _windows_hardware_monitor_fan_metrics(
     return list(metrics_by_name.values())
 
 
+def _windows_hardware_monitor_library_metrics(
+    observed_at: str,
+    command_runner: CommandRunner | None,
+) -> list[dict[str, Any]]:
+    payload = _powershell_json(
+        "if (Get-Process LibreHardwareMonitor -ErrorAction SilentlyContinue) { Write-Output '[]'; exit 0 };"
+        "$dll=$env:QUIPU_LIBRE_HARDWARE_MONITOR_DLL;"
+        "if (-not $dll) {"
+        "$command=Get-Command LibreHardwareMonitor.exe -ErrorAction SilentlyContinue;"
+        "if ($command) { $dll=Join-Path (Split-Path $command.Source) 'LibreHardwareMonitorLib.dll' }"
+        "};"
+        "if (-not $dll -and $env:LOCALAPPDATA) {"
+        "$packages=Join-Path $env:LOCALAPPDATA 'Microsoft\\WinGet\\Packages';"
+        "$dll=Get-ChildItem $packages -Directory -Filter 'LibreHardwareMonitor.LibreHardwareMonitor*' "
+        "-ErrorAction SilentlyContinue | ForEach-Object {"
+        "Get-ChildItem $_.FullName -File -Filter 'LibreHardwareMonitorLib.dll' -ErrorAction SilentlyContinue"
+        "} | Select-Object -First 1 -ExpandProperty FullName"
+        "};"
+        "if (-not $dll -or -not (Test-Path -LiteralPath $dll)) { Write-Output '[]'; exit 0 };"
+        "Add-Type -Path $dll;"
+        "$computer=[LibreHardwareMonitor.Hardware.Computer]::new();"
+        "$computer.IsCpuEnabled=$true;"
+        "$computer.IsMotherboardEnabled=$true;"
+        "$computer.IsStorageEnabled=$true;"
+        "$computer.Open();"
+        "function Update-Hardware($hardware) {"
+        "$hardware.Update();"
+        "foreach ($sub in $hardware.SubHardware) { Update-Hardware $sub }"
+        "};"
+        "function Read-Hardware($hardware) {"
+        "foreach ($sensor in $hardware.Sensors) {"
+        "if ($sensor.SensorType -in @('Temperature','Fan') -and $null -ne $sensor.Value) {"
+        "[pscustomobject]@{Hardware=$hardware.Name;HardwareType=[string]$hardware.HardwareType;"
+        "Name=$sensor.Name;SensorType=[string]$sensor.SensorType;Value=[double]$sensor.Value;"
+        "Identifier=[string]$sensor.Identifier}"
+        "}"
+        "};"
+        "foreach ($sub in $hardware.SubHardware) { Read-Hardware $sub }"
+        "};"
+        "try {"
+        "foreach ($hardware in $computer.Hardware) { Update-Hardware $hardware };"
+        "Start-Sleep -Milliseconds 250;"
+        "foreach ($hardware in $computer.Hardware) { Update-Hardware $hardware };"
+        "@($computer.Hardware | ForEach-Object { Read-Hardware $_ }) | ConvertTo-Json -Compress"
+        "} finally { $computer.Close() }",
+        command_runner,
+    )
+    metrics_by_name: dict[str, dict[str, Any]] = {}
+    nvme_temperatures: list[float] = []
+    fan_values: list[float] = []
+    for index, sensor in enumerate(_json_items(payload)):
+        value = _coerce_metric_number(sensor.get("Value"))
+        if value is None:
+            continue
+        sensor_type = str(sensor.get("SensorType") or "").strip().lower()
+        hardware_type = str(sensor.get("HardwareType") or "").strip().lower()
+        hardware = str(sensor.get("Hardware") or "").strip()
+        name = str(sensor.get("Name") or f"sensor_{index}").strip()
+        label = " ".join(part for part in (hardware, name) if part).strip()
+        normalized_label = label.lower()
+
+        if sensor_type == "fan":
+            if not 0 <= value < 50000:
+                continue
+            fan_values.append(value)
+            metric_name = f"fan.{_safe_metric_part(label)}.rpm"
+            metrics_by_name.setdefault(metric_name, _metric(metric_name, value, "rpm", observed_at))
+            continue
+        if sensor_type != "temperature" or not 0 < value < 150:
+            continue
+
+        if hardware_type == "cpu" or "cpu" in normalized_label:
+            lower_name = name.lower()
+            if "package" in lower_name:
+                metric_name = "cpu.package_temp_c"
+            else:
+                hybrid_match = re.search(r"\b([pe])-core\s*#?\s*(\d+)\b", lower_name)
+                core_match = re.search(r"\bcpu\s+core\s*#?\s*(\d+)\b", lower_name)
+                if hybrid_match:
+                    metric_name = f"cpu.{hybrid_match.group(1)}_core_{hybrid_match.group(2)}.temp_c"
+                elif core_match:
+                    metric_name = f"cpu.core_{core_match.group(1)}.temp_c"
+                else:
+                    metric_name = f"thermal.windows_{_safe_metric_part(label)}.temp_c"
+        elif hardware_type == "storage" or any(
+            token in normalized_label for token in ("nvme", "ssd", "disk")
+        ):
+            nvme_temperatures.append(value)
+            metric_name = f"nvme.{_safe_metric_part(label)}.temp_c"
+        else:
+            metric_name = f"thermal.windows_{_safe_metric_part(label)}.temp_c"
+        metrics_by_name.setdefault(metric_name, _metric(metric_name, value, "celsius", observed_at))
+
+    if nvme_temperatures:
+        metrics_by_name["nvme.temp_c"] = _metric(
+            "nvme.temp_c", max(nvme_temperatures), "celsius", observed_at
+        )
+    if fan_values:
+        metrics_by_name["fan.rpm"] = _metric("fan.rpm", max(fan_values), "rpm", observed_at)
+    return list(metrics_by_name.values())
+
+
 def _windows_metrics(observed_at: str, command_runner: CommandRunner | None) -> list[dict[str, Any]]:
     metrics: list[dict[str, Any]] = []
     metrics.extend(_windows_processor_metrics(observed_at, command_runner))
@@ -1674,6 +2003,7 @@ def _windows_metrics(observed_at: str, command_runner: CommandRunner | None) -> 
     metrics.extend(_windows_thermal_metrics(observed_at, command_runner))
     metrics.extend(_windows_native_fan_metrics(observed_at, command_runner))
     metrics.extend(_windows_hardware_monitor_fan_metrics(observed_at, command_runner))
+    metrics.extend(_windows_hardware_monitor_library_metrics(observed_at, command_runner))
     return metrics
 
 
@@ -1715,6 +2045,7 @@ def collect_observation(
     metrics.extend(_power_supply_metrics(root_path, observed_iso))
     if windows_runtime:
         metrics.extend(_windows_metrics(observed_iso, command_runner))
+    metrics.extend(_smartctl_metrics(observed_iso, command_runner))
     events = _event_logs(root_path, observed_iso, command_runner)
     if windows_runtime:
         events.extend(_windows_event_logs(observed_iso, command_runner))

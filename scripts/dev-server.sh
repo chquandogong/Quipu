@@ -9,6 +9,4 @@ fi
 
 . .venv/bin/activate
 pip install -e ".[test]"
-mkdir -p ../../data
-python -m quipu_server.seed ../../fixtures/ingest/team-sample.json --database ../../data/quipu.sqlite3
-QUIPU_DATABASE_PATH=../../data/quipu.sqlite3 uvicorn quipu_server.app:app --host 127.0.0.1 --port 8000 --reload
+QUIPU_DATABASE_PATH=../../data/quipu.sqlite3 uvicorn quipu_server.app:app --host 0.0.0.0 --port 8000 --reload

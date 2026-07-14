@@ -128,7 +128,15 @@ const fleetResponse = {
         'nvme.samsung_ssd_980_pro_1tb.capacity_bytes': { value: 1000204886016, unit: 'bytes', observed_at: '2026-07-07T03:00:00+00:00' },
         'nvme.temp_c': { value: 55, unit: 'celsius', observed_at: '2026-07-07T03:00:00+00:00' },
         'nvme.hfs256gej9x101n.temp_c': { value: 55, unit: 'celsius', observed_at: '2026-07-07T03:00:00+00:00' },
+        'nvme.hfs256gej9x101n_composite_temperature.temp_c': { value: 55, unit: 'celsius', observed_at: '2026-07-07T03:00:00+00:00' },
+        'nvme.hfs256gej9x101n_critical_temperature.temp_c': { value: 86, unit: 'celsius', observed_at: '2026-07-07T03:00:00+00:00' },
+        'nvme.hfs256gej9x101n_temperature_1.temp_c': { value: 44, unit: 'celsius', observed_at: '2026-07-07T03:00:00+00:00' },
+        'nvme.hfs256gej9x101n_temperature_2.temp_c': { value: 53, unit: 'celsius', observed_at: '2026-07-07T03:00:00+00:00' },
+        'nvme.hfs256gej9x101n_warning_temperature.temp_c': { value: 85, unit: 'celsius', observed_at: '2026-07-07T03:00:00+00:00' },
         'nvme.samsung_ssd_980_pro_1tb.temp_c': { value: 45, unit: 'celsius', observed_at: '2026-07-07T03:00:00+00:00' },
+        'nvme.samsung_ssd_980_pro_1tb_composite_temperature.temp_c': { value: 45, unit: 'celsius', observed_at: '2026-07-07T03:00:00+00:00' },
+        'nvme.samsung_ssd_980_pro_1tb_critical_temperature.temp_c': { value: 84, unit: 'celsius', observed_at: '2026-07-07T03:00:00+00:00' },
+        'nvme.samsung_ssd_980_pro_1tb_warning_temperature.temp_c': { value: 81, unit: 'celsius', observed_at: '2026-07-07T03:00:00+00:00' },
         'nvme.read_bytes_per_sec': { value: 0, unit: 'bytes_per_sec', observed_at: '2026-07-07T03:00:00+00:00' },
         'nvme.write_bytes_per_sec': { value: 0, unit: 'bytes_per_sec', observed_at: '2026-07-07T03:00:00+00:00' },
         'nvme.hfs256gej9x101n.read_bytes_per_sec': { value: 0, unit: 'bytes_per_sec', observed_at: '2026-07-07T03:00:00+00:00' },
@@ -589,6 +597,11 @@ describe('App', () => {
     expect(screen.getByLabelText('CPU E core 2 load: 18.0%')).toHaveClass('breakdown-nominal');
     expect(screen.getAllByText('32.0C').length).toBeGreaterThan(0);
     expect(screen.getAllByText('55.0C').length).toBeGreaterThan(0);
+    expect(screen.getByLabelText('NVMe hfs256gej9x101n: 55.0C · 238 GB · R 0 B/s · W 0 B/s')).toHaveClass('breakdown-nominal');
+    expect(screen.getByLabelText('NVMe samsung_ssd_980_pro_1tb: 45.0C · 932 GB · R 0 B/s · W 0 B/s')).toHaveClass('breakdown-nominal');
+    expect(screen.queryByText('hfs256gej9x101n_composite_temperature')).not.toBeInTheDocument();
+    expect(screen.queryByText('hfs256gej9x101n_critical_temperature')).not.toBeInTheDocument();
+    expect(screen.queryByText('samsung_ssd_980_pro_1tb_warning_temperature')).not.toBeInTheDocument();
     expect(screen.getByText('Power policy scheme was reset by WUDFHost.exe.')).toBeInTheDocument();
     expect(screen.getAllByText('Windows event message was hidden because its source text encoding was corrupt.').length).toBeGreaterThan(0);
     expect(screen.queryByText(/���/)).not.toBeInTheDocument();

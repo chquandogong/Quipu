@@ -2,6 +2,20 @@
 
 All notable changes to Quipu are documented in this file.
 
+## v0.14.5 - 2026-07-14
+
+Optimize device status transition, left panels tabs, clean DB, and host bind fix.
+
+### Changed
+
+- Reworked the Devices list and Active Issues queue status badge rendering to show a clean, horizontal status transition (e.g. `이전 ➔ 현재`) with Korean status labels.
+- Replaced bulky sub-vitals grid cards under Devices list with a lightweight, inline semicolon-separated text layout (`발열(정상); 메모리(위험 ➔ 정상)`).
+- Hided sub-vitals inline list and displayed a single "Telemetry Offline" status message when the device connection is `Stale`.
+- Split the left workspace pane into two clean tabs: `🚨 예방 가이드 (Smart Advisor)` and `🛠️ 조치 및 협업 (Actions)` to eliminate vertical scrolling.
+- Changed local server binding from `127.0.0.1` to `0.0.0.0` in `dev-server.sh` to allow real collectors on other network devices (like IP `192.168.50.247`) to connect and flush local queues.
+- Removed demo computers from the SQLite database and disabled automatic demo seeding on server startup.
+- Bumped version numbers in package.json, App.tsx, pyproject.toml, and server code to `0.14.5`.
+
 ## v0.14.4 - 2026-07-10
 
 Documentation reset for current Windows collector behavior.

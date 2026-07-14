@@ -2,7 +2,7 @@
 
 <p align="center">
   <img alt="CI" src="https://github.com/chquandogong/Quipu/actions/workflows/ci.yml/badge.svg">
-  <img alt="Version" src="https://img.shields.io/badge/version-v0.14.4-2f6f7e">
+  <img alt="Version" src="https://img.shields.io/badge/version-v0.14.5-2f6f7e">
   <img alt="Status" src="https://img.shields.io/badge/status-local--first%20workstation%20health-5b6b73">
   <img alt="License" src="https://img.shields.io/badge/license-not%20selected-lightgrey">
 </p>
@@ -35,7 +35,7 @@ procfs를 읽고, Windows에서는 PowerShell/CIM/netsh/Get-NetAdapter가 노출
 Detect -> Triage -> Investigate -> Hypothesize -> Act -> Verify -> Report
 ```
 
-## v0.14.4 핵심
+## v0.14.5 핵심
 
 - 문서를 현재 구현 기준으로 다시 정리했습니다. README, 사용자 매뉴얼, ship
   checklist, dashboard, roadmap은 Windows collector가 실제로 보내는 값과

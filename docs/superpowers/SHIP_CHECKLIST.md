@@ -1,9 +1,9 @@
 # Quipu Ship Checklist
 
-> Status: v0.14.4 documentation release checklist for current Windows collector behavior
+> Status: v0.14.5 documentation release checklist for current Windows collector behavior
 > Date: 2026-07-10
 > Owner: chquan
-> Release: v0.14.4
+> Release: v0.14.5
 
 ## Scope
 
@@ -135,7 +135,7 @@ Excluded:
 - Web tests: `npm test -- --run` -> 3 passed.
 - Web build: `npm run build` -> succeeded.
 - Whitespace check: `git diff --check` -> passed.
-- Browser DOM smoke check: `Version v0.14.4`, `Devices`, `Device Issues`,
+- Browser DOM smoke check: `Version v0.14.5`, `Devices`, `Device Issues`,
   `우분투 · chquan-17ZD90SP-GX56K`, `윈도우 · DOGU_CHQUAN`, and `Telemetry Matrix`
   rendered from the LAN UI without `Failed to fetch`.
 - Live Windows batch check: `윈도우 · DOGU_CHQUAN` reports `cpu.load_percent`,
@@ -144,7 +144,7 @@ Excluded:
 
 Evidence source:
 
-- Latest verified local commit before release prep: v0.14.4 documentation release candidate.
+- Latest verified local commit before release prep: v0.14.5 documentation release candidate.
 
 ## Risks
 
@@ -164,7 +164,7 @@ Known risks:
 - Enrollment tokens are stored as hashes, but role-aware admin auth is still a
   future hardening item.
 - Current analysis is deterministic and intentionally conservative.
-- Windows telemetry coverage depends on the Windows task running the v0.14.4
+- Windows telemetry coverage depends on the Windows task running the v0.14.5
   collector package. The current observed Windows device is visible, but an
   older task may keep sending only smoke-level telemetry until the release is
   installed and the task is restarted on that machine.
@@ -227,15 +227,15 @@ Check after release:
 - User manual: includes Windows collector verification, hardware-monitor CPU
   load/temperature metric names, scheduled-task diagnostics, and updated screen
   guide.
-- Dashboard: current v0.14.4 documentation release state recorded.
+- Dashboard: current v0.14.5 documentation release state recorded.
 - Roadmap: device-first, Windows telemetry, and connected-laptop rollout tracks
   recorded.
-- Changelog: `v0.14.4` prepared.
+- Changelog: `v0.14.5` prepared.
 - Security policy: present.
 
 ## Final Judgment
 
-GitHub release is ready for `v0.14.4` after the local test/build/browser checks
+GitHub release is ready for `v0.14.5` after the local test/build/browser checks
 pass. The connected Windows laptop now reports CPU load plus CPU
 package/P-core/E-core temperatures.
 

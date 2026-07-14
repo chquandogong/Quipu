@@ -1,6 +1,6 @@
 # Quipu Project Dashboard
 
-> Status: v0.14.4 documentation release track for current Windows collector behavior
+> Status: v0.14.5 documentation release track for current Windows collector behavior
 > Date: 2026-07-10
 > Owner: chquan
 
@@ -106,7 +106,7 @@ destructive git operations, and any remote repair capability remain gated.
 Public repository visibility is allowed only after a final sensitive-content
 audit passes.
 
-The v0.14.4 documentation release is allowed after local test/build/browser verification.
+The v0.14.5 documentation release is allowed after local test/build/browser verification.
 Full Windows telemetry for the currently connected laptop is now visible for
 CPU load and CPU package/P-core/E-core temperatures. Future rollout checks
 should still verify sensor visibility from the scheduled-task context when a

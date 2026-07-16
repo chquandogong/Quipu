@@ -2,6 +2,28 @@
 
 All notable changes to Quipu are documented in this file.
 
+## v0.14.7 - 2026-07-16
+
+Apache-2.0 license adoption and repository presentation polish.
+
+### Added
+
+- Adopted the Apache License 2.0: LICENSE and NOTICE files at the repository
+  root, SPDX `license = "Apache-2.0"` expressions in both `pyproject.toml`
+  files (PEP 639, `setuptools>=77`), and the `license` field in
+  `package.json`.
+- Added a live dashboard screenshot (`docs/images/dashboard.png`) to all
+  three README editions, captured from the real two-device fleet.
+
+### Changed
+
+- README badges now use dynamic GitHub badges for the latest release and the
+  detected license instead of hardcoded values.
+- Updated the GitHub repository description (Linux and Windows fleets) and
+  topics (`windows`, `hardware-monitoring`, `telemetry`, `python`,
+  `typescript`).
+- Bumped package, app, API, schema, and UI versions to `0.14.7`.
+
 ## v0.14.6 - 2026-07-16
 
 Documentation rework: docs now match the current implementation end to end.

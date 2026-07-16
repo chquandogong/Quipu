@@ -2,6 +2,39 @@
 
 All notable changes to Quipu are documented in this file.
 
+## v0.14.6 - 2026-07-16
+
+Documentation rework: docs now match the current implementation end to end.
+
+### Changed
+
+- Rewrote all three README editions (Korean, English, Simplified Chinese) with
+  the same structure: positioning, current UI layout, quick start, collector
+  CLI options table, server API summary table, environment variable table,
+  collector signal catalog, operations install, architecture, and boundaries.
+- Removed the accumulated per-patch feature lists from the READMEs; release
+  history now lives only in this CHANGELOG.
+- Fixed the quick start to match v0.14.5 behavior: the server no longer seeds
+  demo data on startup, so the docs now describe manual seeding with
+  `python -m quipu_server.seed fixtures/ingest/team-sample.json` (verified) and
+  note that `scripts/dev-server.sh` binds `0.0.0.0:8000`.
+- Updated the user manual screen guide to the current layout: top `Devices`
+  list, left tabs (`🚨 예방 가이드 (Smart Advisor)` / `🛠️ 조치 및 협업
+(Actions)`), and right tabs (실시간 지표 / 진단 및 가설 / 이벤트 로그 /
+  수집기 상태).
+- Documented the full collector CLI surface (`--interval`, `--iterations`,
+  `--offline-buffer`, `--spool-dir`, `--spool-max-batches`, `--state-dir`,
+  `--flush-limit`, `--retry-backoff`) and offline spool behavior.
+- Documented the server API surface, the `X-Quipu-Agent-Token` header,
+  `QUIPU_DEV_AGENT_TOKEN`, and SHA-256-hashed per-device enrollment tokens.
+- CONTRIBUTING now includes first-time environment setup, CI runtime versions
+  (Python 3.12, Node 24), and no longer references non-existent
+  `docs/superpowers/specs/` and `plans/` directories.
+- SECURITY now describes the current auth model, including the fact that read
+  endpoints are unauthenticated and the server belongs on a trusted private
+  network only.
+- Bumped package, app, API, schema, and UI versions to `0.14.6`.
+
 ## v0.14.5 - 2026-07-14
 
 Optimize device status transition, left panels tabs, clean DB, and host bind fix.
@@ -261,7 +294,7 @@ Windows collector compatibility patch.
   names.
 - Added a `Get-PhysicalDisk` fallback for Windows NVMe capacity so devices
   reported as SCSI by `Win32_DiskDrive` can still be identified by `BusType =
-  NVMe`.
+NVMe`.
 - Preserved an existing device model when a later batch omits `model`, matching
   the existing alias and CPU model preservation behavior.
 
@@ -298,7 +331,7 @@ Device-first fleet UI and Windows telemetry collection release.
 - Fleet Brief now labels investigation count as `Open issues` instead of
   `Queue cases`.
 - The UI no longer presents a global `Investigation Queue` beside `Fleet
-  Devices`; the primary list is the device list, with issues scoped below it.
+Devices`; the primary list is the device list, with issues scoped below it.
 - README editions and the user manual now describe Quipu as a workstation
   health investigator with a bundled read-only collector that has Linux and
   Windows best-effort paths, plus a compatible ingest contract for external

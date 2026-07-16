@@ -355,3 +355,8 @@ scripts/
 - raw log warehouse
 
 Quipu 的默认原则是本地优先、只读、基于证据。
+
+## 许可证
+
+Quipu 以 [Apache License 2.0](LICENSE) 发布。允许商业使用、修改和再分发，
+并包含明确的专利授权。详情见 [LICENSE](LICENSE) 和 [NOTICE](NOTICE)。

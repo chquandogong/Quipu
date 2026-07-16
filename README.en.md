@@ -371,3 +371,10 @@ Not included in this release:
 - raw log warehouse behavior
 
 Quipu defaults to local-first, read-only, evidence-based operation.
+
+## License
+
+Quipu is distributed under the [Apache License 2.0](LICENSE). Commercial use,
+modification, and redistribution are permitted, and the license includes an
+explicit patent grant. See [LICENSE](LICENSE) and [NOTICE](NOTICE) for
+details.

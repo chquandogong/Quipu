@@ -386,3 +386,9 @@ scripts/
 - raw log warehouse
 
 Quipu의 기본값은 로컬 우선, 읽기 전용, 근거 기반입니다.
+
+## 라이선스
+
+Quipu는 [Apache License 2.0](LICENSE)으로 배포됩니다. 상업적 이용, 수정,
+재배포가 자유롭고 명시적인 특허 라이선스를 포함합니다. 자세한 내용은
+[LICENSE](LICENSE)와 [NOTICE](NOTICE)를 보세요.

@@ -7,7 +7,20 @@ public internet.
 
 - Run on a trusted local machine or private team network.
 - Treat collected logs and device names as sensitive.
-- Use the development ingest token only for local testing.
+- Use the development ingest token (`dev-token`, overridable with
+  `QUIPU_DEV_AGENT_TOKEN`) only for local testing; issue per-device
+  enrollment tokens for repeated operation. Per-device tokens are stored as
+  SHA-256 hashes only.
+
+## Current Auth Model
+
+- Ingest (`POST /api/ingest/batches`) requires the `X-Quipu-Agent-Token`
+  header with the dev token or an active per-device enrollment token.
+- Token administration endpoints (`/api/enrollment/tokens`,
+  `/api/admin/schema`) require the dev token.
+- Read endpoints (fleet overview, investigations, patterns, notes) are
+  currently unauthenticated. This is another reason to keep the server on a
+  trusted private network only.
 
 ## Safety Boundaries
 

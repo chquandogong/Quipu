@@ -2,14 +2,14 @@
 
 <p align="center">
   <img alt="CI" src="https://github.com/chquandogong/Quipu/actions/workflows/ci.yml/badge.svg">
-  <img alt="Version" src="https://img.shields.io/badge/version-v0.14.5-2f6f7e">
+  <img alt="Version" src="https://img.shields.io/badge/version-v0.14.6-2f6f7e">
   <img alt="Status" src="https://img.shields.io/badge/status-local--first%20workstation%20health-5b6b73">
   <img alt="License" src="https://img.shields.io/badge/license-not%20selected-lightgrey">
 </p>
 
 <p align="center">
   <strong>Workstation health investigation</strong><br>
-  Quipu turns read-only workstation signals into evidence, actions, verification, and team handoff.
+  Quipu is not a metrics dashboard. It is a local-first operations tool that finds problems across laptops and workstations, investigates them with evidence, and records what the fix did.
 </p>
 
 <p align="center">
@@ -20,127 +20,71 @@
 
 ## What It Is
 
-Quipu is a local-first tool for investigating laptop and workstation health.
-The bundled collector is read-only. On Linux it reads procfs/sysfs signals; on
-Windows it reads best-effort PowerShell/CIM/netsh/Get-NetAdapter signals when
-the OS exposes them. Other collectors can appear in the same UI when they post
-the same ingest API contract. Quipu collects thermal, load, NVMe, Wi-Fi, memory,
-disk, battery, fan, kernel, graphics, reboot, and update signals when the
-collector reports them, then presents them as a workflow:
+Quipu gathers thermal issues, graphics errors, Wi-Fi instability, storage
+warnings, power problems, and reboot traces from laptops and developer
+workstations into one screen. The bundled collector is read-only: on Linux it
+reads sysfs and procfs; on Windows it reads best-effort signals exposed by
+PowerShell/CIM/netsh/LibreHardwareMonitor. Collectors for other operating
+systems appear in the same UI when they post the same ingest API contract.
+
+The first question is not "what is the CPU temperature?" but "what should we
+investigate right now, and what is the evidence?" The core workflow is:
 
 ```text
 Detect -> Triage -> Investigate -> Hypothesize -> Act -> Verify -> Report
 ```
 
-The product is not a remote repair tool. The collector is read-only and the
-server uses deterministic rule-based analysis.
+Three components:
 
-## v0.14.5 Highlights
+- `apps/server`: FastAPI ingest/query API + SQLite (WAL) storage + rule-based analysis.
+- `apps/collector`: read-only signal collector CLI (`quipu-collector`) for Linux/Windows.
+- `apps/web`: Vite + React investigation UI.
 
-- Documentation has been reset around the current implementation: README,
-  user manual, ship checklist, dashboard, and roadmap now explain which Windows
-  metrics are actually received and why some rows can be absent.
-- The connected Windows device now reports CPU load as `cpu.load_percent` and
-  `cpu.core_<n>.load_percent`; the UI shows those values as `CPU Core Load`.
-- After LibreHardwareMonitor `Temperature` sensors became visible, the same
-  device also reports `cpu.package_temp_c`, `cpu.p_core_1..4.temp_c`, and
-  `cpu.e_core_1..8.temp_c`.
-- Windows CPU core temperature only appears when the collector receives
-  `cpu.*.temp_c` metrics. `thermal.windows_zone_*.temp_c` is an ACPI thermal
-  zone and is not converted into CPU core temperature.
-- If Windows core load is visible but core temperature is missing, verify
-  LibreHardwareMonitor/OpenHardwareMonitor `Temperature` sensors from an
-  elevated PowerShell session and collector `--dry-run`.
-- The Windows collector no longer skips direct LibreHardwareMonitor DLL probing
-  when the LibreHardwareMonitor GUI is already running; it now discovers
-  `LibreHardwareMonitorLib.dll` from the running process, Program Files, and
-  WinGet package paths.
-- Windows LibreHardwareMonitor/OpenHardwareMonitor CPU P-core/E-core/LP-E core
-  temperatures and per-core load percentages are collected and displayed as
-  Windows-specific `CPU Cores` and `CPU Core Load` rows.
-- Windows detail views now show the metrics the Windows collector actually
-  reports instead of forcing Linux-only load-average or CPU-package rows when
-  those signals are absent.
-- Garbled localized Windows Event Log text is hidden in the UI and replaced
-  with readable category/source-oriented fallback copy.
-- Cross-platform `smartctl --json` discovery reports aggregate and per-device
-  NVMe temperature, SMART pass/fail, critical warning, spare, lifetime usage,
-  media errors, power-on hours, unsafe shutdowns, and error-log entries.
-- Windows Thermal Zone performance counters provide firmware-exposed system
-  temperature without requiring an elevated collector task.
-- Windows can query the official LibreHardwareMonitor library directly for CPU
-  package/core and storage temperatures plus exposed fan RPM sensors.
-- Linux hwmon collection reports every readable fan instead of only the first.
-- The Windows task installer supports `-InstallSensorTools` for the official
-  sensor packages and `-Highest` for sensors that require administrator access.
+See the [CHANGELOG](CHANGELOG.md) for recent changes.
 
-- Windows NVMe R/W rate collection now maps
-  `Win32_PerfFormattedData_PerfDisk_PhysicalDisk` to NVMe devices from
-  `Get-PhysicalDisk`, reporting aggregate and per-device read/write bytes/sec.
-- Windows native WMI fallback now also reads `Win32_TemperatureProbe`,
-  `Win32_Fan`, and `Win32_Tachometer` when firmware exposes those classes.
-- Windows NVMe temperature collection now uses the
-  `Get-PhysicalDisk | Get-StorageReliabilityCounter` path when available and
-  reports `nvme.temp_c` plus `nvme.<device>.temp_c`.
-- Windows fan RPM collection now reads LibreHardwareMonitor/OpenHardwareMonitor
-  WMI fan sensors when those tools expose them.
-- Windows Event Log collection now classifies recent System/Application events
-  into storage, network, graphics, thermal, memory, power, reboot, and update
-  investigation events.
-- Windows Intel Core i5-1340P devices now report `P 4 / E 8 / 16 threads`
-  topology.
-- Windows Wi-Fi collection tries direct `netsh`, system-path `netsh`,
-  PowerShell `netsh`, and WMI RSSI fallback paths.
-- Windows temperature collection can read LibreHardwareMonitor or
-  OpenHardwareMonitor WMI sensors for CPU package/core and NVMe/SSD
-  temperatures when those tools expose them.
-- Windows collector compatibility is improved with longer PowerShell/CIM
-  command timeouts, localized `netsh` Wi-Fi parsing, and `Get-PhysicalDisk`
-  NVMe capacity detection.
-- The left side of the UI is now device-first: `Devices` lists every reporting
-  machine, including healthy machines with no active investigation item.
-- `Device Issues` shows only the active issues for the selected device.
-- Fleet Brief now says `Open issues` instead of `Queue cases`.
-- The server preserves an existing display alias and CPU model when a later
-  batch for the same `device-id` omits those optional fields.
-- Windows collector operations and best-effort telemetry are packaged beside
-  the Ubuntu systemd collector: environment file, startup wrapper,
-  scheduled-task install script, and uninstall script.
-- The Windows startup wrapper runs hidden at user logon, prevents duplicate
-  collector loops, keeps the offline buffer enabled, and posts every five
-  minutes by default.
-- The Windows collector now reports best-effort CPU core/thread, memory,
-  battery, Wi-Fi, NVMe capacity, and thermal-zone metrics through CIM, netsh,
-  and Get-NetAdapter when Windows exposes them.
-- Browser UI sessions opened from private LAN Vite origins on ports 5173 or
-  5174 can read the API without the previous local-only CORS failure.
-- Version metadata across the collector, server, schema, and web app is now
-  `0.14.5`.
+## UI Layout
 
-## v0.11.0 Highlights
+The top row is the **Devices** list: every reporting machine with its
+alias/hostname, hardware label, metric/event counts, last-seen time, and status
+transitions (e.g. `previous ➔ current`). Healthy devices are selectable and
+still show full telemetry detail.
 
-- Multiple laptops can report to the same server; use `--device-id` for a
-  stable unique ID and `--device-alias` for a friendly UI name.
-- Device labels appear as `alias · hostname` when an alias is present.
-- Header metadata is consolidated into one `Project info` hover/focus chip.
-- Explanations now use one consistent hover/focus popover pattern.
-- Documentation rewritten from the ground up.
-- New [User Manual](USER_MANUAL.md).
-- Load average is shown as `1m / 5m / 15m`.
-- CPU package detail shows only real core sensors exposed by Linux.
-- Intel Core Ultra 5 125H sensor patterns are grouped as `P`, `E`, and `LP-E`.
-- NVMe and Wi-Fi always show per-device or per-interface chips, even when only
-  one device is present.
-- The collector now reports CPU model/topology, Wi-Fi Rx/Tx link bitrate, NVMe
-  capacity, and NVMe read/write throughput calculated between collector samples.
+The left workspace has two tabs:
 
-## Run With Sample Data
+- **🚨 Prevention Guide (Smart Advisor)**: active investigation issues for the
+  selected device, plus Smart Advisor alert cards (memory, thermal, graphics)
+  generated from live telemetry, each with a checklist.
+- **🛠️ Actions & Collaboration**: the intervention guide, an action-plan form
+  for recording interventions, the recorded-intervention journal, and team
+  handoff notes.
+
+The right explorer has four tabs:
+
+- **Vitals**: the **Metric Ledger** (CPU, Load, NVMe, Wi-Fi detail rows) and
+  the **Telemetry Matrix** (coverage across CPU profile, memory, disk, NVMe
+  health/capacity/I/O, fan, thermal, battery, Wi-Fi link, network, kernel, and
+  agent freshness).
+- **Diagnosis**: rule-based top hypotheses, before/after verification, and a
+  handoff report draft.
+- **Timeline**: the evidence timeline of observed events.
+- **Operations**: stale-device operational cards and the **Pattern Explorer**
+  (repeated signals by category, component, model, and kernel).
+
+When you record an intervention, the server compares the before/after
+telemetry windows and returns a `helped / worse / unclear / insufficient_data`
+verdict.
+
+## Quick Start
+
+Start the API server. The script creates the virtualenv, installs
+dependencies, and binds to `0.0.0.0:8000` so collectors on other machines can
+reach it. The database is `data/quipu.sqlite3`.
 
 ```bash
 scripts/dev-server.sh
 ```
 
-In another terminal:
+In another terminal, run the web UI:
 
 ```bash
 cd apps/web
@@ -154,23 +98,33 @@ Open:
 http://127.0.0.1:5173
 ```
 
-## Run With This Notebook Only
+The server does not create data on startup — an empty device list on first
+run is expected. Add data one of two ways.
 
-Stop the API server, delete the sample database, and start an empty server:
+### Option 1: Seed The Sample Fleet
+
+To explore the UI first, manually seed the deterministic sample fixture
+(three devices: `thinkpad-p1`, `xps-13`, `framework-13`):
+
+```bash
+cd apps/server
+. .venv/bin/activate
+python -m quipu_server.seed ../../fixtures/ingest/team-sample.json \
+  --database ../../data/quipu.sqlite3
+```
+
+To remove the sample devices, stop the server and delete the database files:
 
 ```bash
 rm -f data/quipu.sqlite3 data/quipu.sqlite3-wal data/quipu.sqlite3-shm
-cd apps/server
-python3 -m venv .venv
-. .venv/bin/activate
-pip install -e .
-QUIPU_DATABASE_PATH=../../data/quipu.sqlite3 uvicorn quipu_server.app:app --host 127.0.0.1 --port 8000 --reload
 ```
 
-Send one local collector batch:
+### Option 2: Connect This Notebook
+
+Run the collector once from another terminal:
 
 ```bash
-sudo apt-get install smartmontools
+sudo apt-get install smartmontools   # optional, for NVMe SMART
 cd apps/collector
 python3 -m venv .venv
 . .venv/bin/activate
@@ -186,10 +140,17 @@ Refresh the web UI.
 
 ## Connect Another Laptop Or Computer
 
-Run the server on a LAN-reachable address, then send collector batches from each
-Linux laptop:
+`scripts/dev-server.sh` already binds to `0.0.0.0`, so other machines on the
+LAN can reach `http://<server-ip>:8000`. Allow TCP `8000` through the firewall
+if you run one.
+
+Install the collector on each Linux laptop and post to the same server:
 
 ```bash
+cd apps/collector
+python3 -m venv .venv
+. .venv/bin/activate
+pip install -e .
 quipu-collector \
   --server-url http://<server-ip>:8000 \
   --token dev-token \
@@ -197,31 +158,16 @@ quipu-collector \
   --device-alias "Office Gram"
 ```
 
-Use a different `--device-id` per machine. Use enrollment tokens instead of
-`dev-token` for repeated operation.
+- Keep `--device-id` unique per machine and stable over time.
+- `--device-alias` is the friendly UI name; devices show as `alias · hostname`.
+- `dev-token` is fine for quick tests; use per-device enrollment tokens for
+  repeated operation (see [Tokens And Auth](#tokens-and-auth)).
 
-## Connect A Windows Workstation
+### Connect A Windows Workstation
 
-Create `apps/collector/ops/windows/collector.env.ps1` from the example, then
-register the collector at user logon:
-
-```powershell
-powershell.exe -ExecutionPolicy Bypass -File scripts\install-collector-scheduled-task.ps1 `
-  -InstallSensorTools `
-  -Highest `
-  -ServerUrl http://<server-ip>:8000 `
-  -Token dev-token `
-  -DeviceId windows `
-  -DeviceAlias "Windows"
-```
-
-The scheduled task starts `apps/collector/ops/windows/start-quipu-collector.ps1`
-hidden in the background. It keeps the offline buffer enabled and sends a batch
-every five minutes.
-
-The Windows flow uses the same Python collector package through the scheduled
-task wrapper. After installing or updating this release on the Windows machine,
-reinstall the collector package and register or restart the scheduled task:
+Windows runs the same collector package through a PowerShell scheduled-task
+wrapper. After installing or updating a release, reinstall the virtualenv and
+re-register the task:
 
 ```powershell
 cd C:\path\to\Quipu\apps\collector
@@ -237,37 +183,144 @@ powershell.exe -ExecutionPolicy Bypass -File scripts\install-collector-scheduled
   -DeviceAlias "Windows"
 ```
 
-External Windows collectors can also post the same observation batch contract
-to the ingest API. Use a stable `device_id`, a friendly `display_name` or alias,
-and metric names that match Quipu's telemetry matrix where possible. Missing
-Windows rows usually mean the current Windows task is still running an older
-collector or has not reported those metric names yet.
+- `-InstallSensorTools` installs the official sensor packages
+  (LibreHardwareMonitor and related tools).
+- `-Highest` enables sensors that require administrator access (CPU core
+  temperatures, fan RPM).
 
-## Main Surfaces
-
-- Command Center: selected case, priority, risk, next action.
-- Problem Guide: what is wrong, what evidence matters, what to do next.
-- Telemetry Brief: CPU, Load, NVMe, Wi-Fi representative values.
-- Metric Ledger: detailed core/load/device/interface chips and help tooltips.
-- Telemetry Matrix: coverage across CPU profile, memory, disk, fan, NVMe
-  health/capacity/I/O, power, Wi-Fi link, network, thermal, kernel, and
-  freshness.
-- Devices: connected machines, alias/hostname, hardware label, telemetry count,
-  last seen time, issue summary, and risk.
-- Device Issues: active issues scoped to the selected device.
-- Pattern Explorer: repeated signals by category, component, model, and kernel.
+The scheduled task starts hidden at user logon, prevents duplicate collector
+loops, keeps the offline buffer enabled, and posts every five minutes by
+default. See the [User Manual](USER_MANUAL.md) for diagnosing missing Windows
+metrics.
 
 ## Collector Signals
 
-- CPU model and core/thread counts come from `/proc/cpuinfo`; Intel Core Ultra
-  5 125H is shown as 4P/8E/2LP-E/18 threads when detected.
-- Wi-Fi link speed comes from `iw dev <interface> link` Rx/Tx bitrate, with
-  `iwconfig` Bit Rate as a fallback. This is not an internet speed test result.
-- NVMe capacity comes from sysfs block namespaces.
-- NVMe read/write speed is bytes/sec calculated from sector-counter deltas
-  between collector samples. The first sample can show `Needs 2 samples`.
+The collector reads system signals read-only. There is no remote command
+execution and no automatic repair. It only stores previous sector counters in
+its state directory to compute NVMe read/write rates.
+
+| Category            | Representative metrics                                                                                                                                                                                                                                    | Source (Linux / Windows)                                             |
+| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| CPU load            | `cpu.load_1m/5m/15m` (Linux); `cpu.load_percent`, `cpu.core_<n>.load_percent` (Windows)                                                                                                                                                                   | `/proc/loadavg` / hardware-monitor `Load` sensors                    |
+| CPU topology        | `cpu.physical_cores`, `cpu.logical_threads`, `cpu.performance_cores`, `cpu.efficient_cores`, `cpu.low_power_efficient_cores`                                                                                                                              | `/proc/cpuinfo` / CIM                                                |
+| CPU temperature     | `cpu.package_temp_c`, `cpu.core_<n>.temp_c`, `cpu.p_core_<n>.temp_c`, `cpu.e_core_<n>.temp_c`                                                                                                                                                             | hwmon coretemp / LibreHardwareMonitor·OpenHardwareMonitor            |
+| Thermal zones       | `thermal.<sensor>.temp_c`, `thermal.windows_zone_<n>.temp_c`                                                                                                                                                                                              | sysfs thermal / ACPI & performance counters                          |
+| NVMe temp & SMART   | `nvme.temp_c`, `nvme.smart_passed`, `nvme.critical_warning`, `nvme.available_spare_percent`, `nvme.percentage_used_percent`, `nvme.media_errors`, `nvme.power_on_hours`, `nvme.unsafe_shutdowns`, `nvme.error_log_entries` + per-device `nvme.<device>.*` | hwmon, sysfs, `smartctl --json` / reliability counters, smartctl     |
+| NVMe capacity & I/O | `nvme.capacity_bytes`, `nvme.read_bytes_per_sec`, `nvme.write_bytes_per_sec` + per-device                                                                                                                                                                 | sysfs block (delta between samples) / performance counters           |
+| Wi-Fi               | `wifi.signal_dbm`, `wifi.rx_bitrate_mbps`, `wifi.tx_bitrate_mbps`, `wifi.link_bitrate_mbps` + per-interface                                                                                                                                               | `/proc/net/wireless`, `iw`, `iwconfig` / `netsh`, WMI                |
+| Memory, disk, power | `memory.used_percent`, `disk.root_used_percent`, `battery.capacity_percent`, `battery.ac_online`                                                                                                                                                          | procfs, sysfs / CIM                                                  |
+| Fans                | `fan.rpm`, `fan.<sensor>.rpm`                                                                                                                                                                                                                             | hwmon (every readable fan) / hardware-monitor sensors                |
+| Events              | thermal, storage, power, graphics, memory, network, reboot, update                                                                                                                                                                                        | kern.log, journalctl, etc. / Windows Event Log (System, Application) |
+
+Core numbers follow the sensor/core ids the OS exposes; missing numbers are
+never invented. Wi-Fi bitrate is the AP link bitrate, not an internet speed
+test. NVMe read/write rates need two samples, so the first sample can be
+empty.
+
+If Windows shows `cpu.core_<n>.load_percent` but no `cpu.*.temp_c`, that is
+not a UI bug — the hardware-monitor `Temperature` sensors are not visible to
+the collector. See the [User Manual](USER_MANUAL.md) for the diagnosis steps.
+
+## Collector CLI
+
+```bash
+quipu-collector --dry-run                          # print JSON, send nothing
+quipu-collector --server-url URL --token TOKEN     # collect and send once
+quipu-collector --dry-run --interval 60 --iterations 3   # three 60s samples
+```
+
+| Option                              | Default                                | Purpose                                           |
+| ----------------------------------- | -------------------------------------- | ------------------------------------------------- |
+| `--server-url`                      | (none)                                 | omit to print JSON to stdout                      |
+| `--token`                           | (none)                                 | required with `--server-url` (except `--dry-run`) |
+| `--device-id` / `--device-alias`    | generated / (none)                     | stable unique ID / friendly UI name               |
+| `--interval` / `--iterations`       | (none)                                 | repeat interval in seconds / run count            |
+| `--offline-buffer`                  | off                                    | spool failed sends locally, flush on next success |
+| `--spool-dir`                       | `~/.local/state/quipu/collector-spool` | spool location                                    |
+| `--spool-max-batches`               | `288`                                  | spool retention (~one day at 5-minute batches)    |
+| `--state-dir`                       | `~/.local/state/quipu/collector-state` | state for NVMe rate deltas                        |
+| `--flush-limit` / `--retry-backoff` | (none) / `0`                           | flush cap / sleep after buffered failure          |
+
+## Server API Summary
+
+All routes live under `/api`. The auth header is `X-Quipu-Agent-Token`.
+
+| Route                                                                             | Purpose                                              | Auth         |
+| --------------------------------------------------------------------------------- | ---------------------------------------------------- | ------------ |
+| `GET /api/health`                                                                 | liveness check                                       | none         |
+| `POST /api/ingest/batches`                                                        | ingest an observation batch (201 new, 200 duplicate) | ingest token |
+| `GET /api/fleet/overview`                                                         | fleet device summary                                 | none         |
+| `GET /api/investigations/queue`                                                   | prioritized investigation queue                      | none         |
+| `GET /api/investigations/{id}`                                                    | investigation detail incl. interventions             | none         |
+| `GET·POST /api/investigations/{id}/notes`                                         | read/write handoff notes                             | none         |
+| `POST /api/investigations/{id}/interventions`                                     | record an intervention                               | none         |
+| `GET /api/patterns/overview`                                                      | repeated-signal patterns                             | none         |
+| `POST·GET /api/enrollment/tokens`, `POST .../{id}/rotate`, `POST .../{id}/revoke` | issue/list/rotate/revoke per-device tokens           | dev token    |
+| `GET /api/admin/schema`                                                           | schema version and tables                            | dev token    |
+
+## Tokens And Auth
+
+- The development token defaults to `dev-token` and can be changed with the
+  `QUIPU_DEV_AGENT_TOKEN` environment variable.
+- Ingest accepts the dev token or an active enrollment token issued for that
+  `device_id`. Per-device tokens are stored as SHA-256 hashes only.
+
+```bash
+curl -sS -X POST http://127.0.0.1:8000/api/enrollment/tokens \
+  -H "Content-Type: application/json" \
+  -H "X-Quipu-Agent-Token: dev-token" \
+  -d '{"device_id":"office-gram","label":"Office Gram collector"}'
+```
+
+Put the returned `token` into that machine's collector `--token`.
+
+## Environment Variables
+
+| Variable                                                                                                                                                                                                             | Component              | Default                 | Purpose                                                   |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------- | ----------------------- | --------------------------------------------------------- |
+| `QUIPU_DATABASE_PATH`                                                                                                                                                                                                | server                 | `data/quipu.sqlite3`    | SQLite path                                               |
+| `QUIPU_DEV_AGENT_TOKEN`                                                                                                                                                                                              | server                 | `dev-token`             | development/admin token                                   |
+| `QUIPU_SERVER_URL`, `QUIPU_AGENT_TOKEN`, `QUIPU_COLLECTOR_DEVICE_ID`, `QUIPU_COLLECTOR_DEVICE_ALIAS`, `QUIPU_SPOOL_DIR`, `QUIPU_SPOOL_MAX_BATCHES`, `QUIPU_STATE_DIR`, `QUIPU_COLLECTOR_BIN`, `QUIPU_COLLECTOR_ROOT` | collector ops wrappers | —                       | translated into CLI flags by the systemd/Windows wrappers |
+| `QUIPU_COLLECTOR_INTERVAL`, `QUIPU_COLLECTOR_ENV`                                                                                                                                                                    | Windows wrapper        | `300` / —               | collection interval (seconds) / config file path          |
+| `QUIPU_SMARTCTL_BIN`                                                                                                                                                                                                 | collector              | auto-detected           | explicit smartctl path                                    |
+| `QUIPU_LIBRE_HARDWARE_MONITOR_DLL`                                                                                                                                                                                   | collector (Windows)    | auto-detected           | explicit LibreHardwareMonitorLib.dll path                 |
+| `VITE_API_BASE_URL`                                                                                                                                                                                                  | web                    | `http://127.0.0.1:8000` | API base URL for the web UI                               |
+
+## Operational Install
+
+On Linux, a systemd timer runs the collector once every five minutes:
+
+```bash
+scripts/install-collector-systemd.sh --dry-run   # preview
+sudo scripts/install-collector-systemd.sh --no-enable
+sudo systemctl enable --now quipu-collector.timer
+```
+
+Configuration lives in `/etc/quipu/collector.env`. The full operational
+procedures — Windows scheduled-task install, environment files, uninstall —
+are in the [User Manual](USER_MANUAL.md).
+
+## Architecture
+
+```text
+Linux collector / Windows collector / compatible external collector
+      |
+      v
+FastAPI ingest API  (X-Quipu-Agent-Token)
+      |
+      v
+SQLite WAL store
+      |
+      v
+Rule-based analysis engine
+      |
+      v
+React investigation UI
+```
 
 ## Verification
+
+CI runs the same checks on Python 3.12 and Node 24.
 
 ```bash
 cd apps/server && . .venv/bin/activate && pytest -v
@@ -275,22 +328,42 @@ cd apps/collector && . .venv/bin/activate && pytest -v
 cd apps/web && npm test && npm run build
 ```
 
+## Repository Layout
+
+```text
+apps/
+  collector/     Read-only collector CLI (Linux/Windows) + systemd/scheduled-task ops scripts
+  server/        FastAPI API, SQLite persistence, rule-based analysis, manual seed CLI
+  web/           Vite React investigation UI
+data/            Local SQLite DB (used by dev-server.sh)
+docs/
+  superpowers/   Product decisions, dashboard, roadmap, ship checklist
+fixtures/
+  ingest/        Deterministic sample batches (team-sample.json)
+scripts/
+  dev-server.sh                          Local API server (0.0.0.0:8000)
+  install-collector-systemd.sh           Linux collector install/uninstall
+  install-collector-scheduled-task.ps1   Windows collector install/uninstall
+```
+
 ## Docs
 
-- [User Manual](USER_MANUAL.md)
+- [User Manual](USER_MANUAL.md) — setup, operations, reading the UI, troubleshooting
 - [Changelog](CHANGELOG.md)
-- [Dashboard](docs/superpowers/DASHBOARD.md)
-- [Ship Checklist](docs/superpowers/SHIP_CHECKLIST.md)
-- [Roadmap](docs/superpowers/ROADMAP.md)
+- [Contributing](CONTRIBUTING.md)
 - [Security Policy](SECURITY.md)
+- [Project dashboard](docs/superpowers/DASHBOARD.md)
+- [Roadmap](docs/superpowers/ROADMAP.md)
+- [Ship checklist](docs/superpowers/SHIP_CHECKLIST.md)
 
 ## Boundaries
 
 Not included in this release:
 
-- remote command execution
-- automatic repair
+- remote repair command execution
 - production deployment
 - package publishing
 - AI-only conclusions
 - raw log warehouse behavior
+
+Quipu defaults to local-first, read-only, evidence-based operation.

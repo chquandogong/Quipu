@@ -3,8 +3,9 @@
 이 문서는 Quipu를 로컬에서 실행하고, 노트북/컴퓨터 데이터를 수집하고, 화면의
 조사 정보를 해석하는 운영자용 매뉴얼입니다. 저장소에 포함된 collector는 읽기
 전용 collector입니다. Linux에서는 procfs/sysfs를 읽고, Windows에서는
-PowerShell/CIM/netsh/Get-NetAdapter가 노출하는 신호를 best-effort로 읽습니다.
-외부 collector도 같은 ingest API 계약으로 관측값을 보내면 같은 화면에 표시됩니다.
+PowerShell/CIM/netsh/LibreHardwareMonitor가 노출하는 신호를 best-effort로
+읽습니다. 외부 collector도 같은 ingest API 계약으로 관측값을 보내면 같은
+화면에 표시됩니다.
 
 ## 1. 대상 사용자
 
@@ -21,8 +22,8 @@ Quipu는 원격 수리 도구가 아닙니다. collector는 읽기 전용이고,
 
 필요한 도구:
 
-- Python 3.11 이상
-- Node.js 20 이상
+- Python 3.11 이상 (CI는 3.12에서 검증합니다)
+- Node.js 20 이상 (CI는 24에서 검증합니다)
 - npm
 - Linux 환경: 저장소에 포함된 collector와 systemd timer를 직접 실행할 때 필요합니다.
 - Windows 환경: 같은 collector 패키지를 PowerShell scheduled-task wrapper로
@@ -31,9 +32,11 @@ Quipu는 원격 수리 도구가 아닙니다. collector는 읽기 전용이고,
 저장소 루트는 이 문서에서 `/home/chquan/Quipu`로 가정합니다. 다른 경로를 쓰면
 명령의 경로만 바꾸면 됩니다.
 
-## 3. 샘플 데이터로 실행
+## 3. 서버와 웹 UI 실행
 
-처음 UI를 확인할 때는 샘플 서버가 가장 빠릅니다.
+API 서버를 실행합니다. 스크립트가 가상환경 생성과 설치까지 처리하고
+`0.0.0.0:8000`에 바인딩하므로, 같은 LAN의 다른 장비 collector도 접근할 수
+있습니다. DB 파일은 `data/quipu.sqlite3`입니다.
 
 ```bash
 cd /home/chquan/Quipu
@@ -54,8 +57,20 @@ npm run dev
 http://127.0.0.1:5173
 ```
 
-`scripts/dev-server.sh`는 샘플 fixture를 DB에 넣습니다. 실제 이 노트북만 보고
-싶다면 다음 장의 절차로 DB를 비우고 collector를 실행합니다.
+서버는 시작할 때 데이터를 자동으로 만들지 않습니다. 처음 실행하면 장비가
+없는 빈 화면이 정상입니다.
+
+### 샘플 fleet 시딩 (선택)
+
+UI를 먼저 구경하고 싶다면 샘플 fixture(3개 장비: `thinkpad-p1`, `xps-13`,
+`framework-13`)를 수동으로 시딩합니다.
+
+```bash
+cd /home/chquan/Quipu/apps/server
+. .venv/bin/activate
+python -m quipu_server.seed ../../fixtures/ingest/team-sample.json \
+  --database ../../data/quipu.sqlite3
+```
 
 ## 4. 샘플 DB를 지우고 이 노트북만 표시
 
@@ -66,7 +81,7 @@ cd /home/chquan/Quipu
 rm -f data/quipu.sqlite3 data/quipu.sqlite3-wal data/quipu.sqlite3-shm
 ```
 
-빈 DB로 API 서버를 실행합니다.
+서버를 다시 시작합니다 (`scripts/dev-server.sh` 또는 직접 uvicorn 실행).
 
 ```bash
 cd /home/chquan/Quipu/apps/server
@@ -101,7 +116,8 @@ Quipu는 여러 노트북이나 워크스테이션이 같은 서버로 관측값
 hostname -I
 ```
 
-서버는 다른 장비가 접근할 수 있도록 `0.0.0.0`에 바인딩합니다.
+`scripts/dev-server.sh`는 `0.0.0.0`에 바인딩하므로 그대로 사용하면 됩니다.
+uvicorn을 직접 실행한다면 `--host 0.0.0.0`을 지정합니다.
 
 ```bash
 cd /home/chquan/Quipu/apps/server
@@ -132,6 +148,8 @@ quipu-collector \
 - `--device-alias`는 화면에 보일 별명입니다. 바꿔도 같은 `device-id`면 같은 장비로
   업데이트됩니다.
 - 별명이 있으면 UI는 `사무실 그램 · office-hostname`처럼 표시합니다.
+- 같은 `device-id`의 다음 batch가 `display_name`이나 `cpu_model`을 생략해도
+  서버는 기존 별명과 CPU 모델을 보존합니다.
 - 빠른 테스트는 `dev-token`으로 가능하지만, 반복 운용은 장치별 token을 권장합니다.
 
 Windows에서는 같은 collector 패키지를 PowerShell scheduled-task wrapper로 실행할
@@ -159,14 +177,18 @@ powershell.exe -ExecutionPolicy Bypass -File scripts\install-collector-scheduled
 Windows`를 실행하거나 PowerShell에서 `Start-ScheduledTask -TaskName "Quipu
 Collector Windows"`를 사용합니다.
 
+Windows scheduled task는 사용자 로그온 시 숨김 실행되고, 중복 실행을 방지하며,
+offline buffer를 켠 채 기본 5분 간격(`QUIPU_COLLECTOR_INTERVAL`, 기본 300초)으로
+전송합니다. 로그는 `apps\collector\logs\`에 남습니다.
+
 Windows collector 배포 확인 기준:
 
 - `Devices` 목록에 `윈도우 · <hostname>`처럼 별명이 보입니다.
 - `last_seen_at`이 collector 실행 시각에 맞게 갱신됩니다.
 - `latest_metrics`가 smoke metric 하나만이 아니라 Windows collector가 의도한 CPU,
   memory, disk, Wi-Fi, NVMe, battery 등 신호를 포함합니다.
-- healthy 장비라도 클릭하면 `Device telemetry overview`, Metric Ledger,
-  Telemetry Matrix, Report가 표시됩니다.
+- healthy 장비라도 클릭하면 상세 텔레메트리(Metric Ledger, Telemetry Matrix,
+  Report)가 표시됩니다.
 
 서버에서 Windows 장비 수신 상태를 확인하려면:
 
@@ -242,11 +264,6 @@ sensor type입니다.
 이 경우 화면 문제가 아니라 Windows collector가 `Load` sensor는 받았지만
 `Temperature` sensor를 받지 못한 것입니다. 관리자 PowerShell에서 다음을 확인합니다.
 
-현재 연결된 `윈도우 · DOGU_CHQUAN` 장비에서는 `cpu.load_percent`,
-`cpu.core_<n>.load_percent`, `cpu.package_temp_c`, `cpu.p_core_1..4.temp_c`,
-`cpu.e_core_1..8.temp_c`가 수신되는 것을 확인했습니다. 다른 Windows 장비에서
-온도가 빠지면 아래 절차로 sensor 노출 상태를 확인합니다.
-
 ```powershell
 Get-CimInstance -Namespace root/LibreHardwareMonitor -ClassName Sensor -ErrorAction SilentlyContinue |
   Where-Object SensorType -eq Load |
@@ -321,9 +338,16 @@ quipu-collector \
   --state-dir ~/.local/state/quipu/collector-state
 ```
 
-`--state-dir`는 NVMe 읽기/쓰기 처리량을 계산하기 위한 이전 sector counter를
-저장합니다. 첫 샘플에는 비교 기준이 없어서 NVMe R/W 속도가 비어 있을 수 있고,
-같은 장비의 다음 샘플부터 초당 처리량이 계산됩니다.
+동작 규칙:
+
+- `--offline-buffer`는 전송 실패한 batch를 spool 디렉터리에 JSON 파일로
+  보관하고, 다음 성공 시 오래된 것부터 flush합니다. 보존 개수는
+  `--spool-max-batches`(기본 288, 5분 간격 기준 약 하루)로 제한합니다.
+- `--state-dir`는 NVMe 읽기/쓰기 처리량을 계산하기 위한 이전 sector counter를
+  저장합니다. 첫 샘플에는 비교 기준이 없어서 NVMe R/W 속도가 비어 있을 수 있고,
+  같은 장비의 다음 샘플부터 초당 처리량이 계산됩니다.
+- `--once`는 `--interval`/`--iterations`와 함께 쓸 수 없고, `--iterations`는
+  `--interval`이 필요합니다.
 
 ## 7. systemd timer로 5분마다 수집
 
@@ -395,34 +419,81 @@ sudo scripts/uninstall-collector-systemd.sh
 
 ## 8. 화면 읽는 법
 
-### Command Center
+화면은 상단 장비 목록(Devices), 왼쪽 작업 영역(탭 2개), 오른쪽 탐색 영역
+(탭 4개)으로 구성됩니다.
 
-첫 화면은 선택된 장비 또는 조사 이슈를 보여줍니다.
+### Devices (상단)
 
-- `Medium`: 선택한 장비에 활성 이슈가 있을 때의 우선순위입니다. healthy 장비를
-  선택하면 `No active issue`로 표시될 수 있습니다.
-- `Warning`: 위험도입니다.
-- `Triage`: 현재 DTIHAVR 단계입니다.
-- `Problem Guide`: 문제, 먼저 볼 근거, 다음 행동입니다.
-- 장비명은 별명이 있으면 `별명 · hostname`으로 표시됩니다. 별명이 없으면
-  hostname만 표시됩니다.
+연결된 장비 목록입니다. 각 장비는 별명/hostname, hardware label,
+metric/event 수, 마지막 수집 시각, 상태 전이(예: `이전 ➔ 현재`)와 핵심
+지표 요약(예: `발열(정상); 메모리(위험 ➔ 정상)`)을 표시합니다.
+
+- 장비명은 별명이 있으면 `별명 · hostname`으로 표시됩니다.
+- 연결이 `Stale`이면 지표 요약 대신 `Telemetry Offline` 메시지가 표시됩니다.
+- healthy 장비도 클릭할 수 있습니다. 활성 이슈가 없어도 상세 텔레메트리를
+  볼 수 있습니다.
 - 상단 `Project info` chip에 Made by, About, Version 정보가 들어 있습니다.
 
-### Telemetry Brief
+장비를 선택하면 해당 장비의 첫 번째 활성 이슈가 자동으로 선택됩니다.
 
-CPU, Load, NVMe, Wi-Fi 대표값입니다. 이 줄은 결론이 아니라 조사 보조 신호입니다.
+### 왼쪽: 🚨 예방 가이드 (Smart Advisor)
 
-### Metric Ledger
+- **Device Issues**: 선택한 장비에만 해당하는 활성 조사 이슈입니다. 비어
+  있으면 `No active investigations for this device.`로 표시됩니다.
+- **Smart Advisor 알림**: 실시간 텔레메트리에서 생성한 카드(메모리, 발열,
+  그래픽, 정상)입니다. 카드마다 확인 체크리스트가 있고, 체크 상태는 브라우저
+  안에서만 유지됩니다.
 
-핵심 지표의 상세 행입니다.
+### 왼쪽: 🛠️ 조치 및 협업 (Actions)
 
-- **CPU Package**: CPU package 온도와 core별 온도.
-- **Load Average**: Linux 1분, 5분, 15분 load average.
-- **NVMe SSD**: 대표 NVMe 온도와 장치별 온도, namespace 용량, 샘플 간
-  읽기/쓰기 처리량.
-- **Wi-Fi Signal**: 대표 Wi-Fi 신호와 인터페이스별 신호, Rx/Tx 링크 bitrate.
+- **Intervention Guide**: 조치 기록 방법 안내.
+- **Action plan**: 조치 이름과 설명을 기록하는 폼입니다. 기록하면 서버가
+  조치 전후 telemetry 창(약 5분)을 비교해 `helped / worse / unclear /
+insufficient_data` 판정을 돌려줍니다.
+- **Recorded interventions**: 기록된 조치 목록.
+- **Team Handoff**: 팀 인계 메모 작성/조회.
 
-각 행의 `?` 버튼은 정의, 시간창, 해석 기준, 다음 확인 항목을 설명합니다.
+### 오른쪽: 실시간 지표 (Vitals)
+
+- **Metric Ledger**: 핵심 지표의 상세 행입니다.
+  - **CPU Package**: CPU package 온도와 core별 온도.
+  - **Load Average**: Linux 1분, 5분, 15분 load average.
+  - **NVMe SSD**: 대표 NVMe 온도와 장치별 온도, namespace 용량, 샘플 간
+    읽기/쓰기 처리량.
+  - **Wi-Fi Signal**: 대표 Wi-Fi 신호와 인터페이스별 신호, Rx/Tx 링크 bitrate.
+  - 각 행의 `?` 버튼은 정의, 시간창, 해석 기준, 다음 확인 항목을 설명합니다.
+  - Windows 장비는 Windows collector가 실제 보낸 metric(`CPU Core Load`,
+    `CPU Cores` 등)을 우선 표시하고, 없는 Linux 전용 행을 억지로 채우지
+    않습니다.
+- **Telemetry Matrix**: CPU profile, memory, disk, NVMe health/capacity/I/O,
+  fan, thermal, battery, Wi-Fi link, network, kernel, agent freshness 등
+  범주별 관측 상태입니다. `N/전체 observed`는 위험 점수가 아니라 전체 범주 중
+  관측값이 들어온 범주 수입니다.
+
+### 오른쪽: 진단 및 가설 (Diagnosis)
+
+- **Top hypotheses**: 규칙 기반 원인 후보.
+- **Verification**: intervention 전후 비교 결과.
+- **Report**: 인계용 결론 초안과 권장 다음 행동.
+
+### 오른쪽: 이벤트 로그 (Timeline)
+
+수집된 이벤트의 증거 타임라인입니다. 이벤트 출처(kern.log, journalctl,
+Windows Event Log 등)와 분류(thermal, storage, power, graphics, memory,
+network, reboot, update)를 함께 표시합니다.
+
+### 오른쪽: 수집기 상태 (Operations)
+
+- **Operations Rail**: stale 장비 등 수집 운영 카드.
+- **Pattern Explorer**: category, component, model, kernel 기준 반복 신호.
+
+### 조사 워크플로
+
+각 이슈는 DTIHAVR 단계로 진행됩니다.
+
+```text
+Detect -> Triage -> Investigate -> Hypothesize -> Act -> Verify -> Report
+```
 
 ### CPU core 표시
 
@@ -438,6 +509,10 @@ Intel Core Ultra 5 125H처럼 토폴로지가 확인되는 경우:
 공식 Intel Core Ultra 5 125H 스펙은 14 cores / 18 threads, 4 P-cores,
 8 E-cores, 2 LP E-cores입니다. Quipu는 이 머신에서 확인된 sensor id 패턴일
 때만 그룹을 붙입니다. 다른 CPU에서는 그룹을 추정하지 않습니다.
+
+Windows에서도 hardware monitor가 core를 `Core #1`처럼 일반 이름으로만 보내면
+`cpu.core_1.*`로 표시하고, `P-Core #1`/`E-Core #2`처럼 구분해 보내는 경우에만
+`P`/`E` 그룹으로 묶습니다.
 
 터미널에서 원본 센서 값을 보려면:
 
@@ -473,35 +548,10 @@ uptime
   차이로 계산한 읽기/쓰기 bytes/sec입니다. 첫 샘플에는 `Needs 2 samples`처럼
   보일 수 있습니다.
 
-### Telemetry Matrix
-
-14개 범주의 관측 상태를 보여줍니다. `13/14 observed`는 위험 점수가 아니라
-14개 범주 중 13개가 들어왔다는 뜻입니다.
-
-### Devices
-
-연결된 장비 목록입니다. 각 행은 별명/hostname, hardware label, metric/event 수,
-마지막 수집 시각, 활성 이슈 요약, risk를 표시합니다.
-
-healthy 장비도 클릭할 수 있습니다. 활성 이슈가 없어도 오른쪽 상세 영역에는
-`Device telemetry overview`, Metric Ledger, Telemetry Matrix, Report가 표시됩니다.
-
-### Device Issues
-
-선택한 장비에만 해당하는 활성 조사 이슈입니다. 이 영역이 비어 있으면 현재 선택한
-장비에 조사 queue에 올라온 이슈가 없다는 뜻입니다.
-
-### Evidence, Hypotheses, Action, Verification
-
-- Evidence: 수집된 이벤트와 출처.
-- Hypotheses: 규칙 기반 원인 후보.
-- Action: 사람이 할 다음 조치.
-- Verification: intervention 전후 비교 결과.
-- Team Handoff: 팀 인계 메모.
-
 ## 9. 장치별 token
 
-개발용 `dev-token` 대신 장치별 token을 만들 수 있습니다.
+개발용 `dev-token` 대신 장치별 token을 만들 수 있습니다. 서버의 개발 token은
+`QUIPU_DEV_AGENT_TOKEN` 환경 변수로 바꿀 수 있습니다.
 
 ```bash
 curl -sS -X POST http://127.0.0.1:8000/api/enrollment/tokens \
@@ -511,6 +561,9 @@ curl -sS -X POST http://127.0.0.1:8000/api/enrollment/tokens \
 ```
 
 반환된 `token`을 collector의 `--token` 또는 `/etc/quipu/collector.env`에 넣습니다.
+token은 서버에 SHA-256 hash로만 저장되고, `GET /api/enrollment/tokens`로 목록을,
+`POST /api/enrollment/tokens/{id}/rotate`와 `.../revoke`로 회전/폐기를 할 수
+있습니다 (모두 dev token 필요).
 
 ## 10. 자주 보는 문제
 
@@ -521,6 +574,9 @@ API 서버가 떠 있는지 확인합니다.
 ```bash
 curl http://127.0.0.1:8000/api/health
 ```
+
+서버가 떠 있고 장비 목록이 비어 있다면 아직 collector가 batch를 보내지
+않았거나 시딩을 하지 않은 상태입니다 (3장 참고).
 
 웹 UI가 API를 찾는 기본 주소는 `http://127.0.0.1:8000`입니다. 다른 노트북에서 UI를
 열려면 Vite 또는 배포된 웹 서버도 `0.0.0.0`에 바인딩하고, 웹 빌드가 접근 가능한
@@ -536,7 +592,7 @@ UI origin을 허용합니다.
 
 ### 샘플 장비가 계속 보임
 
-샘플 DB가 남아 있습니다.
+시딩한 샘플 DB가 남아 있습니다.
 
 ```bash
 rm -f data/quipu.sqlite3 data/quipu.sqlite3-wal data/quipu.sqlite3-shm
@@ -552,7 +608,7 @@ rm -f data/quipu.sqlite3 data/quipu.sqlite3-wal data/quipu.sqlite3-shm
 curl http://<server-ip>:8000/api/health
 ```
 
-접근이 안 되면 서버가 `--host 0.0.0.0`으로 떠 있는지, 방화벽이 TCP `8000`을
+접근이 안 되면 서버가 `0.0.0.0`에 바인딩되어 있는지, 방화벽이 TCP `8000`을
 허용하는지 확인합니다. 접근은 되는데 화면에 안 보이면 collector의
 `--device-id`, `--token`, `--server-url`을 확인합니다.
 
@@ -642,7 +698,8 @@ for snap in payload["devices"]:
 `cpu.core_<n>.load_percent`는 있는데 `cpu.*.temp_c`가 없고
 `thermal.windows_zone_*`만 있으면 Windows가 CPU load는 노출했지만 CPU core 온도는
 collector에 노출하지 않은 것입니다. 이때는 Windows 장비에서 관리자 PowerShell로
-LibreHardwareMonitor `Temperature` sensor와 scheduled task `RunLevel`을 확인합니다.
+LibreHardwareMonitor `Temperature` sensor와 scheduled task `RunLevel`을 확인합니다
+(5장의 진단 절차 참고).
 
 ### NVMe Health가 Unavailable
 

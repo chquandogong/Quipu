@@ -2,7 +2,7 @@
 
 <p align="center">
   <img alt="CI" src="https://github.com/chquandogong/Quipu/actions/workflows/ci.yml/badge.svg">
-  <img alt="Version" src="https://img.shields.io/badge/version-v0.14.6-2f6f7e">
+  <img alt="Release" src="https://img.shields.io/github/v/release/chquandogong/Quipu?color=2f6f7e&label=release">
   <img alt="Status" src="https://img.shields.io/badge/status-local--first%20workstation%20health-5b6b73">
   <img alt="License" src="https://img.shields.io/badge/license-not%20selected-lightgrey">
 </p>
@@ -17,6 +17,10 @@
 </p>
 
 ---
+
+<p align="center">
+  <img alt="Quipu investigation dashboard — device list, Smart Advisor, live vitals" src="docs/images/dashboard.png" width="920">
+</p>
 
 ## What It Is
 

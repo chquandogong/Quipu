@@ -878,7 +878,7 @@ describe("App", () => {
     expect(
       screen.getByText("About: workstation health investigation"),
     ).toBeInTheDocument();
-    expect(screen.getByText("Version v0.14.7")).toBeInTheDocument();
+    expect(screen.getByText("Version v0.14.8")).toBeInTheDocument();
     expect(screen.getByText("License: Apache-2.0")).toBeInTheDocument();
     expect(
       screen.queryByText("Detect - triage - verify with evidence"),

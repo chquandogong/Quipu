@@ -60,7 +60,7 @@ const flowStages = [
   "Verify",
   "Report",
 ];
-const appVersion = "v0.14.7";
+const appVersion = "v0.14.8";
 
 const riskLabels: Record<RiskLevel, string> = {
   healthy: "Healthy",

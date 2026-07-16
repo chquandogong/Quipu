@@ -2,6 +2,23 @@
 
 All notable changes to Quipu are documented in this file.
 
+## v0.14.8 - 2026-07-16
+
+License visibility in the product UI and README license sections.
+
+### Added
+
+- The `Project info` chip in the web UI now shows a `License: Apache-2.0`
+  line linking to the LICENSE file on GitHub.
+- All three README editions gained a License section describing the
+  Apache-2.0 terms with links to LICENSE and NOTICE.
+
+### Changed
+
+- `App.tsx` and `App.test.tsx` were reformatted by the project formatter in
+  the same change set.
+- Bumped package, app, API, schema, and UI versions to `0.14.8`.
+
 ## v0.14.7 - 2026-07-16
 
 Apache-2.0 license adoption and repository presentation polish.

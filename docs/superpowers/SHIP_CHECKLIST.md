@@ -1,9 +1,9 @@
 # Quipu Ship Checklist
 
-> Status: v0.14.5 documentation release checklist for current Windows collector behavior
-> Date: 2026-07-10
+> Status: v0.14.8 release checklist — Apache-2.0 licensed, documentation and repository presentation current
+> Date: 2026-07-16
 > Owner: chquan
-> Release: v0.14.5
+> Release: v0.14.8
 
 ## Scope
 
@@ -119,6 +119,17 @@ Included:
 - Removed duplicate creator/reference image drawer from the working UI.
 - Visible Made by, About, and Version metadata in one compact chip.
 - Project docs, GitHub templates, contribution notes, and security policy.
+- Horizontal device status transitions and Smart Advisor/Actions left tabs
+  (v0.14.5).
+- No automatic demo seeding; documented manual sample-fleet seeding via
+  `python -m quipu_server.seed` (v0.14.5 behavior, documented in v0.14.6).
+- Documentation rework: all three READMEs, user manual, CONTRIBUTING, and
+  SECURITY rewritten against the current implementation (v0.14.6).
+- Apache-2.0 license: LICENSE and NOTICE files, SPDX metadata in both
+  `pyproject.toml` files and `package.json`, dynamic README badges, dashboard
+  screenshot, and repository description/topics (v0.14.7).
+- License visibility: `Project info` chip shows `License: Apache-2.0`, and
+  every README edition has a License section (v0.14.8).
 
 Excluded:
 
@@ -135,16 +146,18 @@ Excluded:
 - Web tests: `npm test -- --run` -> 3 passed.
 - Web build: `npm run build` -> succeeded.
 - Whitespace check: `git diff --check` -> passed.
-- Browser DOM smoke check: `Version v0.14.5`, `Devices`, `Device Issues`,
-  `우분투 · chquan-17ZD90SP-GX56K`, `윈도우 · DOGU_CHQUAN`, and `Telemetry Matrix`
-  rendered from the LAN UI without `Failed to fetch`.
+- Browser DOM smoke check: `Version v0.14.8`, `License: Apache-2.0`, `Devices`,
+  `Device Issues`, `우분투 · chquan-17ZD90SP-GX56K`, `윈도우 · DOGU_CHQUAN`, and
+  `Telemetry Matrix` rendered from the local UI without `Failed to fetch`.
+- Installed package metadata check: `License-Expression: Apache-2.0`.
+- GitHub license detection check: repository reports `Apache License 2.0`.
 - Live Windows batch check: `윈도우 · DOGU_CHQUAN` reports `cpu.load_percent`,
   `cpu.core_<n>.load_percent`, `cpu.package_temp_c`, `cpu.p_core_1..4.temp_c`,
   and `cpu.e_core_1..8.temp_c`.
 
 Evidence source:
 
-- Latest verified local commit before release prep: v0.14.5 documentation release candidate.
+- Latest verified release: v0.14.8 (`36f4f9d`), CI success on GitHub Actions.
 
 ## Risks
 
@@ -164,7 +177,7 @@ Known risks:
 - Enrollment tokens are stored as hashes, but role-aware admin auth is still a
   future hardening item.
 - Current analysis is deterministic and intentionally conservative.
-- Windows telemetry coverage depends on the Windows task running the v0.14.5
+- Windows telemetry coverage depends on the Windows task running the v0.14.8
   collector package. The current observed Windows device is visible, but an
   older task may keep sending only smoke-level telemetry until the release is
   installed and the task is restarted on that machine.
@@ -196,7 +209,7 @@ Unapproved risks:
 Rollback method:
 
 - Delete or supersede the private GitHub release if the release note is wrong.
-- Move forward with a patch tag such as `v0.14.5` for code or documentation fixes.
+- Move forward with a patch tag such as `v0.14.9` for code or documentation fixes.
 - Avoid force-push and history rewrite.
 
 Rollback owner:
@@ -221,23 +234,26 @@ Check after release:
 
 ## Documents
 
-- README: updated from the top for current Windows collector behavior,
-  hardware-monitor CPU load display, missing CPU temperature diagnostics, LAN
-  UI access, and rollout guidance.
-- User manual: includes Windows collector verification, hardware-monitor CPU
-  load/temperature metric names, scheduled-task diagnostics, and updated screen
-  guide.
-- Dashboard: current v0.14.5 documentation release state recorded.
+- README: rewritten in all three editions with the current UI layout, quick
+  start (manual seeding), collector CLI/API/environment tables, dashboard
+  screenshot, dynamic badges, and a License section.
+- User manual: current tabbed screen guide, manual seeding, Windows collector
+  verification, hardware-monitor CPU load/temperature metric names, and
+  scheduled-task diagnostics.
+- Dashboard: v0.14.8 release state recorded.
 - Roadmap: device-first, Windows telemetry, and connected-laptop rollout tracks
   recorded.
-- Changelog: `v0.14.5` prepared.
-- Security policy: present.
+- Changelog: entries through `v0.14.8`; GitHub releases exist for v0.14.3
+  through v0.14.8.
+- Contributing: first-time setup and CI runtime versions documented.
+- Security policy: current auth model documented; LICENSE and NOTICE present.
 
 ## Final Judgment
 
-GitHub release is ready for `v0.14.5` after the local test/build/browser checks
-pass. The connected Windows laptop now reports CPU load plus CPU
-package/P-core/E-core temperatures.
+`v0.14.8` is released: local test/build/browser checks passed, CI succeeded,
+and the GitHub release is published. The project is Apache-2.0 licensed, and
+the connected Windows laptop reports CPU load plus CPU package/P-core/E-core
+temperatures.
 
 Public repository visibility is allowed after sensitive-content audit.
 Package publishing, production deployment, destructive git operations, and
